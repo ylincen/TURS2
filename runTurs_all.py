@@ -14,7 +14,7 @@ datasets_with_header_row = ["avila", "anuran", "diabetes", "sepsis"]
 beam_width = 20
 num_cut_numeric = 100
 
-for data_name in [datasets_with_header_row, datasets_without_header_row]:
+for data_name in datasets_with_header_row + datasets_without_header_row:
     data_path = "datasets/" + data_name + ".csv"
 
     if data_name in datasets_without_header_row:
@@ -33,7 +33,7 @@ for data_name in [datasets_with_header_row, datasets_without_header_row]:
 
     kfold_list = list(kfold)
 
-    for fold in kfold_list:
+    for fold, fold_indices in enumerate(kfold_list):
         dtrain = copy.deepcopy(d.iloc[kfold_list[fold][0], :])
         dtest = copy.deepcopy(d.iloc[kfold_list[fold][1], :])
 
