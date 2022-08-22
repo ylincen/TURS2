@@ -3,7 +3,7 @@ import numpy as np
 
 import nml_regret
 from nml_regret import *
-from calculate_NML import calc_probs
+from utils import calc_probs
 from numba import njit
 
 def get_tree_cl(x_train, y_train, num_class):
@@ -28,9 +28,10 @@ def get_tree_cl(x_train, y_train, num_class):
     return [best_sum_cl_data, best_sum_regrets]
 
 
-
 # x_train, y_train: training data in the else-rule
-def get_tree_cl_individual(x_train, y_train, num_class, min_sample=0.05):
+def get_tree_cl_individual(x_train, y_train, num_class, min_sample=0.05, min_sample_non_ratio=10):
+    if len(y_train) * 0.05 < min_sample_non_ratio:
+        min_sample = min_sample_non_ratio
     clf = tree.DecisionTreeClassifier(min_samples_leaf=min_sample, random_state=1)
     clf = clf.fit(x_train, y_train)
 
@@ -63,9 +64,7 @@ def get_tree_cl_individual(x_train, y_train, num_class, min_sample=0.05):
 
 def get_entropy(target, num_class):
     probs = calc_probs(target, num_class)
-    entropy = -np.sum(np.log2(probs[target]))
+    probs = probs[probs != 0]
+    entropy = -np.sum(np.log2(probs) * probs) * len(target)
 
     return entropy
-
-
-

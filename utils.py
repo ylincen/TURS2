@@ -1,64 +1,7 @@
-import itertools
-import numpy as np
-from constant import *
 from numba import njit
-from numba import jit, float64, int32, boolean
-# Input
-# feature type: categorical as 1, numerical as 0
-# features: matrix, each column corresponds to one variable
-# categorical features are encoded by integer: 0, 1, 2, ...
-def generate_candidate_cuts(features, max_num_bin, max_batch_size=5, remove_start_end=True):
-    candidate_cuts = [] # for calculating the code length of model
-    candidate_cuts_for_search = []
-    dim_iter_counter = -1
-
-    for feature, feature_type, max_num_bin_this_dim in zip(features.values, features.types, max_num_bin):
-        dim_iter_counter += 1
-        if feature_type == CATEGORICAL:
-            unique_feature = np.unique(feature)
-            candidate_cut_this_dimension = []
-            if max_batch_size < len(unique_feature):
-                for i in range(max_batch_size):
-                    candidate_cut_this_dimension.extend(list(itertools.combinations(unique_feature, r=i+1)))
-            else:
-                for i in range(len(unique_feature)-1):
-                    candidate_cut_this_dimension.extend(list(itertools.combinations(unique_feature, r=i+1)))
-            candidate_cuts.append(candidate_cut_this_dimension)
-            candidate_cuts_for_search.append(candidate_cut_this_dimension)
-        else:
-            sort_feature = np.sort(np.unique(feature))
-            candidate_cut_this_dimension = (sort_feature[0:(len(sort_feature)-1)] + sort_feature[1:len(sort_feature)])/2
-
-            # to set the bins for each numeric dimension
-            if max_num_bin_this_dim > 1:
-
-                select_indices = np.linspace(0, len(candidate_cut_this_dimension)-1, max_num_bin_this_dim+1,
-                                             endpoint=True, dtype=int)
-                if remove_start_end:
-                    select_indices = select_indices[1:(len(select_indices)-1)] # remote the start and end point
-                candidate_cuts.append(candidate_cut_this_dimension)
-                candidate_cuts_for_search.append(candidate_cut_this_dimension[select_indices])
-            else:
-                candidate_cuts.append(candidate_cut_this_dimension)
-                candidate_cuts_for_search.append(candidate_cut_this_dimension)
-    return [candidate_cuts, candidate_cuts_for_search]
-
-
-# Get the indices when the cut is fixed, during the process of rule growing
-# Input:
-# original_indice: numpy array
-# feature_type: 0 -> NUMERIC, 1 -> CATEGORICAL
-# Output:
-# left_indices and right_indices, both are python list
-def get_indices(feature, feature_type, cut, original_indices):
-    feature = feature[original_indices]
-    if feature_type == NUMERIC:
-        left_indices = original_indices[feature <= cut]
-        right_indices = original_indices[feature > cut]
-        return [left_indices, right_indices]
-    else:
-        within_indices = original_indices[np.isin(feature, cut)]
-        return within_indices
+import numpy as np
+import scipy.special
+from constant import *
 
 @njit
 def calc_probs(target, num_class, smoothed=False):
@@ -70,12 +13,76 @@ def calc_probs(target, num_class, smoothed=False):
     else:
         return counts / np.sum(counts)
 
+@njit
+def calc_shannofano_cl(target, smoothed=False):
+    counts = np.bincount(target)
+    if smoothed:
+        counts = counts + np.ones(len(counts), dtype='int64')
+    counts = counts[counts != 0]
 
-def y_to_int(y):
-    y_train_new = []
-    labels = list(np.unique(y))
-    for v in y:
-        for i, l in enumerate(labels):
-            if v == l:
-                y_train_new.append(i)
-    return np.array(y_train_new)
+    if np.sum(counts) == 0:
+        p = counts / 1.0
+    else:
+        p = counts / np.sum(counts)
+    return -np.sum(p * np.log2(p) * len(target))
+
+@njit
+def get_covered_indices_bool(unique_membership, membership):
+    select_rows = np.ones(len(membership), dtype="bool")
+    for row_i in range(len(membership) - 1):  # if row_i is a subset of row_j, or the reverse, exclude the bigger one
+        if not unique_membership[row_i]:
+            continue
+        for row_j in range(row_i + 1, len(membership)):
+            if not unique_membership[row_j]:
+                continue
+            if np.all(membership[row_j][membership[row_i]]):
+                select_rows[row_j] = False  # exclude row_j
+            elif np.all(membership[row_i][membership[row_j]]):
+                select_rows[row_i] = False  # exclude row_i
+            else:
+                pass
+    # covered_indices_bool = np.bitwise_or.reduce(membership[unique_membership & select_rows], axis=0)
+    covered_indices_bool = (np.sum(membership[unique_membership & select_rows], axis=0) >= 1)
+    return covered_indices_bool
+
+
+def get_ruleset_fromchain_inclmodelcost(ruleset_chain, scores, incl_modelcost=False):
+    if incl_modelcost:
+        cl_model = []
+
+        for r in ruleset_chain[-1].rules:
+            cl_model.append(get_cl_model2(r))
+        scores_incl_modelcost = scores + (np.append(0, np.cumsum(cl_model)) - (scipy.special.gammaln(np.arange(1, len(cl_model) + 2)) / np.log(2)))
+        ruleset = ruleset_chain[np.argmin(scores_incl_modelcost)]
+    else:
+        ruleset = ruleset_chain[np.argmin(scores)]
+    return ruleset
+
+# get the most cost by considering that "the order of the literals does not matter", like in C4.5's book;
+def get_cl_model2(rule):
+    cl_model = []
+    categorical_cuts = rule.get_categorical_cuts()
+    covered_bool_sofar = np.ones(rule.data.n, dtype=bool)
+    for icol in range(rule.data.ncol):
+        if np.nansum(rule.cut_mat[:, icol]) == 0:
+            continue
+        else:
+            if rule.data.var_types[icol] == NUMERIC:
+                num_cuts = np.nansum(rule.cut_mat[:, icol])
+                lower_bound, upper_bound = \
+                    np.min(rule.data.X[covered_bool_sofar, icol]), np.max(rule.data.X[covered_bool_sofar, icol])
+                num_candidate_cuts = np.sum((lower_bound < rule.data.candidate_cuts_search[icol]) &
+                                            (rule.data.candidate_cuts_search[icol] < upper_bound))
+                if num_candidate_cuts <= 1:
+                    continue
+                else:
+                    if num_cuts == 1:
+                        cl_model.append(np.log2(num_candidate_cuts))
+                    else:
+                        cl_model.append(np.log2(num_candidate_cuts * (num_candidate_cuts - 1) / 2))
+            else:
+                cl_model.append(rule.data.cached_model_cost[1][icol])
+                covered_bool_here = np.isin(rule.data.X[:, icol], categorical_cuts[icol])
+                covered_bool_sofar = covered_bool_sofar & covered_bool_here
+
+    return max(np.sum(cl_model) - (scipy.special.gammaln(len(cl_model) + 1) / np.log(2)), 0)
