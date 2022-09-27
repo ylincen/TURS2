@@ -56,7 +56,7 @@ def get_test_p(ruleset, X):
                     test_p[icol] = mdg.p
                     break
             else:
-                modelling_bool = np.ones(ruleset.data_info.nrow, dtype=bool)
+                modelling_bool = np.zeros(ruleset.data_info.nrow, dtype=bool)
                 for index in np.where(rules_involved)[0]:
                     modelling_bool = np.bitwise_or(modelling_bool, ruleset.rules[index].bool_array)
                 test_p[icol] = calc_probs(ruleset.data_info.target[modelling_bool], ruleset.data_info.num_class)
