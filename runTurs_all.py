@@ -52,21 +52,22 @@ for data_name in datasets_with_header_row + datasets_without_header_row:
 
 
 
-        data_info = DataInfo(data=dtrain, max_bin_num=20)
+        data_info = DataInfo(data=dtrain, max_bin_num=num_cut_numeric)
 
         # Init the Rule, Elserule, Ruleset, ModelingGroupSet, ModelingGroup;
         ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_info.target)
 
         # Grow rules;
-        ruleset.build(max_iter=1000, beam_width=beam_width, candidate_cuts=data_info.candidate_cuts)
+        ruleset.build(max_iter=1000, beam_width=beam_width, candidate_cuts=data_info.candidate_cuts,
+                      print_or_not=False)
 
-        len(ruleset.rules)
-        pruned_ruleset = ruleset.self_prune()
+        # len(ruleset.rules)
+        # pruned_ruleset = ruleset.self_prune()
 
 
         X_test = dtest.iloc[:, :dtest.shape[1]-1].to_numpy()
         y_test = dtest.iloc[:, dtest.shape[1]-1].to_numpy()
-        test_p = get_test_p(pruned_ruleset, X_test)
+        test_p = get_test_p(ruleset, X_test)
 
         if len(test_p[0]) == 2:
             roc_auc = roc_auc_score(y_test, test_p[:,1])
