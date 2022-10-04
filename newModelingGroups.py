@@ -10,9 +10,11 @@ import surrogate_tree
 
 
 class ModelingGroupSet:
-    # __slots__ = ["features", "target", "data_info", "modeling_group_set", "else_rule_modeling_group",
-    #              "rules"]
     def __init__(self, else_rule, data_info, rules, target, features):
+        """
+        Initialize the modelling group set to have only one modelling group: the else_rule_modeling_group;
+        Modeling_group is either an individual rule, or the overlap of multiple rules
+        """
         self.modeling_group_set = []
         self.data_info = data_info
 
@@ -22,6 +24,19 @@ class ModelingGroupSet:
         self.rules = rules
 
     def update(self, rule):
+        """
+        This function is used to update the modeling_group_set by adding one rule to it.
+        That is, when we have one new rule to be added to the ruleset, we have to update our modelling group set
+        accordingly.
+        Specifically, we check for each modeling group, and check whether the new rule has overlap with it:
+            - if no, we update the information for this modeling group (e.g., by adding the information that this new
+                rule is not involved in this overlap;
+            - if yes,
+                - we first go over all rules involved in this modelling group and checks if any rule is fully covered,
+                or fully covers this new rule. If yes, we remove the "bigger rule". If no, we take no action.
+                - next, we split the modeling group into two modelling groups, one with the new rule involved,
+                the other with the new rule NOT involved.
+        """
         new_modeling_group_list = []
         for i, modeling_group in enumerate(self.modeling_group_set):
             # modeling_group will be updated, and a new_modeling_group will also be returned
@@ -263,9 +278,9 @@ class ModelingGroup:
         self.neglog_likelihood = else_rule.neglog_likelihood
 
         surrogate_else_neglog_likelihood, surrogate_else_regret = \
-            surrogate_tree.get_tree_cl_individual(x_train=self.features,
-                                                  y_train=self.target,
-                                                  num_class=self.data_info.num_class)
+            surrogate_tree.get_tree_cl(x_train=self.features,
+                                       y_train=self.target,
+                                       num_class=self.data_info.num_class)
         self.surrogate_score = surrogate_else_neglog_likelihood + surrogate_else_regret
         self.non_surrogate_score = self.neglog_likelihood + else_rule.regret
 
@@ -309,7 +324,7 @@ class ModelingGroup:
             self.neglog_likelihood = -np.sum(np.log2(self.p[self.p != 0]) * self.p[self.p != 0]) * \
                                      np.count_nonzero(self.instances_covered_boolean)
             surrogate_else_neglog_likelihood, surrogate_else_regret = \
-                surrogate_tree.get_tree_cl_individual(x_train=self.features[covered_and_modelling_boolean],
+                surrogate_tree.get_tree_cl(x_train=self.features[covered_and_modelling_boolean],
                                                       y_train=self.target[covered_and_modelling_boolean],
                                                       num_class=self.data_info.num_class)
             self.surrogate_score = surrogate_else_neglog_likelihood + surrogate_else_regret
@@ -348,9 +363,9 @@ class ModelingGroup:
             if surrogate:
                 if any(covered_and_modelling_boolean):
                     surrogate_else_neglog_likelihood, surrogate_else_regret = \
-                        surrogate_tree.get_tree_cl_individual(x_train=self.features[covered_and_modelling_boolean],
-                                                              y_train=self.target[covered_and_modelling_boolean],
-                                                              num_class=self.data_info.num_class)
+                        surrogate_tree.get_tree_cl(x_train=self.features[covered_and_modelling_boolean],
+                                                   y_train=self.target[covered_and_modelling_boolean],
+                                                   num_class=self.data_info.num_class)
                 else:
                     surrogate_else_neglog_likelihood, surrogate_else_regret = 0, 0
                 return surrogate_else_neglog_likelihood + surrogate_else_regret + neglog_likelihood

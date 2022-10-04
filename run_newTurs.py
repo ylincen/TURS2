@@ -1,6 +1,6 @@
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 from DataInfo import *
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 from newRuleset import *
 from utils_pred import *
 from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, auc, average_precision_score, f1_score, confusion_matrix
@@ -15,8 +15,8 @@ if len(sys.argv) == 4:
     beam_width = int(sys.argv[2])
     num_cut_numeric = int(sys.argv[3])
 else:
-    data_given = "iris"
-    beam_width = 20
+    data_given = "diabetes"
+    beam_width = 5
     num_cut_numeric = 100
 
 data_name = data_given
@@ -33,8 +33,10 @@ else:
 print("Running TURS on: " + data_path)
 
 
-kf = KFold(n_splits=10, shuffle=True, random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
-kfold = kf.split(X=d)
+kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
+X = d.iloc[:, :d.shape[1]-1].to_numpy()
+y = d.iloc[:, d.shape[1]-1].to_numpy()
+kfold = kf.split(X=X, y=y)
 
 kfold_list = list(kfold)
 
@@ -57,7 +59,7 @@ for icol, tp in enumerate(dtrain.dtypes):
 
 
 
-data_info = DataInfo(data=dtrain, max_bin_num=20)
+data_info = DataInfo(data=dtrain, max_bin_num=num_cut_numeric)
 
 # Init the Rule, Elserule, Ruleset, ModelingGroupSet, ModelingGroup;
 ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_info.target)
@@ -79,3 +81,13 @@ else:
     roc_auc = roc_auc_score(y_test, test_p, average="weighted", multi_class="ovr")
 
 print("roc_auc: ", roc_auc)
+
+X_train = dtrain.iloc[:, :dtrain.shape[1]-1].to_numpy()
+y_train = dtrain.iloc[:, dtrain.shape[1]-1].to_numpy()
+train_p = get_test_p(pruned_ruleset, X_train)
+if len(test_p[0]) == 2:
+    roc_auc_tr = roc_auc_score(y_train, train_p[:,1])
+else:
+    roc_auc_tr = roc_auc_score(y_train, train_p, average="weighted", multi_class="ovr")
+
+print("roc_auc for training set: ", roc_auc_tr)

@@ -282,10 +282,8 @@ class ElseRule:
     def _surrogate_score_else_rule(self, target, features):
         local_target = target[self.bool_array]
         local_features = features[self.bool_array]
-        surrogate_score = surrogate_tree.get_tree_cl_individual(x_train=local_features,
-                                                                y_train=local_target,
-                                                                num_class=self.data_info.num_class,
-                                                                min_sample=0.05,
-                                                                min_sample_non_ratio=10)
+        surrogate_score = surrogate_tree.get_tree_cl(x_train=local_features,
+                                                     y_train=local_target,
+                                                     num_class=self.data_info.num_class)
         return surrogate_score
 

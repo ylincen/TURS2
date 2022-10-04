@@ -132,9 +132,9 @@ class Ruleset:
 
                 if any(else_rule_cover_updated):
                     surrogate_score_else_rule = \
-                        surrogate_tree.get_tree_cl_individual(x_train=self.features[else_rule_cover_updated],
+                        surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
                                                               y_train=self.target[else_rule_cover_updated],
-                                                              num_class=self.data_info.num_class, min_sample=0.05)
+                                                              num_class=self.data_info.num_class)
                 else:
                     surrogate_score_else_rule = 0
                 surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
