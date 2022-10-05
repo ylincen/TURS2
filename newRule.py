@@ -186,11 +186,6 @@ class Rule:
                     beam.update(rule_base=self, local_gain=within_local_score, bi_array_excl=within_bi_array,
                                 icol=icol, var_type=CATEGORICAL, cut_type=WITHIN_CUT, cut=level,
                                 excl_or_not=True, bi_array_incl=None, buffer=20)
-        if len(beam.beam) > beam.beam_width:
-            # As we add "buffer", so we have more rules for selecting the best ones with the diversity constraint:
-            # Rank all rules in the beam, and iteratively check the coverage similarity between each rule and all
-            #   rules already added in the beam.
-            beam.diversity_prune()
 
         return beam
 
@@ -262,6 +257,8 @@ class ElseRule:
 
         self.regret = self._regret()
         self.nml_score_else_rule = self.neglog_likelihood + self.regret
+
+        self.score = self.regret + self.neglog_likelihood
 
         if get_surrogate_score:
             self.surrogate_score = self._surrogate_score_else_rule(target=target, features=features)

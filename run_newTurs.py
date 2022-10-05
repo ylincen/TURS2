@@ -1,4 +1,6 @@
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+
+import nml_regret
 from DataInfo import *
 from sklearn.model_selection import KFold, StratifiedKFold
 from newRuleset import *
@@ -48,6 +50,8 @@ le = OrdinalEncoder(dtype=int, handle_unknown="use_encoded_value", unknown_value
 for icol, tp in enumerate(dtrain.dtypes):
     if tp != float:
         feature_ = dtrain.iloc[:, icol].to_numpy()
+        if len(np.unique(feature_)) > 5:
+            continue
         feature_ = feature_.reshape(-1, 1)
 
         feature_test = dtest.iloc[:, icol].to_numpy()
@@ -68,7 +72,7 @@ ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_
 ruleset.build(max_iter=1000, beam_width=beam_width, candidate_cuts=data_info.candidate_cuts)
 
 len(ruleset.rules)
-pruned_ruleset = ruleset.self_prune()
+pruned_ruleset = ruleset.self_prune(ruleset_size=None)
 
 
 X_test = dtest.iloc[:, :dtest.shape[1]-1].to_numpy()
@@ -91,3 +95,11 @@ else:
     roc_auc_tr = roc_auc_score(y_train, train_p, average="weighted", multi_class="ovr")
 
 print("roc_auc for training set: ", roc_auc_tr)
+
+# analyse the results
+negloglike, reg = 0, 0
+for rule in ruleset.rules:
+    p = calc_probs(y_train[rule.indices_excl_overlap], data_info.num_class)
+    p = p[p  != 0]
+    negloglike += len(rule.indices_excl_overlap) * np.sum(-p*np.log2(p))
+    reg += regret(len(rule.indices_excl_overlap), data_info.num_class)

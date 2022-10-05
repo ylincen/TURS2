@@ -70,7 +70,7 @@ class Beam:
 
             # What's the code below doing??
             # ANS: Depending on whether the len(self.beam) reaches the maximum length
-            if len(self.beam) < self.beam_width:
+            if len(self.beam) < buffer * self.beam_width:
                 self.beam.append(rule)
                 self.nml_foil_gain.append(local_gain)
                 if local_gain < self.min_score:
@@ -78,7 +78,7 @@ class Beam:
                     self.arg_min = len(self.nml_foil_gain) - 1
                 else:
                     pass  # self.min_score and self.arg_min remain unchanged.
-            elif self.min_score < local_gain:
+            elif self.min_score < local_gain:  # may have problem for grow_incl;
                 self.beam[self.arg_min] = rule
                 self.nml_foil_gain[self.arg_min] = local_gain
                 self.min_score = np.min(self.nml_foil_gain)

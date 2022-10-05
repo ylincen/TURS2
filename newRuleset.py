@@ -39,6 +39,12 @@ class Ruleset:
         self.grow_history_scores = [self.modeling_groups.else_rule_modeling_group.non_surrogate_score]
         self.grow_history_surroage_scores = [self.modeling_groups.else_rule_modeling_group.surrogate_score]
 
+        self.coverage = np.count_nonzero(self.covered_boolarray)
+        self.score = self.modeling_groups.total_score()
+        # self.score_per_coverage = self.score / self.coverage
+
+        self.log_everything = ""
+
     def update_ruleset(self, rule):
         """
         Given the next "rule", CHECK for STOPPING CRITERION &
@@ -62,6 +68,7 @@ class Ruleset:
         # update the "history" scores
         self.grow_history_surroage_scores.append(self.modeling_groups.total_surrogate_score())
         self.grow_history_scores.append(self.modeling_groups.total_score())
+
 
     def build(self, max_iter, beam_width, candidate_cuts, print_or_not=True, dump=False):
         """
@@ -118,7 +125,8 @@ class Ruleset:
 
         # Does not matter what is the gain here, but what's important is whether we can find refinement with positive
         # gain;
-        beam.nml_foil_gain = [0]
+        # Oct 4th: above is wrong!!!
+        # beam.nml_foil_gain = [0]
 
         beam_collect = BeamCollect(beamwidth=number_of_init_rules)
 
@@ -133,8 +141,8 @@ class Ruleset:
                 if any(else_rule_cover_updated):
                     surrogate_score_else_rule = \
                         surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
-                                                              y_train=self.target[else_rule_cover_updated],
-                                                              num_class=self.data_info.num_class)
+                                                   y_train=self.target[else_rule_cover_updated],
+                                                   num_class=self.data_info.num_class)
                 else:
                     surrogate_score_else_rule = 0
                 surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
@@ -146,8 +154,14 @@ class Ruleset:
             for rule in beam.beam:
                 rule.grow_excl(candidate_cuts, next_beam)  # generate candidate refinements of
 
+            # diverse beam search
+            next_beam.diversity_prune(similarity_alpha=0.95)
+
             # update the beam to be the "next_beam"
             beam = next_beam
+
+            print("beam_collect: ")
+            print([r.condition for r in beam.beam])
         return beam_collect
 
     def find_rule_with_overlap(self, beam_collect, beam_width, candidate_cuts, number_of_rules_return):
@@ -168,6 +182,7 @@ class Ruleset:
         while len(beam.beam) > 0:
             for rule in beam.beam:
                 ruleset_with_new_rule_score = self.evaluate_rule(rule)
+
                 beam_collect.update(rule=rule, score=ruleset_with_new_rule_score, smaller_is_better=True)
             next_beam = Beam(beam_width)
             for rule in beam.beam:
@@ -192,12 +207,19 @@ class Ruleset:
     def evaluate_rule(self, rule):
         return self.modeling_groups.evaluate_rule(rule)
 
-    def self_prune(self):
-        if np.argmin(self.grow_history_scores) == len(self.grow_history_scores) - 1:
-            return self
+    def self_prune(self, ruleset_size=None):
+        if ruleset_size is None:
+            ruleset_size = np.argmin(self.grow_history_scores)
+            if np.argmin(self.grow_history_scores) == len(self.grow_history_scores) - 1:
+                return self
+            else:
+                pruned_ruleset = Ruleset(self.data_info, self.data_info.features, self.data_info.target)
+                for i in range(ruleset_size):
+                    pruned_ruleset.update_ruleset(self.rules[i])
+                return pruned_ruleset
         else:
             pruned_ruleset = Ruleset(self.data_info, self.data_info.features, self.data_info.target)
-            for i in range(np.argmin(self.grow_history_scores)):
+            for i in range(ruleset_size):
                 pruned_ruleset.update_ruleset(self.rules[i])
             return pruned_ruleset
 

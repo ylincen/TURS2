@@ -17,6 +17,9 @@ num_cut_numeric = 100
 for data_name in datasets_with_header_row + datasets_without_header_row:
     data_path = "datasets/" + data_name + ".csv"
 
+    if data_name == "avila":
+        continue
+
     if data_name in datasets_without_header_row:
         d = pd.read_csv(data_path, header=None)
     elif data_name in datasets_with_header_row:
@@ -41,6 +44,8 @@ for data_name in datasets_with_header_row + datasets_without_header_row:
         for icol, tp in enumerate(dtrain.dtypes):
             if tp != float:
                 feature_ = dtrain.iloc[:, icol].to_numpy()
+                if len(np.unique(feature_)) > 5:
+                    continue
                 feature_ = feature_.reshape(-1, 1)
 
                 feature_test = dtest.iloc[:, icol].to_numpy()
