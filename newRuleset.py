@@ -43,8 +43,6 @@ class Ruleset:
         self.score = self.modeling_groups.total_score()
         # self.score_per_coverage = self.score / self.coverage
 
-        self.log_everything = ""
-
     def update_ruleset(self, rule):
         """
         Given the next "rule", CHECK for STOPPING CRITERION &
@@ -123,29 +121,24 @@ class Ruleset:
         beam = Beam(beam_width)
         beam.beam = [rule]
 
-        # Does not matter what is the gain here, but what's important is whether we can find refinement with positive
-        # gain;
-        # Oct 4th: above is wrong!!!
-        # beam.nml_foil_gain = [0]
-
         beam_collect = BeamCollect(beamwidth=number_of_init_rules)
 
         while len(beam.beam) > 0:  # if an empty beam is returned, the "grow" process is stopped.
             # get the surrogate score for each rule in the beam, and update the beam_collect based on it
             for rule in beam.beam:
-                rule_score = rule.neglog_likelihood_excl + rule.regret_excl
-
-                else_rule_cover_updated = copy.deepcopy(self.else_rule.bool_array)
-                else_rule_cover_updated[rule.indices_excl_overlap] = False
-
-                if any(else_rule_cover_updated):
-                    surrogate_score_else_rule = \
-                        surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
-                                                   y_train=self.target[else_rule_cover_updated],
-                                                   num_class=self.data_info.num_class)
-                else:
-                    surrogate_score_else_rule = 0
-                surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
+                # rule_score = rule.neglog_likelihood_excl + rule.regret_excl
+                #
+                # else_rule_cover_updated = copy.deepcopy(self.else_rule.bool_array)
+                # else_rule_cover_updated[rule.indices_excl_overlap] = False
+                #
+                # if any(else_rule_cover_updated):
+                #     surrogate_score_else_rule = \
+                #         surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
+                #                                    y_train=self.target[else_rule_cover_updated],
+                #                                    num_class=self.data_info.num_class)
+                # else:
+                #     surrogate_score_else_rule = 0
+                # surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
 
                 beam_collect.update(rule=rule, score=surrogate_score, smaller_is_better=True)
 

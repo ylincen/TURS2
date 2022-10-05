@@ -128,47 +128,51 @@ class Beam:
 
 
 class BeamCollect:
-    def __init__(self, beamwidth):
-        self.rules = []
-        self.scores = []
-        self.worst_score = None
-        self.arg_worst = 0
-
+    def __init__(self, beamwidth, diversity_alpha):
         self.beamwidth = beamwidth
+        self.diversity_alpha = diversity_alpha
+        self.beams = []
 
-    def update(self, rule, score, smaller_is_better):
-        if smaller_is_better:
-            if len(self.rules) < self.beamwidth:
-                self.rules.append(rule)
-                self.scores.append(score)
-                self.arg_worst = np.argmax(self.scores)
-
-                self.worst_score = self.scores[self.arg_worst]
-            elif score < self.worst_score:
-                self.rules[self.arg_worst] = rule
-                self.scores[self.arg_worst] = score
-                self.arg_worst = np.argmax(self.scores)
-                self.worst_score = self.scores[self.arg_worst]
-            else:
-                pass  # Do nothing, and hence beam_collect is not updated;
-        else:
-            if len(self.rules) < self.beamwidth:
-                self.rules.append(rule)
-                self.scores.append(score)
-                self.arg_worst = np.argmin(self.scores)
-
-                self.worst_score = self.scores[self.arg_worst]
-            elif score > self.worst_score:
-                self.rules[self.arg_worst] = rule
-                self.scores[self.arg_worst] = score
-                self.arg_worst = np.argmin(self.scores)
-                self.worst_score = self.scores[self.arg_worst]
-            else:
-                pass  # Do nothing, and hence beam_collect is not updated;
+    def diversity_prune(self):
 
 
-
-
-
-
-
+    # def __init__(self, beamwidth):
+    #     self.rules = []
+    #     self.scores = []
+    #     self.worst_score = None
+    #     self.arg_worst = 0
+    #
+    #     self.beamwidth_before_diversity_prune = beamwidth
+    #
+    #
+    # def extend(self, rule):
+    #
+    # def update(self, rule, score, smaller_is_better):
+    #     if smaller_is_better:
+    #         if len(self.rules) < self.beamwidth_before_diversity_prune:
+    #             self.rules.append(rule)
+    #             self.scores.append(score)
+    #             self.arg_worst = np.argmax(self.scores)
+    #
+    #             self.worst_score = self.scores[self.arg_worst]
+    #         elif score < self.worst_score:
+    #             self.rules[self.arg_worst] = rule
+    #             self.scores[self.arg_worst] = score
+    #             self.arg_worst = np.argmax(self.scores)
+    #             self.worst_score = self.scores[self.arg_worst]
+    #         else:
+    #             pass  # Do nothing, and hence beam_collect is not updated;
+    #     else:
+    #         if len(self.rules) < self.beamwidth_before_diversity_prune:
+    #             self.rules.append(rule)
+    #             self.scores.append(score)
+    #             self.arg_worst = np.argmin(self.scores)
+    #
+    #             self.worst_score = self.scores[self.arg_worst]
+    #         elif score > self.worst_score:
+    #             self.rules[self.arg_worst] = rule
+    #             self.scores[self.arg_worst] = score
+    #             self.arg_worst = np.argmin(self.scores)
+    #             self.worst_score = self.scores[self.arg_worst]
+    #         else:
+    #             pass  # Do nothing, and hence beam_collect is not updated;
