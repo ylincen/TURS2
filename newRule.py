@@ -8,13 +8,6 @@ import itertools
 
 
 class Rule:
-    # __slots__ = ["indices", "indices_excl_overlap", "data_info",
-    #              "dim_type", "bool_array", "rule_base", "features",
-    #              "target", "features_excl_overlap", "target_excl_overlap",
-    #              "nrow", "ncol", "nrow_excl", "ncol_excl", "condition",
-    #              "categorical_levels", "prob_excl", "prob", "regret_excl",
-    #              "regret", "neglog_likelihood_excl", "neglog_likelihood_incl",
-    #              "local_gain"]
     def __init__(self, indices, indices_excl_overlap, rule_base, features, target,
                  features_excl_overlap, target_excl_overlap, data_info, condition,
                  local_gain):
@@ -35,7 +28,8 @@ class Rule:
         self.data_info = data_info  # meta data of the original whole dataset
         self.dim_type = data_info.dim_type
 
-        self.bool_array = self.get_bool_array()
+        self.bool_array = self.get_bool_array(self.indices)
+        self.bool_array_excl = self.get_bool_array(self.indices_excl_overlap)
 
         self.rule_base = rule_base  # the previous level of this rule, i.e., the rule from which "self" is obtained
 
@@ -47,17 +41,7 @@ class Rule:
         self.nrow, self.ncol = features.shape  # local nrow and local ncol
         self.nrow_excl, self.ncol_excl = features_excl_overlap.shape  # local nrow and ncol, excluding ruleset's cover
 
-        # if rule_base is None:
         self.condition = condition  # condition is a dictionary with keys {icols, var_types, cuts, cut_options}
-        # else:
-        #     # here var_types represent the var type in the rule
-        #     icols, var_types, cuts, cut_options = list(rule_base.condition.values())
-        #     icols = icols + condition["icols"]
-        #     var_types = var_types + condition["var_types"]
-        #     cuts = cuts + condition["cuts"]
-        #     cut_options = cut_options + condition["cut_options"]
-        #     self.condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
-        #                       "cut_options": cut_options}
 
         self.categorical_levels = self.get_categorical_levels(max_number_levels_together=5)
 
@@ -73,8 +57,9 @@ class Rule:
                     np.log2(self.prob_excl[p_selector])) * self.nrow_excl
 
         # code length of encoding nrow_excl instances by prob
-        self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector] *
-                                              np.log2(self.prob[p_selector])) * self.nrow_excl
+        p_selector2 = (self.prob != 0)
+        self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
+                                              np.log2(self.prob[p_selector2])) * self.nrow_excl
 
         self.local_gain = local_gain
 
@@ -96,9 +81,9 @@ class Rule:
 
         return categorical_levels
 
-    def get_bool_array(self):
+    def get_bool_array(self, indices):
         bool_array = np.zeros(self.data_info.nrow, dtype=bool)
-        bool_array[self.indices] = True
+        bool_array[indices] = True
         return bool_array
 
     def grow_incl(self, candidate_cuts, beam):
@@ -128,11 +113,11 @@ class Rule:
                     if left_local_score > right_local_score:
                         beam.update(rule_base=self, local_gain=left_local_score, bi_array_excl=left_bi_array_excl,
                                     icol=icol, var_type=NUMERIC, cut_type=LEFT_CUT, cut=cut,
-                                    excl_or_not=False, bi_array_incl=left_bi_array_incl, buffer=20)
+                                    excl_or_not=False, bi_array_incl=left_bi_array_incl, buffer=None)
                     else:
                         beam.update(rule_base=self, local_gain=right_local_score, bi_array_excl=right_bi_array_excl,
                                     icol=icol, var_type=NUMERIC, cut_type=RIGHT_CUT, cut=cut,
-                                    excl_or_not=False, bi_array_incl=right_bi_array_incl, buffer=20)
+                                    excl_or_not=False, bi_array_incl=right_bi_array_incl, buffer=None)
 
             else:
                 for i, level in enumerate(self.categorical_levels[icol]):  # IMPLEMENT LATER
@@ -143,7 +128,7 @@ class Rule:
 
                     beam.update(rule_base=self, local_gain=within_local_score, bi_array_excl=within_bi_array_excl,
                                 icol=icol, var_type=CATEGORICAL, cut_type=WITHIN_CUT, cut=level,
-                                excl_or_not=False, bi_array_incl=within_bi_array_incl, buffer=20)
+                                excl_or_not=False, bi_array_incl=within_bi_array_incl, buffer=None)
         return beam
 
     def grow_excl(self, candidate_cuts, beam):
@@ -173,11 +158,11 @@ class Rule:
                     if left_local_score > right_local_score:
                         beam.update(rule_base=self, local_gain=left_local_score, bi_array_excl=left_bi_array,
                                     icol=icol, var_type=NUMERIC, cut_type=LEFT_CUT, cut=cut,
-                                    excl_or_not=True, bi_array_incl=None, buffer=20)
+                                    excl_or_not=True, bi_array_incl=None, buffer=None)
                     else:
                         beam.update(rule_base=self, local_gain=right_local_score, bi_array_excl=right_bi_array,
                                     icol=icol, var_type=NUMERIC, cut_type=RIGHT_CUT, cut=cut,
-                                    excl_or_not=True, bi_array_incl=None, buffer=20)
+                                    excl_or_not=True, bi_array_incl=None, buffer=None)
             else:
                 for i, level in enumerate(self.categorical_levels[icol]):
                     within_bi_array = np.isin(self.features_excl_overlap[:, icol], level)
@@ -185,7 +170,7 @@ class Rule:
 
                     beam.update(rule_base=self, local_gain=within_local_score, bi_array_excl=within_bi_array,
                                 icol=icol, var_type=CATEGORICAL, cut_type=WITHIN_CUT, cut=level,
-                                excl_or_not=True, bi_array_incl=None, buffer=20)
+                                excl_or_not=True, bi_array_incl=None, buffer=None)
 
         return beam
 

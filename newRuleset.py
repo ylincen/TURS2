@@ -9,6 +9,7 @@ from newModelingGroups import *
 import time
 import pickle
 
+
 class Ruleset:
     def __init__(self, data_info, features, target, number_of_init_rules=5,
                  number_of_rules_return=1):
@@ -78,7 +79,6 @@ class Ruleset:
         t0 = time.time()
         for iter in range(max_iter):
             rule = self.find_next_rule(beam_width, candidate_cuts)
-            rule = rule[0]
             if rule is None:
                 break
             else:
@@ -100,10 +100,9 @@ class Ruleset:
         beam_ignore_overlap = self.find_beam_ignore_overlap(beam_width=beam_width,
                                                             number_of_init_rules=self.number_of_init_rules,
                                                             candidate_cuts=candidate_cuts)
-        best_rule = self.find_rule_with_overlap(beam_collect=beam_ignore_overlap,
+        best_rule = self.find_rule_with_overlap(best_beam=beam_ignore_overlap,
                                                 beam_width=beam_width,
-                                                candidate_cuts=candidate_cuts,
-                                                number_of_rules_return=self.number_of_rules_return)
+                                                candidate_cuts=candidate_cuts)
         return best_rule
 
     def find_beam_ignore_overlap(self, beam_width, number_of_init_rules, candidate_cuts):
@@ -121,68 +120,59 @@ class Ruleset:
         beam = Beam(beam_width)
         beam.beam = [rule]
 
-        beam_collect = BeamCollect(beamwidth=number_of_init_rules)
+        # beam_collect = BeamCollect(beamwidth=number_of_init_rules)
+        beams_alldepth = []
 
         while len(beam.beam) > 0:  # if an empty beam is returned, the "grow" process is stopped.
-            # get the surrogate score for each rule in the beam, and update the beam_collect based on it
-            for rule in beam.beam:
-                # rule_score = rule.neglog_likelihood_excl + rule.regret_excl
-                #
-                # else_rule_cover_updated = copy.deepcopy(self.else_rule.bool_array)
-                # else_rule_cover_updated[rule.indices_excl_overlap] = False
-                #
-                # if any(else_rule_cover_updated):
-                #     surrogate_score_else_rule = \
-                #         surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
-                #                                    y_train=self.target[else_rule_cover_updated],
-                #                                    num_class=self.data_info.num_class)
-                # else:
-                #     surrogate_score_else_rule = 0
-                # surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
-
-                beam_collect.update(rule=rule, score=surrogate_score, smaller_is_better=True)
+            beams_alldepth.append(beam.beam)
 
             # grow based on each rule in the beam
             next_beam = Beam(beam_width)
             for rule in beam.beam:
                 rule.grow_excl(candidate_cuts, next_beam)  # generate candidate refinements of
 
-            # diverse beam search
-            next_beam.diversity_prune(similarity_alpha=0.95)
-
             # update the beam to be the "next_beam"
             beam = next_beam
 
-            print("beam_collect: ")
-            print([r.condition for r in beam.beam])
-        return beam_collect
+            # print("beam_collect: ")
+            # print([r.condition for r in beam.beam])
+        if len(beams_alldepth) > 0:
+            beam_collect = BeamCollect(beam_width=number_of_init_rules, beams=beams_alldepth, similarity_alpha=0.95)
+            best_beam = beam_collect.select_best_m(else_rule=self.else_rule, ruleset=self)
+        else:
+            best_beam = []
 
-    def find_rule_with_overlap(self, beam_collect, beam_width, candidate_cuts, number_of_rules_return):
+        return best_beam
+
+    def find_rule_with_overlap(self, best_beam, beam_width, candidate_cuts):
         """
-        Based on the beam_collect, i.e., a set of rules we grow while ignoring all covered instances by the rule set,
-        we further grow a list of beams while taking into consideration the covered instances, among which we select
-        the best rule.
-        :param beam_collect:
-        :param beam_width:
-        :param candidate_cuts:
-        :param number_of_rules_return:
-        :return:
         """
+
         beam = Beam(beam_width)
-        beam.from_beam_collect(beam_collect)
+        beam.beam = best_beam
+        beam.beam_width = beam_width
+        beam.nml_foil_gain = np.zeros(beam_width, dtype=float)
+        beam.min_score = 0
+        beam.arg_min = 0
 
-        beam_collect = BeamCollect(beamwidth=number_of_rules_return)
+        # beam_collect = BeamCollect(beamwidth=number_of_rules_return)
+        rules_alldepth = []
         while len(beam.beam) > 0:
-            for rule in beam.beam:
-                ruleset_with_new_rule_score = self.evaluate_rule(rule)
+            for r in beam.beam:
+                rules_alldepth.append(r)
 
-                beam_collect.update(rule=rule, score=ruleset_with_new_rule_score, smaller_is_better=True)
             next_beam = Beam(beam_width)
             for rule in beam.beam:
                 rule.grow_incl(candidate_cuts, next_beam)
             beam = next_beam
 
-        return beam_collect.rules
+        scores = []
+        for i, rule in enumerate(rules_alldepth):
+            ruleset_with_new_rule_score = self.evaluate_rule(rule)
+            scores.append(ruleset_with_new_rule_score)
+        which_rule = np.argmin(scores)
+
+        return rules_alldepth[which_rule]
 
     def init_emptyrule(self):
         indices = np.arange(self.data_info.nrow)
