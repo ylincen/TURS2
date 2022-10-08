@@ -83,8 +83,8 @@ class Beam:
                 if local_gain < self.min_score:
                     self.min_score = local_gain
                     self.arg_min = len(self.nml_foil_gain) - 1
-                else:
-                    print("_")  # self.min_score and self.arg_min remain unchanged.
+                # else:
+                #     print("_")  # self.min_score and self.arg_min remain unchanged.
             elif self.min_score < local_gain:  # may have problem for grow_incl;
                 self.beam[self.arg_min] = rule
                 self.nml_foil_gain[self.arg_min] = local_gain

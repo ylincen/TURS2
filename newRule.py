@@ -139,6 +139,11 @@ class Rule:
         :param candidate_cuts: a dictionary, to store the candidate cuts based on the ORIGINAL FULL DATASET
         :return: a beam of rules
         """
+        nml_foil_gain = []
+        info_icol = []
+        info_cut_index = []
+        info_cut_type = []
+        info_boolarray = []
         for icol in range(self.ncol):
             if self.dim_type[icol] == NUMERIC:
                 # constrain the search space
@@ -154,23 +159,56 @@ class Rule:
                     left_local_score = self.MDL_FOIL_gain(bi_array_excl=left_bi_array)  # IMPLEMENT LATER
                     right_local_score = self.MDL_FOIL_gain(bi_array_excl=right_bi_array)
 
+                    if left_local_score > 0:
+                        nml_foil_gain.append(left_local_score)
+                        info_icol.append(icol)
+                        info_cut_index.append(i)
+                        info_cut_type.append(LEFT_CUT)
+                        info_boolarray.append(left_bi_array)
+                    if right_local_score > 0:
+                        nml_foil_gain.append(right_local_score)
+                        info_icol.append(icol)
+                        info_cut_index.append(i)
+                        info_cut_type.append(RIGHT_CUT)
+                        info_boolarray.append(right_bi_array)
+
+                    # if icol == 1 and (cut == 113.5 or cut == 118.5 or cut == 120.5 or cut == 111.5):
+                    #     print(icol, cut, left_local_score, right_local_score)
+
                     # CHECK whether the beam should be updated
-                    if left_local_score > right_local_score:
-                        beam.update(rule_base=self, local_gain=left_local_score, bi_array_excl=left_bi_array,
-                                    icol=icol, var_type=NUMERIC, cut_type=LEFT_CUT, cut=cut,
-                                    excl_or_not=True, bi_array_incl=None, buffer=None)
-                    else:
-                        beam.update(rule_base=self, local_gain=right_local_score, bi_array_excl=right_bi_array,
-                                    icol=icol, var_type=NUMERIC, cut_type=RIGHT_CUT, cut=cut,
-                                    excl_or_not=True, bi_array_incl=None, buffer=None)
+                    # if left_local_score > right_local_score:
+                    #     beam.update(rule_base=self, local_gain=left_local_score, bi_array_excl=left_bi_array,
+                    #                 icol=icol, var_type=NUMERIC, cut_type=LEFT_CUT, cut=cut,
+                    #                 excl_or_not=True, bi_array_incl=None, buffer=None)
+                    # else:
+                    #     beam.update(rule_base=self, local_gain=right_local_score, bi_array_excl=right_bi_array,
+                    #                 icol=icol, var_type=NUMERIC, cut_type=RIGHT_CUT, cut=cut,
+                    #                 excl_or_not=True, bi_array_incl=None, buffer=None)
             else:
                 for i, level in enumerate(self.categorical_levels[icol]):
                     within_bi_array = np.isin(self.features_excl_overlap[:, icol], level)
                     within_local_score = self.MDL_FOIL_gain(bi_array_excl=within_bi_array)
+                    # beam.update(rule_base=self, local_gain=within_local_score, bi_array_excl=within_bi_array,
+                    #             icol=icol, var_type=CATEGORICAL, cut_type=WITHIN_CUT, cut=level,
+                    #             excl_or_not=True, bi_array_incl=None, buffer=None)
+                    if within_local_score > 0:
+                        nml_foil_gain.append(within_local_score)
+                        info_icol.append(icol)
+                        info_cut_index.append(i)
+                        info_cut_type.append(WITHIN_CUT)
+                        info_boolarray.append(within_bi_array)
 
-                    beam.update(rule_base=self, local_gain=within_local_score, bi_array_excl=within_bi_array,
-                                icol=icol, var_type=CATEGORICAL, cut_type=WITHIN_CUT, cut=level,
-                                excl_or_not=True, bi_array_incl=None, buffer=None)
+        nml_foil_gain_sort_index = np.argsort(-np.array(nml_foil_gain))
+        best_m_nmlfoilgain_index = []
+        for kk, ind in enumerate(nml_foil_gain_sort_index):
+            if len(nml_foil_gain_sort_index) >= beam_width:
+                break
+
+            if kk == 0:
+                best_m_nmlfoilgain_index.append(ind)
+
+            for ll, best_ind in enumerate(best_m_nmlfoilgain_index):
+                jarcard_dist = np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind]) /
 
         return beam
 
