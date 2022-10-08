@@ -8,114 +8,293 @@ import surrogate_tree
 
 class Beam:
     def __init__(self, beam_width):
-        self.beam = []  # an array of Rules
-        self.nml_foil_gain = []  # an array of local scores (MDL_FOIL_gain)
-        self.min_score = 0
-        self.arg_min = 0 # the positition of min in the local scores.
-
+        self.rules = []  # an array of Rules
         self.beam_width = beam_width
 
-    def update(self, rule_base, local_gain, bi_array_excl, icol, var_type, cut_type, cut,
-               excl_or_not, bi_array_incl=None, buffer=None):
-        """
-        Research question: does it make sense to compare different MDL_FOIL_gain with different rule_base????
-        Examine a new candidate rule by its local_gain.
-        :param rule_base: rule_base for the rule that we are currently examine
-        :param local_gain: local score for the rule, either excluding overlap or including overlap, depending on which
-        search stage we are in.
-        :param bi_array: numpy boolean array for the LOCAL COVER, based on rule_base
-        :param buffer: buffer for diverse beam search
-        :return:
-        """
+    def grow_rule_incl(self, candidate_cuts):
+        nml_foil_gain = []
+        info_icol = []
+        info_cut_index = []
+        info_cut_type = []
+        info_boolarray = []
+        info_irules = []
 
-        if local_gain <= 0:
-            return 0   # a "signal" that local_gain is smaller than 0;
+        for irule, rule in enumerate(self.rules):
+            for icol in range(rule.ncol):
+                if rule.dim_type[icol] == NUMERIC:
+                    candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features[:, icol])) & \
+                                              (candidate_cuts[icol] > np.min(rule.features[:, icol]))
+                    candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+                    for i, cut in enumerate(candidate_cuts_icol):
+                        left_bi_array_incl = (rule.features[:, icol] < cut)
+                        right_bi_array_incl = ~left_bi_array_incl
 
-        if buffer is not None:
-            sys.exit("Buffer is deprecated in beam.update().")
+                        left_bi_array_excl = (rule.features_excl_overlap[:, icol] < cut)
+                        right_bi_array_excl = ~left_bi_array_excl
 
-        # WHAT IS RULE BASE? ANSWER: the rule base for the candidate growth we are examining now
-        # WHAT IS BUFFER? HMM I think we don't need it (July 29)
-        if (len(self.beam) < self.beam_width) or (self.min_score < local_gain):
-            # Requirements for updating. Update the beam.
-            icols, var_types, cuts, cut_options = list(rule_base.condition.values())
-            icols = icols + [icol]
-            var_types = var_types + [var_type]
-            cuts = cuts + [cut]
-            cut_options = cut_options + [cut_type]
-            condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
-                         "cut_options": cut_options}
+                        left_local_score = rule.MDL_FOIL_gain(left_bi_array_excl, left_bi_array_incl, excl=False)
+                        right_local_score = rule.MDL_FOIL_gain(right_bi_array_excl, right_bi_array_incl, excl=False)
 
-            if excl_or_not:  # the local score for the growth is obtained while excluding all overlaps
-                if cut_type == LEFT_CUT:
-                    bi_array_incl = rule_base.features[:, icol] < cut
-                elif cut_type == RIGHT_CUT:
-                    bi_array_incl = rule_base.features[:, icol] > cut
-                else:  # WITHIN CUT
-                    bi_array_incl = np.isin(rule_base.features[:, icol], cut)
-                rule = Rule(indices=rule_base.indices[bi_array_incl],
-                            indices_excl_overlap=rule_base.indices_excl_overlap[bi_array_excl],
-                            rule_base=rule_base,
-                            features=rule_base.features[bi_array_incl],
-                            target=rule_base.target[bi_array_incl],
-                            features_excl_overlap=rule_base.features_excl_overlap[bi_array_excl],
-                            target_excl_overlap=rule_base.target_excl_overlap[bi_array_excl],
-                            data_info=rule_base.data_info,
-                            condition=condition,
-                            local_gain=local_gain)
+                        if left_local_score > 0:
+                            nml_foil_gain.append(left_local_score)
+                            info_icol.append(icol)
+                            info_cut_index.append(i)
+                            info_cut_type.append(LEFT_CUT)
+                            info_boolarray.append(left_bi_array_incl)
+                            info_irules.append(irule)
+                        if right_local_score > 0:
+                            nml_foil_gain.append(right_local_score)
+                            info_icol.append(icol)
+                            info_cut_index.append(i)
+                            info_cut_type.append(RIGHT_CUT)
+                            info_boolarray.append(right_bi_array_incl)
+                            info_irules.append(irule)
+                else:
+                    for i, level in enumerate(rule.categorical_levels[icol]):  # IMPLEMENT LATER
+                        within_bi_array_incl = np.isin(rule.features[:, icol], level)
+                        within_bi_array_excl = np.isin(rule.features_excl_overlap[:, icol], level)
+
+                        within_local_score = rule.MDL_FOIL_gain(within_bi_array_excl, within_bi_array_incl,
+                                                                excl=False)
+                        if within_local_score > 0:
+                            nml_foil_gain.append(within_local_score)
+                            info_icol.append(icol)
+                            info_cut_index.append(i)
+                            info_cut_type.append(WITHIN_CUT)
+                            info_boolarray.append(within_bi_array_incl)
+                            info_irules.append(irule)
+
+        if len(nml_foil_gain) == 0:
+            return []
+
+        nml_foil_gain_sort_index = np.argsort(-np.array(nml_foil_gain))
+        best_m_nmlfoilgain_index = []
+        for kk, ind in enumerate(nml_foil_gain_sort_index):
+            if len(best_m_nmlfoilgain_index) >= self.beam_width:
+                break
+
+            if kk == 0:
+                best_m_nmlfoilgain_index.append(ind)
+
+            for ll, best_ind in enumerate(best_m_nmlfoilgain_index):
+                jarcard_dist = np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind])) / \
+                               np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind]))
+                if jarcard_dist > 0.95:
+                    break
             else:
-                rule = Rule(indices=rule_base.indices[bi_array_incl],
-                            indices_excl_overlap=rule_base.indices_excl_overlap[bi_array_excl],
-                            rule_base=rule_base,
-                            features=rule_base.features[bi_array_incl],
-                            target=rule_base.target[bi_array_incl],
-                            features_excl_overlap=rule_base.features_excl_overlap[bi_array_excl],
-                            target_excl_overlap=rule_base.target_excl_overlap[bi_array_excl],
-                            data_info=rule_base.data_info,
-                            condition=condition,
-                            local_gain=local_gain)
+                best_m_nmlfoilgain_index.append(ind)
+        best_rules = []
 
-            # What's the code below doing??
-            # ANS: Depending on whether the len(self.beam) reaches the maximum length
-            if len(self.beam) < self.beam_width:
-                self.beam.append(rule)
-                self.nml_foil_gain.append(local_gain)
-                if local_gain < self.min_score:
-                    self.min_score = local_gain
-                    self.arg_min = len(self.nml_foil_gain) - 1
-                # else:
-                #     print("_")  # self.min_score and self.arg_min remain unchanged.
-            elif self.min_score < local_gain:  # may have problem for grow_incl;
-                self.beam[self.arg_min] = rule
-                self.nml_foil_gain[self.arg_min] = local_gain
-                self.min_score = np.min(self.nml_foil_gain)
-                self.arg_min = np.argmin(self.nml_foil_gain)
+        for ind in best_m_nmlfoilgain_index:
+            icol = info_icol[ind]
+            cut_index = info_cut_index[ind]
+            cut_type = info_cut_type[ind]
+            rule = self.rules[info_irules[ind]]
+            if cut_type == LEFT_CUT:
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+                cut = candidate_cuts_icol[cut_index]
+
+                bi_array_excl = (rule.features_excl_overlap[:, icol] < cut)
+                bi_array_incl = (rule.features[:, icol] < cut)
+
+                icols, var_types, cuts, cut_options = list(rule.condition.values())
+                icols = icols + [icol]
+                var_types = var_types + [NUMERIC]
+                cuts = cuts + [cut]
+                cut_options = cut_options + [cut_type]
+                condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
+                             "cut_options": cut_options}
+            elif cut_type == RIGHT_CUT:
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+                cut = candidate_cuts_icol[cut_index]
+
+                bi_array_excl = (rule.features_excl_overlap[:, icol] >= cut)
+                bi_array_incl = (rule.features[:, icol] >= cut)
+
+                icols, var_types, cuts, cut_options = list(rule.condition.values())
+                icols = icols + [icol]
+                var_types = var_types + [NUMERIC]
+                cuts = cuts + [cut]
+                cut_options = cut_options + [cut_type]
+                condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
+                             "cut_options": cut_options}
             else:
-                sys.exit("it should not end here!")
-                # pass  # it should never end here
-        # else:
-        #     pass  # do nothing, i.e., no update for beam.
+                level = rule.categorical_levels[icol][cut_index]
 
-    def from_beam_collect(self, beam_collect):
-        for rule in beam_collect.rules:
-            self.beam.append(rule)
+                bi_array_excl = np.isin(rule.features_excl_overlap[:, icol], level)
+                bi_array_incl = np.isin(rule.features[:, icol], level)
+
+                icols, var_types, cuts, cut_options = list(rule.condition.values())
+                icols = icols + [icol]
+                var_types = var_types + [CATEGORICAL]
+                cuts = cuts + [level]
+                cut_options = cut_options + [cut_type]
+                condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
+                             "cut_options": cut_options}
+
+            rule = Rule(indices=rule.indices[bi_array_incl],
+                        indices_excl_overlap=rule.indices_excl_overlap[bi_array_excl],
+                        rule_base=rule,
+                        features=rule.features[bi_array_incl],
+                        target=rule.target[bi_array_incl],
+                        features_excl_overlap=rule.features_excl_overlap[bi_array_excl],
+                        target_excl_overlap=rule.target_excl_overlap[bi_array_excl],
+                        data_info=rule.data_info,
+                        condition=condition,
+                        local_gain=nml_foil_gain[ind])
+
+            best_rules.append(rule)
+
+
+    def grow_rule_excl(self, candidate_cuts):
+        """
+        Grow the rule by adding one literal to it, while ignoring/excluding all covered instances in the ruleset
+        :param beam: an object from class Beam (newBeam.py): a new beam that contains all rules with one more rule than
+        this Rule.
+        :param candidate_cuts: a dictionary, to store the candidate cuts based on the ORIGINAL FULL DATASET
+        :return: a beam of rules
+        """
+        nml_foil_gain = []
+        info_icol = []
+        info_cut_index = []
+        info_cut_type = []
+        info_boolarray = []
+        info_irules = []
+        for irule, rule in enumerate(self.rules):
+            for icol in range(rule.ncol):
+                if rule.dim_type[icol] == NUMERIC:
+                    # constrain the search space
+                    candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
+                                              (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                    candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+
+                    # generate & evaluate all possible growth
+                    for i, cut in enumerate(candidate_cuts_icol):
+                        left_bi_array = (rule.features_excl_overlap[:, icol] < cut)
+                        right_bi_array = ~left_bi_array
+
+                        left_local_score = rule.MDL_FOIL_gain(bi_array_excl=left_bi_array)  # IMPLEMENT LATER
+                        right_local_score = rule.MDL_FOIL_gain(bi_array_excl=right_bi_array)
+
+                        if left_local_score > 0:
+                            nml_foil_gain.append(left_local_score)
+                            info_icol.append(icol)
+                            info_cut_index.append(i)
+                            info_cut_type.append(LEFT_CUT)
+                            info_boolarray.append(left_bi_array)
+                            info_irules.append(irule)
+                        if right_local_score > 0:
+                            nml_foil_gain.append(right_local_score)
+                            info_icol.append(icol)
+                            info_cut_index.append(i)
+                            info_cut_type.append(RIGHT_CUT)
+                            info_boolarray.append(right_bi_array)
+                            info_irules.append(irule)
+                else:
+                    for i, level in enumerate(rule.categorical_levels[icol]):
+                        within_bi_array = np.isin(rule.features_excl_overlap[:, icol], level)
+                        within_local_score = rule.MDL_FOIL_gain(bi_array_excl=within_bi_array)
+                        if within_local_score > 0:
+                            nml_foil_gain.append(within_local_score)
+                            info_icol.append(icol)
+                            info_cut_index.append(i)
+                            info_cut_type.append(WITHIN_CUT)
+                            info_boolarray.append(within_bi_array)
+                            info_irules.append(irule)
+
+        if len(nml_foil_gain) == 0:
+            return []
+
+        nml_foil_gain_sort_index = np.argsort(-np.array(nml_foil_gain))
+        best_m_nmlfoilgain_index = []
+        for kk, ind in enumerate(nml_foil_gain_sort_index):
+            if len(best_m_nmlfoilgain_index) >= self.beam_width:
+                break
+
+            if kk == 0:
+                best_m_nmlfoilgain_index.append(ind)
+
+            for ll, best_ind in enumerate(best_m_nmlfoilgain_index):
+                jarcard_dist = np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind])) / \
+                               np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind]))
+                if jarcard_dist > 0.95:
+                    break
+            else:
+                best_m_nmlfoilgain_index.append(ind)
+
+        best_rules = []
+        for ind in best_m_nmlfoilgain_index:
+            icol = info_icol[ind]
+            cut_index = info_cut_index[ind]
+            cut_type = info_cut_type[ind]
+            rule = self.rules[info_irules[ind]]
+            if cut_type == LEFT_CUT:
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+                cut = candidate_cuts_icol[cut_index]
+
+                bi_array_excl = (rule.features_excl_overlap[:, icol] < cut)
+                bi_array_incl = (rule.features[:, icol] < cut)
+
+                icols, var_types, cuts, cut_options = list(rule.condition.values())
+                icols = icols + [icol]
+                var_types = var_types + [NUMERIC]
+                cuts = cuts + [cut]
+                cut_options = cut_options + [cut_type]
+                condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
+                             "cut_options": cut_options}
+            elif cut_type == RIGHT_CUT:
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+                cut = candidate_cuts_icol[cut_index]
+
+                bi_array_excl = (rule.features_excl_overlap[:, icol] >= cut)
+                bi_array_incl = (rule.features[:, icol] >= cut)
+
+                icols, var_types, cuts, cut_options = list(rule.condition.values())
+                icols = icols + [icol]
+                var_types = var_types + [NUMERIC]
+                cuts = cuts + [cut]
+                cut_options = cut_options + [cut_type]
+                condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
+                             "cut_options": cut_options}
+            else:
+                level = rule.categorical_levels[icol][cut_index]
+
+                bi_array_excl = np.isin(rule.features_excl_overlap[:, icol], level)
+                bi_array_incl = np.isin(rule.features[:, icol], level)
+
+                icols, var_types, cuts, cut_options = list(rule.condition.values())
+                icols = icols + [icol]
+                var_types = var_types + [CATEGORICAL]
+                cuts = cuts + [level]
+                cut_options = cut_options + [cut_type]
+                condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
+                             "cut_options": cut_options}
+
+            rule = Rule(indices=rule.indices[bi_array_incl],
+                        indices_excl_overlap=rule.indices_excl_overlap[bi_array_excl],
+                        rule_base=rule,
+                        features=rule.features[bi_array_incl],
+                        target=rule.target[bi_array_incl],
+                        features_excl_overlap=rule.features_excl_overlap[bi_array_excl],
+                        target_excl_overlap=rule.target_excl_overlap[bi_array_excl],
+                        data_info=rule.data_info,
+                        condition=condition,
+                        local_gain=nml_foil_gain[ind])
+
+            best_rules.append(rule)
+
+        return best_rules
 
 
 class BeamCollect:
-    """
-    What I did in the old-slow implementation:
-    1. GrowEx:
-        a) start with an empty rule, with nml_foil_gain = 0;
-        b) search for the next $m$ ($m$ is beam witdh) best literals by optimizing the nml_foil_gain_EXCL;
-        c) repeat b) using beam search, until no new literal can be found to add to the rule;
-        d) return the best $m$ rules that have the best surrogate_score_EXCL, with the constraint controlled by
-            the "similarity_alpha", the parameter for Diverse Beam Search;
-    2. GrowIn:
-        a) start with beam obtained in 1.
-        b) search for the next $m$ best literals by optimizing the nml_foil_gain_INCL;
-        c) repeat b) until no new literal with positive nml_foil_gain can be found;
-        d) return the best rule with the best surrogate_score
-    """
     def __init__(self, beam_width, beams, similarity_alpha):
         self.beam_width = beam_width
         self.similarity_alpha = similarity_alpha
