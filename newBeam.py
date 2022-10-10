@@ -7,9 +7,10 @@ import surrogate_tree
 
 
 class Beam:
-    def __init__(self, beam_width):
+    def __init__(self, beam_width, data_info):
         self.rules = []  # an array of Rules
         self.beam_width = beam_width
+        self.data_info = data_info
 
     def grow_rule_incl(self, candidate_cuts):
         nml_foil_gain = []
@@ -75,10 +76,20 @@ class Beam:
 
             if kk == 0:
                 best_m_nmlfoilgain_index.append(ind)
+                continue
 
             for ll, best_ind in enumerate(best_m_nmlfoilgain_index):
-                jarcard_dist = np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind])) / \
-                               np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind]))
+                ind1 = self.rules[info_irules[ind]].indices[info_boolarray[ind]]
+                ind2 = self.rules[info_irules[best_ind]].indices[info_boolarray[best_ind]]
+                ind1_bool = np.zeros(self.data_info.nrow, dtype=bool)
+                ind1_bool[ind1] = True
+                ind2_bool = np.zeros(self.data_info.nrow, dtype=bool)
+                ind2_bool[ind2] = True
+
+                jarcard_dist = np.count_nonzero(np.bitwise_and(ind1_bool, ind2_bool)) / \
+                               np.count_nonzero(np.bitwise_or(ind1_bool, ind2_bool))
+                # jarcard_dist = np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind])) / \
+                               # np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind]))
                 if jarcard_dist > 0.95:
                     break
             else:
@@ -91,8 +102,8 @@ class Beam:
             cut_type = info_cut_type[ind]
             rule = self.rules[info_irules[ind]]
             if cut_type == LEFT_CUT:
-                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
-                                          (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(rule.features[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
                 cut = candidate_cuts_icol[cut_index]
 
@@ -107,8 +118,8 @@ class Beam:
                 condition = {"icols": icols, "var_types": var_types, "cuts": cuts,
                              "cut_options": cut_options}
             elif cut_type == RIGHT_CUT:
-                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
-                                          (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(rule.features[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
                 cut = candidate_cuts_icol[cut_index]
 
@@ -148,6 +159,8 @@ class Beam:
                         local_gain=nml_foil_gain[ind])
 
             best_rules.append(rule)
+
+        return best_rules
 
 
     def grow_rule_excl(self, candidate_cuts):
@@ -217,10 +230,20 @@ class Beam:
 
             if kk == 0:
                 best_m_nmlfoilgain_index.append(ind)
+                continue
 
             for ll, best_ind in enumerate(best_m_nmlfoilgain_index):
-                jarcard_dist = np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind])) / \
-                               np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind]))
+                # jarcard_dist = np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind])) / \
+                #                np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind]))
+                ind1 = self.rules[info_irules[ind]].indices_excl_overlap[info_boolarray[ind]]
+                ind2 = self.rules[info_irules[best_ind]].indices_excl_overlap[info_boolarray[best_ind]]
+                ind1_bool = np.zeros(self.data_info.nrow, dtype=bool)
+                ind1_bool[ind1] = True
+                ind2_bool = np.zeros(self.data_info.nrow, dtype=bool)
+                ind2_bool[ind2] = True
+
+                jarcard_dist = np.count_nonzero(np.bitwise_and(ind1_bool, ind2_bool)) / \
+                               np.count_nonzero(np.bitwise_or(ind1_bool, ind2_bool))
                 if jarcard_dist > 0.95:
                     break
             else:

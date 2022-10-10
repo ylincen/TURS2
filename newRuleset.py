@@ -79,7 +79,7 @@ class Ruleset:
         t0 = time.time()
         for iter in range(max_iter):
             rule = self.find_next_rule(beam_width, candidate_cuts)
-            if rule is None or len(rule) == 0:
+            if rule is None:
                 break
             else:
                 self.update_ruleset(rule)
@@ -117,7 +117,7 @@ class Ruleset:
         rule = self.init_emptyrule()
 
         # init the beam
-        beam = Beam(beam_width)
+        beam = Beam(beam_width, data_info=self.data_info)
         beam.rules = [rule]
 
         rules_alldepth = []
@@ -126,7 +126,7 @@ class Ruleset:
             rules_alldepth.extend(beam.rules)
 
             # grow based on each rule in the beam
-            next_beam = Beam(beam_width=beam_width)
+            next_beam = Beam(beam_width=beam_width, data_info=self.data_info)
             next_beam.rules = beam.grow_rule_excl(candidate_cuts)
 
             # update the beam to be the "next_beam"
@@ -163,13 +163,13 @@ class Ruleset:
         return best_rules
 
     def find_rule_with_overlap(self, best_rules_excl, beam_width, candidate_cuts):
-        beam = Beam(beam_width)
+        beam = Beam(beam_width, data_info=self.data_info)
         beam.rules = best_rules_excl
         
         rules_alldepth = []
         while len(beam.rules) > 0:
             rules_alldepth.extend(beam.rules)
-            next_beam = Beam(beam_width)
+            next_beam = Beam(beam_width, data_info=self.data_info)
             next_beam.rules = beam.grow_rule_incl(candidate_cuts)
             beam = next_beam
 
@@ -181,7 +181,7 @@ class Ruleset:
             which_rule = np.argmin(scores)
             return rules_alldepth[which_rule]
         else:
-            return []
+            return None
 
     def init_emptyrule(self):
         indices = np.arange(self.data_info.nrow)
