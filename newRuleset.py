@@ -11,7 +11,7 @@ import pickle
 
 
 class Ruleset:
-    def __init__(self, data_info, features, target, number_of_init_rules=5,
+    def __init__(self, data_info, features, target, number_of_init_rules=1,
                  number_of_rules_return=1):
         """
         Init the Ruleset object as an empty ruleset
@@ -79,6 +79,7 @@ class Ruleset:
         t0 = time.time()
         for iter in range(max_iter):
             rule = self.find_next_rule(beam_width, candidate_cuts)
+            # print(rule.condition)
             if rule is None:
                 break
             else:
@@ -155,7 +156,7 @@ class Ruleset:
         best_rules = []
         surrogate_score_order = np.argsort(surrogate_scores)
         for i in surrogate_score_order:
-            if len(best_rules) > number_of_init_rules:
+            if len(best_rules) >= number_of_init_rules:
                 break
 
             best_rules.append(rules_alldepth[i])

@@ -27,6 +27,8 @@ class Beam:
                                               (candidate_cuts[icol] > np.min(rule.features[:, icol]))
                     candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
                     for i, cut in enumerate(candidate_cuts_icol):
+                        # if cut == 0.1645 and icol == 6:
+                        #     print("debug")
                         left_bi_array_incl = (rule.features[:, icol] < cut)
                         right_bi_array_incl = ~left_bi_array_incl
 
@@ -191,6 +193,8 @@ class Beam:
 
                     # generate & evaluate all possible growth
                     for i, cut in enumerate(candidate_cuts_icol):
+                        # if icol == 1 and (cut == 123.5 or cut == 127.5):
+                        #     # print("debug")
                         left_bi_array = (rule.features_excl_overlap[:, icol] < cut)
                         right_bi_array = ~left_bi_array
 

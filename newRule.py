@@ -50,16 +50,22 @@ class Rule:
         self.regret_excl = self._regret(self.nrow_excl, data_info.num_class)
         self.regret = self._regret(self.nrow, data_info.num_class)
 
-        # code length of encoding nrow_excl instances by prob_excl
-        p_selector = (self.prob_excl != 0)
-        self.neglog_likelihood_excl = \
-            -np.sum(self.prob_excl[p_selector] *
-                    np.log2(self.prob_excl[p_selector])) * self.nrow_excl
-
-        # code length of encoding nrow_excl instances by prob
         p_selector2 = (self.prob != 0)
-        self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
+        p_selector = (self.prob_excl != 0)
+
+        if self.rule_base is None:
+            self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
                                               np.log2(self.prob[p_selector2])) * self.nrow_excl
+            self.neglog_likelihood_excl = self.neglog_likelihood_incl
+        else:
+            # code length of encoding nrow_excl instances by prob_excl
+            self.neglog_likelihood_excl = \
+                -np.sum(self.prob_excl[p_selector] *
+                        np.log2(self.prob_excl[p_selector])) * self.nrow_excl
+
+            # code length of encoding nrow_excl instances by prob
+            self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
+                                                  np.log2(self.prob[p_selector2])) * self.nrow_excl
 
         self.local_gain = local_gain
 
