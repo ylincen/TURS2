@@ -78,6 +78,7 @@ class Beam:
                 best_m_nmlfoilgain_index.append(ind)
                 continue
 
+            diversity_skip = False
             for ll, best_ind in enumerate(best_m_nmlfoilgain_index):
                 ind1 = self.rules[info_irules[ind]].indices[info_boolarray[ind]]
                 ind2 = self.rules[info_irules[best_ind]].indices[info_boolarray[best_ind]]
@@ -90,9 +91,12 @@ class Beam:
                                np.count_nonzero(np.bitwise_or(ind1_bool, ind2_bool))
                 # jarcard_dist = np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind])) / \
                                # np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind]))
+                # print("jarcard_dist: ", jarcard_dist)
                 if jarcard_dist > 0.95:
+                    diversity_skip = True
                     break
-            else:
+
+            if diversity_skip is False:
                 best_m_nmlfoilgain_index.append(ind)
         best_rules = []
 
@@ -232,6 +236,7 @@ class Beam:
                 best_m_nmlfoilgain_index.append(ind)
                 continue
 
+            diversity_skip = False
             for ll, best_ind in enumerate(best_m_nmlfoilgain_index):
                 # jarcard_dist = np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind])) / \
                 #                np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind]))
@@ -245,8 +250,9 @@ class Beam:
                 jarcard_dist = np.count_nonzero(np.bitwise_and(ind1_bool, ind2_bool)) / \
                                np.count_nonzero(np.bitwise_or(ind1_bool, ind2_bool))
                 if jarcard_dist > 0.95:
+                    diversity_skip = True
                     break
-            else:
+            if diversity_skip is False:
                 best_m_nmlfoilgain_index.append(ind)
 
         best_rules = []
