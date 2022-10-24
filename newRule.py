@@ -53,21 +53,76 @@ class Rule:
         p_selector2 = (self.prob != 0)
         p_selector = (self.prob_excl != 0)
 
-        if self.rule_base is None:
-            self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
-                                              np.log2(self.prob[p_selector2])) * self.nrow_excl
-            self.neglog_likelihood_excl = self.neglog_likelihood_incl
-        else:
-            # code length of encoding nrow_excl instances by prob_excl
-            self.neglog_likelihood_excl = \
-                -np.sum(self.prob_excl[p_selector] *
-                        np.log2(self.prob_excl[p_selector])) * self.nrow_excl
+        # if self.rule_base is None:
+        #     self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
+        #                                       np.log2(self.prob[p_selector2])) * self.nrow_excl
+        #     self.neglog_likelihood_excl = -np.sum(self.prob_excl[p_selector2] *
+        #                                       np.log2(self.prob[p_selector2])) * self.nrow_excl
+        # else:
+        #     # code length of encoding nrow_excl instances by prob_excl
+        #     self.neglog_likelihood_excl = \
+        #         -np.sum(self.prob_excl[p_selector] *
+        #                 np.log2(self.prob_excl[p_selector])) * self.nrow_excl
+        #
+        #     # code length of encoding nrow_excl instances by prob
+        #     self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
+        #                                           np.log2(self.prob[p_selector2])) * self.nrow_excl
 
-            # code length of encoding nrow_excl instances by prob
-            self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
-                                                  np.log2(self.prob[p_selector2])) * self.nrow_excl
+        self.neglog_likelihood_excl = \
+            -np.sum(self.prob_excl[p_selector] *
+                    np.log2(self.prob_excl[p_selector])) * self.nrow_excl
+
+        # code length of encoding nrow_excl instances by prob
+        self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
+                                              np.log2(self.prob[p_selector2])) * self.nrow_excl
+
+        if self.rule_base is None:
+            self.cl_model = self.get_cl_model()
+        else:
+            self.cl_model = self.get_cl_model() + self.rule_base.cl_model
 
         self.local_gain = local_gain
+
+    def get_cl_model(self):
+        if self.rule_base is None:
+            features = self.features
+        else:
+            features = self.rule_base.features
+        icols = self.condition["icols"]
+        cut_options = self.condition["cut_options"]
+
+        if len(icols) == 0:
+            cl_model = 0
+        else:
+            icol = self.condition["icols"][-1]
+            cut_option = self.condition["cut_options"][-1]
+
+            if cut_option == WITHIN_CUT:
+                if icol in icols[:len(icols)-1]:
+                    cl_model = 0
+                else:
+                    # print(len(self.categorical_levels[icol]))
+                    if len(self.categorical_levels[icol]) == 0:
+                        cl_model = 0
+                    else:
+                        cl_model = np.log2(len(self.categorical_levels[icol]))
+            else:
+                if icol in icols[:len(icols)-1]:
+                    update_cl_model = True
+                    for kcol, cut_option_k in zip(icols, cut_options):
+                        if kcol == icol and cut_option_k == cut_option:
+                            cl_model = 0
+                            update_cl_model = False
+                            break
+
+                    if update_cl_model:
+                        shrinking_factor = len(features[:, icol]) / len(self.data_info.target)
+                        cl_model = np.log2(len(self.data_info.candidate_cuts[icol]) * shrinking_factor)
+                else:
+                    shrinking_factor = len(features[:, icol]) / len(self.data_info.target)
+                    cl_model = np.log2(len(self.data_info.candidate_cuts[icol]) * shrinking_factor)
+
+        return cl_model
 
     def get_categorical_levels(self, max_number_levels_together):
         categorical_levels = {}
@@ -84,6 +139,8 @@ class Rule:
                         candidate_cut_this_dimension.extend(list(itertools.combinations(unique_feature, r=i + 1)))
 
                 categorical_levels[icol] = candidate_cut_this_dimension
+                # if len(categorical_levels[icol]) == 0:
+                #     print("here")
 
         return categorical_levels
 
