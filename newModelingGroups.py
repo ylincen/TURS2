@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 
+import nml_regret
 from utils import *
 from nml_regret import *
 from newBeam import *
@@ -54,14 +55,24 @@ class ModelingGroupSet:
 
         self.modeling_group_set.extend(new_modeling_group_list)
 
-    def evaluate_rule(self, rule):
+    def evaluate_rule(self, rule, surrogate):
+        # get the neglog_likelihood for each modelling_group
         neglog_likelihood = 0
         for i, modeling_group in enumerate(self.modeling_group_set):
             neglog_likelihood = neglog_likelihood + modeling_group.evaluate_rule(rule)
 
+        # get the neglog_likelihood and the regret for the else_rule \intersection rule
         else_surrogate_score = self.else_rule_modeling_group.evaluate_rule_for_ElseRuleModelingGroup(rule,
-                                                                                                     surrogate=True)
-        return else_surrogate_score + neglog_likelihood + rule.regret
+                                                                                                     surrogate=surrogate)
+
+        if surrogate:
+            return else_surrogate_score + neglog_likelihood + rule.regret
+        else:
+            reg = 0
+            for r in self.rules:
+                reg += r.regret
+
+            return else_surrogate_score + neglog_likelihood + rule.regret + reg
 
     def total_surrogate_score(self):
         neglog_likelihoods = [modeling_group.neglog_likelihood for modeling_group in self.modeling_group_set]
@@ -239,7 +250,7 @@ class ModelingGroup:
         intersection_boolarray = np.bitwise_and(rule.bool_array, self.instances_covered_boolean)
         intersection_count = np.count_nonzero(intersection_boolarray)
         if intersection_count == 0:
-            return 0
+            return self.neglog_likelihood
         else:
             # Those covered by both the modeling_group and the rule
             instances_part1_covered_boolean = intersection_boolarray
@@ -373,6 +384,12 @@ class ModelingGroup:
                 p_else = calc_probs(self.target[covered_and_modelling_boolean], self.data_info.num_class)
                 else_neglog_likelihood = -np.sum(np.log2(p_else[p_else != 0]) * p_else[p_else != 0]) * \
                                          np.count_nonzero(covered_and_modelling_boolean)
-                return else_neglog_likelihood + neglog_likelihood
+                reg = nml_regret.regret(np.count_nonzero(covered_and_modelling_boolean), self.data_info.num_class)
+                return else_neglog_likelihood + neglog_likelihood + reg
         else:
-            return None
+            # No intersection between rule and else_rule, so the score for the else_rule_modelling_group
+            #   does not change;
+            if surrogate:
+                return self.surrogate_score
+            else:
+                return self.non_surrogate_score
