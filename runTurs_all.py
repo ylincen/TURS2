@@ -1,24 +1,32 @@
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 from DataInfo import *
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 from newRuleset import *
 from utils_pred import *
 from sklearn.metrics import precision_recall_curve, roc_curve, roc_auc_score, auc, average_precision_score, f1_score, confusion_matrix
 
 
 datasets_without_header_row = ["waveform", "backnote", "chess", "contracept", "iris", "ionosphere",
-                               "magic", "car", "tic-tac-toe", "wine", "breast"]
-datasets_with_header_row = ["avila", "anuran", "diabetes", "sepsis"]
+                               "magic", "car", "tic-tac-toe", "wine"]
+datasets_with_header_row = ["avila", "anuran", "diabetes"]
 
 
-beam_width = 20
+beam_width = 5
 num_cut_numeric = 100
+
+Auc = []
+Train_auc = []
+Data_name = []
+Beam_width = []
+Num_cut_numeric = []
+Time = []
 
 for data_name in datasets_with_header_row + datasets_without_header_row:
     data_path = "datasets/" + data_name + ".csv"
 
-    if data_name == "avila":
-        continue
+    # if data_name != "avila":
+    #     continue
 
     if data_name in datasets_without_header_row:
         d = pd.read_csv(data_path, header=None)
@@ -30,9 +38,11 @@ for data_name in datasets_with_header_row + datasets_without_header_row:
 
     print("Running TURS on: " + data_path)
 
+    X = d.iloc[:, :d.shape[1] - 1].to_numpy()
+    y = d.iloc[:, d.shape[1] - 1].to_numpy()
 
-    kf = KFold(n_splits=10, shuffle=True, random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
-    kfold = kf.split(X=d)
+    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
+    kfold = kf.split(X=X, y=y)
 
     kfold_list = list(kfold)
 
@@ -44,7 +54,7 @@ for data_name in datasets_with_header_row + datasets_without_header_row:
         for icol, tp in enumerate(dtrain.dtypes):
             if tp != float:
                 feature_ = dtrain.iloc[:, icol].to_numpy()
-                if len(np.unique(feature_)) > 5:
+                if len(np.unique(feature_)) > 5 and icol != (dtrain.shape[1] - 1):
                     continue
                 feature_ = feature_.reshape(-1, 1)
 
@@ -63,11 +73,12 @@ for data_name in datasets_with_header_row + datasets_without_header_row:
         ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_info.target)
 
         # Grow rules;
+        t0 = time.time()
         ruleset.build(max_iter=1000, beam_width=beam_width, candidate_cuts=data_info.candidate_cuts,
                       print_or_not=False)
 
         # len(ruleset.rules)
-        # pruned_ruleset = ruleset.self_prune()
+        pruned_ruleset = ruleset.self_prune()
 
 
         X_test = dtest.iloc[:, :dtest.shape[1]-1].to_numpy()
@@ -80,3 +91,31 @@ for data_name in datasets_with_header_row + datasets_without_header_row:
             roc_auc = roc_auc_score(y_test, test_p, average="weighted", multi_class="ovr")
 
         print("roc_auc: ", roc_auc)
+
+        X_train = dtrain.iloc[:, :dtrain.shape[1] - 1].to_numpy()
+        y_train = dtrain.iloc[:, dtrain.shape[1] - 1].to_numpy()
+        train_p = get_test_p(pruned_ruleset, X_train)
+        if len(test_p[0]) == 2:
+            roc_auc_tr = roc_auc_score(y_train, train_p[:, 1])
+        else:
+            roc_auc_tr = roc_auc_score(y_train, train_p, average="weighted", multi_class="ovr")
+
+        print("roc_auc for training set: ", roc_auc_tr)
+        t1 = time.time() - t0
+
+        Auc.append(roc_auc)
+        Train_auc.append(roc_auc_tr)
+        Data_name.append(data_name)
+        Beam_width.append(beam_width)
+        Num_cut_numeric.append(num_cut_numeric)
+        Time.append(t1)
+
+    pd_res = pd.DataFrame()
+    pd_res["auc"] = Auc
+    pd_res["auc_train"] = Train_auc
+    pd_res["data"] = Data_name
+    pd_res["beam_width"] = Beam_width
+    pd_res["num_cut_numeric"] = Num_cut_numeric
+    pd_res["time"] = Time
+
+    pd_res.to_csv("./pd_res.csv")
