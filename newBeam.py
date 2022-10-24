@@ -188,13 +188,11 @@ class Beam:
                 if rule.dim_type[icol] == NUMERIC:
                     # constrain the search space
                     candidate_cuts_selector = (candidate_cuts[icol] < np.max(rule.features_excl_overlap[:, icol])) & \
-                                              (candidate_cuts[icol] > np.min(rule.features_excl_overlap[:, icol]))
+                                              (candidate_cuts[icol] >= np.min(rule.features_excl_overlap[:, icol]))
                     candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
 
                     # generate & evaluate all possible growth
                     for i, cut in enumerate(candidate_cuts_icol):
-                        # if icol == 1 and (cut == 123.5 or cut == 127.5):
-                        #     # print("debug")
                         left_bi_array = (rule.features_excl_overlap[:, icol] < cut)
                         right_bi_array = ~left_bi_array
 

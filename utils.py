@@ -86,3 +86,18 @@ def get_cl_model2(rule):
                 covered_bool_sofar = covered_bool_sofar & covered_bool_here
 
     return max(np.sum(cl_model) - (scipy.special.gammaln(len(cl_model) + 1) / np.log(2)), 0)
+
+def get_rules_from_conditions(ruleset):
+    for i, r in enumerate(ruleset.rules):
+        rule = []
+        for icol, var_type, cut, cut_option in zip(r.condition["icols"], r.condition["var_types"], r.condition["cuts"], r.condition["cut_options"]):
+            if cut_option == LEFT_CUT:
+                oper = "<="
+            elif cut_option == RIGHT_CUT:
+                oper = ">"
+            else:
+                oper = " in "
+            literal = "X" + str(icol) + oper + str(cut)
+            rule.append(literal)
+        print(i, rule)
+
