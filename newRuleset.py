@@ -77,30 +77,50 @@ class Ruleset:
         :return:
         """
         t0 = time.time()
+        cl_model_list = []
+
+        buffer_count = 0
+
         for iter in range(max_iter):
             rule = self.find_next_rule(beam_width, candidate_cuts)
-            # print(rule.condition)
-            if rule is None:
-                break
-            else:
-                self.update_ruleset(rule)
-            if print_or_not:
-                print("iter: ", iter,
-                      "rule.prob:", rule.prob, "rule.prob_excl:", rule.prob_excl, "rule.coverage:", rule.nrow,
-                      "rule.coverage_excl:", rule.nrow_excl,
-                      "rule set coverage: ", np.count_nonzero(self.covered_boolarray) / self.data_info.nrow,
-                      "time cost so far: ", time.time() - t0)
-            if dump:
-                with open("ruleset_beam10_cuts20.pkl", 'wb') as fp:
-                    pickle.dump(obj=self, file=fp)
+            mdl_score_if_added_this_rule = self.evaluate_rule(rule, surrogate=False)
+            cl_model_list.append(rule.cl_model)
+            cl_model = np.sum(cl_model_list)
+            cl_model_previous = np.sum(cl_model_list[:len(cl_model_list)-1])
 
-            if self.modeling_groups.else_rule_modeling_group.surrogate_equal_nonsurrogate:
+            if mdl_score_if_added_this_rule + cl_model < self.grow_history_scores[-1] + cl_model_previous or buffer_count < 5:
+                if mdl_score_if_added_this_rule + cl_model < self.grow_history_scores[-1] + cl_model_previous:
+                    buffer_count = 0
+                else:
+                    buffer_count += 1
+
+                # print(rule.condition)
+
+                if rule is None:
+                    break
+                else:
+                    self.update_ruleset(rule)
+
+                if print_or_not:
+                    print("iter: ", iter,
+                          "rule.prob:", rule.prob, "rule.prob_excl:", rule.prob_excl, "rule.coverage:", rule.nrow,
+                          "rule.coverage_excl:", rule.nrow_excl,
+                          "rule set coverage: ", np.count_nonzero(self.covered_boolarray) / self.data_info.nrow,
+                          "time cost so far: ", time.time() - t0)
+                if dump:
+                    with open("ruleset_beam10_cuts20.pkl", 'wb') as fp:
+                        pickle.dump(obj=self, file=fp)
+
+                if self.modeling_groups.else_rule_modeling_group.surrogate_equal_nonsurrogate:
+                    break
+            else:
                 break
 
     def find_next_rule(self, beam_width, candidate_cuts):
         beam_ignore_overlap = self.find_beam_ignore_overlap(beam_width=beam_width,
                                                             number_of_init_rules=self.number_of_init_rules,
                                                             candidate_cuts=candidate_cuts)
+        # print("rule before refine: ", beam_ignore_overlap[0].condition)
         best_rule = self.find_rule_with_overlap(best_rules_excl=beam_ignore_overlap,
                                                 beam_width=beam_width,
                                                 candidate_cuts=candidate_cuts)
@@ -137,19 +157,22 @@ class Ruleset:
             # print([r.condition for r in beam.rules])
 
         surrogate_scores = []
+        # rules_alldepth.pop(1)
+
         for rule in rules_alldepth:
             rule_score = rule.neglog_likelihood_excl + rule.regret_excl
 
             else_rule_cover_updated = copy.deepcopy(self.else_rule.bool_array)
             else_rule_cover_updated[rule.indices_excl_overlap] = False
 
-            if any(else_rule_cover_updated):
+            if any(else_rule_cover_updated) and len(rule.condition["icols"]) != 0:
                 surrogate_score_else_rule = \
                     surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
                                                y_train=self.target[else_rule_cover_updated],
                                                num_class=self.data_info.num_class)
             else:
-                surrogate_score_else_rule = 0
+                surrogate_score_else_rule = 0   # Why is here 0 ????
+
             surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
             surrogate_scores.append(surrogate_score)
 
@@ -176,7 +199,10 @@ class Ruleset:
 
         scores = []
         for i, rule in enumerate(rules_alldepth):
-            ruleset_with_new_rule_score = self.evaluate_rule(rule)
+            if len(rule.condition["icols"]) == 0:
+                ruleset_with_new_rule_score = self.modeling_groups.total_surrogate_score()
+            else:
+                ruleset_with_new_rule_score = self.evaluate_rule(rule, surrogate=True)
             scores.append(ruleset_with_new_rule_score)
         if len(scores) > 0:
             which_rule = np.argmin(scores)
@@ -197,13 +223,20 @@ class Ruleset:
                     local_gain=0)
         return rule
 
-    def evaluate_rule(self, rule):
-        return self.modeling_groups.evaluate_rule(rule)
+    def evaluate_rule(self, rule, surrogate):
+        return self.modeling_groups.evaluate_rule(rule, surrogate)
 
     def self_prune(self, ruleset_size=None):
         if ruleset_size is None:
-            ruleset_size = np.argmin(self.grow_history_scores)
-            if np.argmin(self.grow_history_scores) == len(self.grow_history_scores) - 1:
+            cl_model_list = []
+            for r in self.rules:
+                cl_model_list.append(r.cl_model)
+
+            cl_model_cum = np.cumsum(cl_model_list)
+            mdl_score_with_cl_model = self.grow_history_scores + np.append(0, cl_model_cum)
+            ruleset_size = np.argmin(mdl_score_with_cl_model)
+
+            if ruleset_size == len(self.grow_history_scores) - 1:
                 return self
             else:
                 pruned_ruleset = Ruleset(self.data_info, self.data_info.features, self.data_info.target)
