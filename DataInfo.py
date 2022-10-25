@@ -19,7 +19,7 @@ class DataInfo:
         self.nrow, self.ncol = data.shape
         self.ncol = self.ncol - 1  # do not count the target column
 
-        if data is not None:
+        if features is None:
             features, target = self.from_pd_data()
 
         self.features = features
