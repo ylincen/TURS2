@@ -25,8 +25,8 @@ Time = []
 for data_name in datasets_with_header_row + datasets_without_header_row:
     data_path = "datasets/" + data_name + ".csv"
 
-    # if data_name != "avila":
-    #     continue
+    if data_name == "avila":
+        continue
 
     if data_name in datasets_without_header_row:
         d = pd.read_csv(data_path, header=None)
@@ -118,4 +118,4 @@ for data_name in datasets_with_header_row + datasets_without_header_row:
     pd_res["num_cut_numeric"] = Num_cut_numeric
     pd_res["time"] = Time
 
-    pd_res.to_csv("./pd_res.csv")
+    pd_res.to_csv("./pd_res_noavila.csv")
