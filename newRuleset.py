@@ -11,7 +11,7 @@ import pickle
 
 
 class Ruleset:
-    def __init__(self, data_info, features, target, number_of_init_rules=1,
+    def __init__(self, data_info, features, target, number_of_init_rules,
                  number_of_rules_return=1):
         """
         Init the Ruleset object as an empty ruleset
@@ -239,12 +239,14 @@ class Ruleset:
             if ruleset_size == len(self.grow_history_scores) - 1:
                 return self
             else:
-                pruned_ruleset = Ruleset(self.data_info, self.data_info.features, self.data_info.target)
+                pruned_ruleset = Ruleset(self.data_info, self.data_info.features, self.data_info.target,
+                                         number_of_init_rules=self.number_of_init_rules)
                 for i in range(ruleset_size):
                     pruned_ruleset.update_ruleset(self.rules[i])
                 return pruned_ruleset
         else:
-            pruned_ruleset = Ruleset(self.data_info, self.data_info.features, self.data_info.target)
+            pruned_ruleset = Ruleset(self.data_info, self.data_info.features, self.data_info.target,
+                                     number_of_init_rules=self.number_of_init_rules)
             for i in range(ruleset_size):
                 pruned_ruleset.update_ruleset(self.rules[i])
             return pruned_ruleset
