@@ -1,13 +1,35 @@
+from sklearn import tree
 import numpy as np
-import pandas as pd
-
 from nml_regret import *
 from utils import calc_probs
-from sklearn.tree import DecisionTreeClassifier
+
+def get_tree_cl(x_train, y_train, num_class):
+    n = len(y_train)
+    if n > 1000:
+        min_samples = np.arange(10, max(50, int(n*0.01)), 20)
+    else:
+        min_samples = np.arange(10, 110, 20)
+
+    # best_tree_cl = np.inf
+    probs = calc_probs(y_train, num_class)
+    best_sum_cl_data = np.sum(-np.log2(probs[y_train]))
+    best_sum_regrets = regret(len(y_train), num_class)
+    best_tree_cl = best_sum_cl_data + best_sum_regrets
+
+    for min_sample in min_samples:
+        sum_cl_data, sum_regrets = get_tree_cl_individual(x_train, y_train, num_class, min_sample=min_sample)
+        if sum_cl_data + sum_regrets <= best_tree_cl:
+            best_tree_cl = sum_cl_data + sum_regrets
+            best_sum_cl_data = sum_cl_data
+            best_sum_regrets = sum_regrets
+
+    return [best_sum_cl_data, best_sum_regrets]
 
 
+
+# x_train, y_train: training data in the else-rule
 def get_tree_cl_individual(x_train, y_train, num_class, min_sample=0.05):
-    clf = DecisionTreeClassifier(min_samples_leaf=min_sample, random_state=1)
+    clf = tree.DecisionTreeClassifier(min_samples_leaf=min_sample, random_state=1)
     clf = clf.fit(x_train, y_train)
 
     num_rules = clf.get_n_leaves()
@@ -35,30 +57,6 @@ def get_tree_cl_individual(x_train, y_train, num_class, min_sample=0.05):
         sum_cl_data += get_entropy(y_train[train_membership_for_each_rule], num_class)
 
     return [sum_cl_data, sum_regrets]
-
-
-# x_train, y_train: training data in the else-rule
-def get_tree_cl(x_train, y_train, num_class):
-    n = len(y_train)
-    if n > 1000:
-        min_samples = np.arange(10, max(50, int(n*0.01)), 20)
-    else:
-        min_samples = np.arange(10, 110, 20)
-
-    # best_tree_cl = np.inf
-    probs = calc_probs(y_train, num_class)
-    best_sum_cl_data = np.sum(-np.log2(probs[y_train]))
-    best_sum_regrets = nml_regret.regret(len(y_train), num_class)
-    best_tree_cl = best_sum_cl_data + best_sum_regrets
-
-    for min_sample in min_samples:
-        sum_cl_data, sum_regrets = get_tree_cl_individual(x_train, y_train, num_class, min_sample=min_sample)
-        if sum_cl_data + sum_regrets <= best_tree_cl:
-            best_tree_cl = sum_cl_data + sum_regrets
-            best_sum_cl_data = sum_cl_data
-            best_sum_regrets = sum_regrets
-
-    return [best_sum_cl_data, best_sum_regrets]
 
 
 def get_entropy(target, num_class):
