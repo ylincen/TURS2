@@ -65,26 +65,28 @@ class ModelingGroupSet:
         # get the neglog_likelihood and the regret for the else_rule \intersection rule
         else_surrogate_score = self.else_rule_modeling_group.evaluate_rule_for_ElseRuleModelingGroup(rule,
                                                                                                      surrogate=surrogate)
+        # reg, cl_model = 0, 0
+        # for r in self.rules:
+        #     reg += r.regret
+        #     cl_model += r.cl_model
+        reg = np.sum([r.regret for r in self.rules])
+        cl_model = np.sum([r.cl_model for r in self.rules])
 
-        if surrogate:
-            return else_surrogate_score + neglog_likelihood + rule.regret
-        else:
-            reg = 0
-            for r in self.rules:
-                reg += r.regret
-
-            return else_surrogate_score + neglog_likelihood + rule.regret + reg
+        return else_surrogate_score + neglog_likelihood + rule.regret + reg + cl_model
 
     def total_surrogate_score(self):
         neglog_likelihoods = [modeling_group.neglog_likelihood for modeling_group in self.modeling_group_set]
         regrets = [rule.regret for rule in self.rules]
         surrogate_score_else_rule = self.else_rule_modeling_group.surrogate_score
-        return sum(neglog_likelihoods) + sum(regrets) + surrogate_score_else_rule
+        cl_model = [rule.cl_model for rule in self.rules]
+        return np.sum(neglog_likelihoods) + np.sum(regrets) + surrogate_score_else_rule + np.sum(cl_model)
 
     def total_score(self):
         neglog_likelihoods = [modeling_group.neglog_likelihood for modeling_group in self.modeling_group_set]
         regrets = [rule.regret for rule in self.rules]
         else_rule_score = self.else_rule_modeling_group.non_surrogate_score
-        return sum(neglog_likelihoods) + sum(regrets) + else_rule_score
+        cl_model = [rule.cl_model for rule in self.rules]
+
+        return np.sum(neglog_likelihoods) + np.sum(regrets) + else_rule_score + np.sum(cl_model)
 
 

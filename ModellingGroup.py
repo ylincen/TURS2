@@ -279,7 +279,6 @@ class ModelingGroup:
         intersection_count = np.count_nonzero(intersection_boolean)
 
         if intersection_count > 0:
-            # new_modeling_group = copy.deepcopy(self)
             new_modeling_group = self.duplicate()
             new_modeling_group.instances_modeling_boolean = rule.bool_array
             new_modeling_group.instances_covered_boolean = intersection_boolean

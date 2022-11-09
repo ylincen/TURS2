@@ -35,10 +35,8 @@ datasets_with_header_row = ["avila", "anuran", "diabetes", "sepsis"]
 data_path = "xml_challenge/heloc_dataset_v1.csv"
 print("Running TURS on: " + data_path)
 d = pd.read_csv(data_path)
-num_cut_numeric = 100
-beam_width = 1
-
-
+num_cut_numeric = 20
+beam_width = 5
 
 kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
 X = d.iloc[:, 1:].to_numpy()
@@ -72,7 +70,8 @@ for fold in range(1):
     data_info = DataInfo(data=dtrain, features=X_train, target=y_train, max_bin_num=num_cut_numeric)
 
     # Init the Rule, Elserule, Ruleset, ModelingGroupSet, ModelingGroup;
-    ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_info.target)
+    ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_info.target,
+                      number_of_init_rules=1)
 
     # Grow rules;
     ruleset.build(max_iter=1000, beam_width=beam_width, candidate_cuts=data_info.candidate_cuts, print_or_not=True)

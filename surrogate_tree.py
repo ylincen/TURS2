@@ -48,7 +48,7 @@ def get_tree_cl(x_train, y_train, num_class):
     # best_tree_cl = np.inf
     probs = calc_probs(y_train, num_class)
     best_sum_cl_data = np.sum(-np.log2(probs[y_train]))
-    best_sum_regrets = nml_regret.regret(len(y_train), num_class)
+    best_sum_regrets = regret(len(y_train), num_class)
     best_tree_cl = best_sum_cl_data + best_sum_regrets
 
     for min_sample in min_samples:
