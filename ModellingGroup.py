@@ -225,7 +225,6 @@ class ModelingGroup:
 
         if intersection_count > 0:
             # new_modeling_group: the modeling group "rule & else_rule"
-            # new_modeling_group = copy.deepcopy(self)
             new_modeling_group = self.duplicate()
             new_modeling_group.instances_modeling_boolean = rule.bool_array
             new_modeling_group.instances_covered_boolean = intersection_boolean
@@ -244,18 +243,24 @@ class ModelingGroup:
             covered_and_modelling_boolean = np.bitwise_and(self.instances_covered_boolean, ~rule.bool_array)
             self.instances_covered_boolean = covered_and_modelling_boolean
             self.instances_modeling_boolean = covered_and_modelling_boolean  # for else-rule, these two are the same
+            else_rule_modelling_group_count = np.count_nonzero(self.instances_covered_boolean)
 
             self.rules_involved_boolean.append(False)
             self.rules_used_boolean.append(False)
 
             self.p = calc_probs(self.target[self.instances_modeling_boolean], self.data_info.num_class)
             self.neglog_likelihood = -np.sum(np.log2(self.p[self.p != 0]) * self.p[self.p != 0]) * \
-                                     np.count_nonzero(self.instances_covered_boolean)
-            surrogate_else_neglog_likelihood, surrogate_else_regret = \
-                surrogate_tree.get_tree_cl(x_train=self.features[covered_and_modelling_boolean],
-                                                      y_train=self.target[covered_and_modelling_boolean],
-                                                      num_class=self.data_info.num_class)
-            self.surrogate_score = surrogate_else_neglog_likelihood + surrogate_else_regret
+                                     else_rule_modelling_group_count
+
+            if else_rule_modelling_group_count > 0:
+                surrogate_else_neglog_likelihood, surrogate_else_regret = \
+                    surrogate_tree.get_tree_cl(x_train=self.features[covered_and_modelling_boolean],
+                                               y_train=self.target[covered_and_modelling_boolean],
+                                               num_class=self.data_info.num_class)
+                self.surrogate_score = surrogate_else_neglog_likelihood + surrogate_else_regret
+            else:  # no data points for the surrogate tree
+                surrogate_else_neglog_likelihood, surrogate_else_regret = 0, 0
+                self.surrogate_score = 0
             self.non_surrogate_score = self.neglog_likelihood + regret(np.count_nonzero(covered_and_modelling_boolean),
                                                                        self.data_info.num_class)
 
