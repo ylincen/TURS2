@@ -1,13 +1,7 @@
-import copy
-import numpy as np
-from utils import *
-from nml_regret import *
-from newBeam import *
-from newRule import *
-import surrogate_tree
 from newModelingGroups import *
 import time
 import pickle
+from ElseRule import *
 
 
 class Ruleset:
@@ -23,26 +17,29 @@ class Ruleset:
         self.else_rule = ElseRule(bool_array=np.ones(len(target), dtype=bool), data_info=data_info, features=features,
                                   target=target)
 
+        # connect to Data
         self.data_info = data_info
         self.features = features
         self.target = target
 
+        # cover and coverage
         self.covered_boolarray = np.zeros(data_info.nrow, dtype=bool)  # does not cover anything at first
+        self.coverage = np.count_nonzero(self.covered_boolarray)
 
+        # connect to the modelling group;
         self.modeling_groups = ModelingGroupSet(else_rule=self.else_rule,
                                                 data_info=self.data_info,
                                                 rules=self.rules, target=self.target,
                                                 features=self.features)
+        self.score = self.modeling_groups.total_score()
 
+        # Parameters
         self.number_of_init_rules = number_of_init_rules  # search settings: how many rules to return for phase-1 (ignoring overlap)
         self.number_of_rules_return = number_of_rules_return  # search settings: how many rules to return for phase-2 (including overlaps)
 
+        # For pruning & early stopping
         self.grow_history_scores = [self.modeling_groups.else_rule_modeling_group.non_surrogate_score]
         self.grow_history_surroage_scores = [self.modeling_groups.else_rule_modeling_group.surrogate_score]
-
-        self.coverage = np.count_nonzero(self.covered_boolarray)
-        self.score = self.modeling_groups.total_score()
-        # self.score_per_coverage = self.score / self.coverage
 
     def update_ruleset(self, rule):
         """
