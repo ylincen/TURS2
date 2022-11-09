@@ -76,18 +76,29 @@ class Rule:
         self.neglog_likelihood_incl = -np.sum(self.prob_excl[p_selector2] *
                                               np.log2(self.prob[p_selector2])) * self.nrow_excl
 
-        if self.rule_base is None:
-            self.cl_model = self.get_cl_model()
+        if len(indices) == len(indices_excl_overlap):
+            search_phase = 1
         else:
-            self.cl_model = self.get_cl_model() + self.rule_base.cl_model
+            search_phase = 2
+
+        if self.rule_base is None:
+            self.cl_model = self.get_cl_model(search_phase=search_phase)
+        else:
+            self.cl_model = self.get_cl_model(search_phase=search_phase) + self.rule_base.cl_model
 
         self.local_gain = local_gain
 
-    def get_cl_model(self):
-        if self.rule_base is None:
-            features = self.features
+    def get_cl_model(self, search_phase):
+        if search_phase == 2:
+            if self.rule_base is None:
+                features = self.features
+            else:
+                features = self.rule_base.features
         else:
-            features = self.rule_base.features
+            if self.rule_base is None:
+                features = self.features_excl_overlap
+            else:
+                features = self.rule_base.features_excl_overlap
         icols = self.condition["icols"]
         cut_options = self.condition["cut_options"]
 
@@ -108,6 +119,7 @@ class Rule:
                         cl_model = np.log2(len(self.categorical_levels[icol]))
             else:
                 if icol in icols[:len(icols)-1]:
+
                     update_cl_model = True
                     for kcol, cut_option_k in zip(icols, cut_options):
                         if kcol == icol and cut_option_k == cut_option:
