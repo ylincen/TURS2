@@ -325,57 +325,57 @@ class Beam:
         return best_rules
 
 
-class BeamCollect:
-    def __init__(self, beam_width, beams, similarity_alpha):
-        self.beam_width = beam_width
-        self.similarity_alpha = similarity_alpha
-
-        self.beams = beams
-        self.rules = self.flat_beams()
-    
-    def flat_beams(self):
-        rules = []
-        for beam in self.beams:
-            for rule in beam:
-                rules.append(rule)
-        return rules
-
-    def select_best_m(self, else_rule, ruleset, m=None):
-        if m is None:
-            m = self.beam_width
-        surrogate_scores = []
-        for rule in self.rules:
-            rule_score = rule.neglog_likelihood_excl + rule.regret_excl
-        
-            else_rule_cover_updated = copy.deepcopy(else_rule.bool_array)
-            else_rule_cover_updated[rule.indices_excl_overlap] = False
-        
-            if any(else_rule_cover_updated):
-                surrogate_score_else_rule = \
-                    surrogate_tree.get_tree_cl(x_train=ruleset.features[else_rule_cover_updated],
-                                               y_train=ruleset.target[else_rule_cover_updated],
-                                               num_class=ruleset.data_info.num_class)
-            else:
-                surrogate_score_else_rule = 0
-            surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
-            surrogate_scores.append(surrogate_score)
-
-        best_m_rules_are = np.argsort(surrogate_scores)
-        rules_with_diversity_constraint = []
-        for which_rule in best_m_rules_are:
-            if len(rules_with_diversity_constraint) == 0:
-                rules_with_diversity_constraint.append(self.rules[which_rule])
-            elif len(rules_with_diversity_constraint) >= m:
-                return rules_with_diversity_constraint
-            elif which_rule == best_m_rules_are[-1]:
-                return rules_with_diversity_constraint
-            else:
-                # diversity check
-                bool_array_this = self.rules[which_rule].bool_array_excl
-                for j, r in enumerate(rules_with_diversity_constraint):
-                    cover_overlap_count = np.count_nonzero(np.bitwise_and(self.rules[j].bool_array_excl, bool_array_this))
-                    cover_union_count = np.count_nonzero(np.bitwise_or(self.rules[j].bool_array_excl, bool_array_this))
-                    if cover_overlap_count / cover_union_count > self.similarity_alpha:
-                        break
-                else:
-                    rules_with_diversity_constraint.append(self.rules[which_rule])
+# class BeamCollect:
+#     def __init__(self, beam_width, beams, similarity_alpha):
+#         self.beam_width = beam_width
+#         self.similarity_alpha = similarity_alpha
+#
+#         self.beams = beams
+#         self.rules = self.flat_beams()
+#
+#     def flat_beams(self):
+#         rules = []
+#         for beam in self.beams:
+#             for rule in beam:
+#                 rules.append(rule)
+#         return rules
+#
+#     def select_best_m(self, else_rule, ruleset, m=None):
+#         if m is None:
+#             m = self.beam_width
+#         surrogate_scores = []
+#         for rule in self.rules:
+#             rule_score = rule.neglog_likelihood_excl + rule.regret_excl
+#
+#             else_rule_cover_updated = copy.deepcopy(else_rule.bool_array)
+#             else_rule_cover_updated[rule.indices_excl_overlap] = False
+#
+#             if any(else_rule_cover_updated):
+#                 surrogate_score_else_rule = \
+#                     surrogate_tree.get_tree_cl(x_train=ruleset.features[else_rule_cover_updated],
+#                                                y_train=ruleset.target[else_rule_cover_updated],
+#                                                num_class=ruleset.data_info.num_class)
+#             else:
+#                 surrogate_score_else_rule = 0
+#             surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
+#             surrogate_scores.append(surrogate_score)
+#
+#         best_m_rules_are = np.argsort(surrogate_scores)
+#         rules_with_diversity_constraint = []
+#         for which_rule in best_m_rules_are:
+#             if len(rules_with_diversity_constraint) == 0:
+#                 rules_with_diversity_constraint.append(self.rules[which_rule])
+#             elif len(rules_with_diversity_constraint) >= m:
+#                 return rules_with_diversity_constraint
+#             elif which_rule == best_m_rules_are[-1]:
+#                 return rules_with_diversity_constraint
+#             else:
+#                 # diversity check
+#                 bool_array_this = self.rules[which_rule].bool_array_excl
+#                 for j, r in enumerate(rules_with_diversity_constraint):
+#                     cover_overlap_count = np.count_nonzero(np.bitwise_and(self.rules[j].bool_array_excl, bool_array_this))
+#                     cover_union_count = np.count_nonzero(np.bitwise_or(self.rules[j].bool_array_excl, bool_array_this))
+#                     if cover_overlap_count / cover_union_count > self.similarity_alpha:
+#                         break
+#                 else:
+#                     rules_with_diversity_constraint.append(self.rules[which_rule])
