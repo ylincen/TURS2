@@ -91,9 +91,7 @@ class Beam:
 
                 jarcard_dist = np.count_nonzero(np.bitwise_and(ind1_bool, ind2_bool)) / \
                                np.count_nonzero(np.bitwise_or(ind1_bool, ind2_bool))
-                # jarcard_dist = np.count_nonzero(np.bitwise_or(info_boolarray[best_ind], info_boolarray[ind])) / \
-                               # np.count_nonzero(np.bitwise_and(info_boolarray[best_ind], info_boolarray[ind]))
-                # print("jarcard_dist: ", jarcard_dist)
+
                 if jarcard_dist > 0.95:
                     diversity_skip = True
                     break
