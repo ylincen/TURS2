@@ -80,6 +80,8 @@ class Ruleset:
         buffer_count = 0
 
         for iter in range(max_iter):
+            if iter == 1:
+                print("debug")
             rule = self.find_next_rule(beam_width, candidate_cuts)
             mdl_score_if_added_this_rule = self.evaluate_rule(rule, surrogate=False)
 
@@ -158,11 +160,8 @@ class Ruleset:
             else_rule_cover_updated = copy.deepcopy(self.else_rule.bool_array)
             else_rule_cover_updated[rule.indices_excl_overlap] = False
 
-            if len(rule.condition["icols"]) != 0: # for the empty rule
-                surrogate_score_else_rule = \
-                    surrogate_tree.get_tree_cl(x_train=self.features[self.else_rule.bool_array],
-                                               y_train=self.target[self.else_rule.bool_array],
-                                               num_class=self.data_info.num_class)
+            if len(rule.condition["icols"]) == 0: # for the empty rule
+                surrogate_score_else_rule = rule_score
             elif any(else_rule_cover_updated):
                 surrogate_score_else_rule = \
                     surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
@@ -172,7 +171,10 @@ class Ruleset:
                 surrogate_score_else_rule = 0 # as no indices in the else rule, i.e, the rule fully covers the else-rule
 
             # surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
-            surrogate_score = rule_score + np.sum(surrogate_score_else_rule) + rule.cl_model
+            if len(rule.condition["icols"]) == 0:
+                surrogate_score = np.sum(surrogate_score_else_rule) + rule.cl_model
+            else:
+                surrogate_score = rule_score + np.sum(surrogate_score_else_rule) + rule.cl_model
             surrogate_scores.append(surrogate_score)
 
         best_rules = []
@@ -227,13 +229,13 @@ class Ruleset:
 
     def self_prune(self, ruleset_size=None):
         if ruleset_size is None:
-            cl_model_list = []
-            for r in self.rules:
-                cl_model_list.append(r.cl_model)
-
-            cl_model_cum = np.cumsum(cl_model_list)
-            mdl_score_with_cl_model = self.grow_history_scores + np.append(0, cl_model_cum)
-            ruleset_size = np.argmin(mdl_score_with_cl_model)
+            # cl_model_list = []
+            # for r in self.rules:
+            #     cl_model_list.append(r.cl_model)
+            #
+            # cl_model_cum = np.cumsum(cl_model_list)
+            # mdl_score_with_cl_model = self.grow_history_scores + np.append(0, cl_model_cum)
+            ruleset_size = np.argmin(self.grow_history_scores)
 
             if ruleset_size == len(self.grow_history_scores) - 1:
                 return self
