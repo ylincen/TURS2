@@ -72,14 +72,14 @@ def get_tree_cl(x_train, y_train, num_class):
     ccp_alphas = path.ccp_alphas
 
     probs = calc_probs(y_train, num_class)
-    best_cl_model, best_nml_cl_data = np.sum(-np.log2(probs[y_train])), regret(len(y_train), num_class)
+    best_cl_model, best_nml_cl_data = np.sum(-np.log2(probs[y_train])), regret(len(y_train), num_class) / 4 * 5  # since the training size is 4/5
     best_tree_cl = best_cl_model + best_nml_cl_data
 
     for ccp_alpha in ccp_alphas:
         clf = DecisionTreeClassifier(random_state=0, ccp_alpha=ccp_alpha)
         clf.fit(x_train, y_train)
 
-        nml_cl_data = get_nml_cldata(x_test, y_test, clf)
+        nml_cl_data = get_nml_cldata(x_test, y_test, clf) * 5  # since the test size is 0.2;
         cl_model = get_cl_model(clf.tree_, x_train)
         tree_cl = nml_cl_data + cl_model
 
