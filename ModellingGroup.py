@@ -1,9 +1,5 @@
 import copy
-import numpy as np
 import nml_regret
-from utils import *
-from nml_regret import *
-from newBeam import *
 from newRule import *
 import surrogate_tree
 
