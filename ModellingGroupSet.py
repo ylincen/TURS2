@@ -70,7 +70,7 @@ class ModelingGroupSet:
         #     reg += r.regret
         #     cl_model += r.cl_model
         reg = np.sum([r.regret for r in self.rules])
-        cl_model = np.sum([r.cl_model for r in self.rules])
+        cl_model = np.sum([r.cl_model for r in self.rules]) + rule.cl_model
 
         return else_surrogate_score + neglog_likelihood + rule.regret + reg + cl_model
 

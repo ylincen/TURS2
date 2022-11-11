@@ -33,14 +33,14 @@ class Beam:
                         left_local_score = rule.MDL_FOIL_gain(left_bi_array_excl, left_bi_array_incl, excl=False)
                         right_local_score = rule.MDL_FOIL_gain(right_bi_array_excl, right_bi_array_incl, excl=False)
 
-                        if left_local_score > 0:
+                        if left_local_score > 0.001:
                             nml_foil_gain.append(left_local_score)
                             info_icol.append(icol)
                             info_cut_index.append(i)
                             info_cut_type.append(LEFT_CUT)
                             info_boolarray.append(left_bi_array_incl)
                             info_irules.append(irule)
-                        if right_local_score > 0:
+                        if right_local_score > 0.001:
                             nml_foil_gain.append(right_local_score)
                             info_icol.append(icol)
                             info_cut_index.append(i)
@@ -54,7 +54,7 @@ class Beam:
 
                         within_local_score = rule.MDL_FOIL_gain(within_bi_array_excl, within_bi_array_incl,
                                                                 excl=False)
-                        if within_local_score > 0:
+                        if within_local_score > 0.001:
                             nml_foil_gain.append(within_local_score)
                             info_icol.append(icol)
                             info_cut_index.append(i)
@@ -192,14 +192,14 @@ class Beam:
                         left_local_score = rule.MDL_FOIL_gain(bi_array_excl=left_bi_array)  # IMPLEMENT LATER
                         right_local_score = rule.MDL_FOIL_gain(bi_array_excl=right_bi_array)
 
-                        if left_local_score > 0:
+                        if left_local_score > 0.001:
                             nml_foil_gain.append(left_local_score)
                             info_icol.append(icol)
                             info_cut_index.append(i)
                             info_cut_type.append(LEFT_CUT)
                             info_boolarray.append(left_bi_array)
                             info_irules.append(irule)
-                        if right_local_score > 0:
+                        if right_local_score > 0.001:
                             nml_foil_gain.append(right_local_score)
                             info_icol.append(icol)
                             info_cut_index.append(i)
@@ -210,7 +210,7 @@ class Beam:
                     for i, level in enumerate(rule.categorical_levels[icol]):
                         within_bi_array = np.isin(rule.features_excl_overlap[:, icol], level)
                         within_local_score = rule.MDL_FOIL_gain(bi_array_excl=within_bi_array)
-                        if within_local_score > 0:
+                        if within_local_score > 0.001:
                             nml_foil_gain.append(within_local_score)
                             info_icol.append(icol)
                             info_cut_index.append(i)

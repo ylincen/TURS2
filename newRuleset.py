@@ -80,8 +80,6 @@ class Ruleset:
         buffer_count = 0
 
         for iter in range(max_iter):
-            if iter == 1:
-                print("debug")
             rule = self.find_next_rule(beam_width, candidate_cuts)
             mdl_score_if_added_this_rule = self.evaluate_rule(rule, surrogate=False)
 
@@ -193,7 +191,7 @@ class Ruleset:
         
         rules_alldepth = []
         while len(beam.rules) > 0:
-            rules_alldepth.extend(beam.rules)
+            rules_alldepth.extend(beam.rules)  ### ????? When beam.rules is [] ?????
             next_beam = Beam(beam_width, data_info=self.data_info)
             next_beam.rules = beam.grow_rule_incl(candidate_cuts)
             beam = next_beam

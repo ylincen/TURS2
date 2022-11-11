@@ -72,7 +72,7 @@ def get_tree_cl(x_train, y_train, num_class):
     ccp_alphas = path.ccp_alphas
 
     probs = calc_probs(y_train, num_class)
-    best_cl_model, best_nml_cl_data = np.sum(-np.log2(probs[y_train])), regret(len(y_train), num_class) / 4 * 5  # since the training size is 4/5
+    best_cl_model, best_nml_cl_data = np.sum(-np.log2(probs[y_train])), regret(len(y_train), num_class) / 4 * 5  # WTF is this line???
     best_tree_cl = best_cl_model + best_nml_cl_data
 
     for ccp_alpha in ccp_alphas:

@@ -36,7 +36,7 @@ data_path = "xml_challenge/heloc_dataset_v1.csv"
 print("Running TURS on: " + data_path)
 d = pd.read_csv(data_path)
 num_cut_numeric = 20
-beam_width = 5
+beam_width = 1
 
 kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
 X = d.iloc[:, 1:].to_numpy()
