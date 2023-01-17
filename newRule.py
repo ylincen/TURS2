@@ -215,20 +215,13 @@ class Rule:
             candidate_coverage = np.count_nonzero(bi_array_incl)
             p = self._calc_prob(bi_array=bi_array_incl)
             neglog_likelihood_refiment = -candidate_coverage * np.sum(p[p != 0] * np.log2(p[p != 0]))
-            neglog_likelihood_previous = -candidate_coverage * np.sum(np.log2(self.prob[p != 0]) * p[p != 0]) # BE CAREFUL HERE FOR THE ELSE_RULE!!!
+            neglog_likelihood_previous = -candidate_coverage * np.sum(np.log2(self.prob[p != 0]) * p[p != 0])  # BE CAREFUL HERE FOR THE ELSE_RULE!!!
 
             regret_refiment = self._regret(N=candidate_coverage, K=self.data_info.num_class)
             regret_previous = self._regret(N=self.nrow_excl, K=self.data_info.num_class) / self.nrow_excl * candidate_coverage
         mdl_gain = neglog_likelihood_previous + regret_previous - (neglog_likelihood_refiment + regret_refiment)
 
         return mdl_gain
-
-
-    # def calculate_nml_partial(self, bi_array_excl, bi_array_incl=None, excl=True):
-    #     """
-    #     Given a dataset x^n, we know how to calculate P_NML(x^n), but can we assign an p_NML to each unique value in
-    #     x^n such that P_NML(x^n) = \prod p_NML(x_i)
-    #     """
 
     def MDL_FOIL_gain(self, bi_array_excl, bi_array_incl=None, excl=True):
         """
