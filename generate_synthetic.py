@@ -1,6 +1,10 @@
 import numpy as np
 import sklearn
 import sys
+from DataInfo import *
+from sklearn.model_selection import KFold, StratifiedKFold
+from newRuleset import *
+from utils_pred import *
 
 
 # generate n1, ..., n5, such that \sum n_i = n
@@ -57,20 +61,31 @@ else:
 x1_area5 = np.array(x1_area5)
 x2_area5 = np.array(x2_area5)
 
-y_area1 = np.append(np.repeat(1, int(y_paras[0] * ns[0])), np.repeat(0, ns[0] - int(y_paras[0] * ns[0])))
-y_area2 = np.append(np.repeat(1, int(y_paras[1] * ns[1])), np.repeat(0, ns[1] - int(y_paras[1] * ns[1])))
-y_area3 = np.append(np.repeat(1, int(y_paras[2] * ns[2])), np.repeat(0, ns[2] - int(y_paras[2] * ns[2])))
-y_area4 = np.append(np.repeat(1, int(y_paras[3] * ns[3])), np.repeat(0, ns[3] - int(y_paras[3] * ns[3])))
-y_area5 = np.append(np.repeat(1, int(y_paras[4] * ns[4])), np.repeat(0, ns[4] - int(y_paras[4] * ns[4])))
+y_area1 = np.append(np.repeat(1, round(y_paras[0] * ns[0])), np.repeat(0, ns[0] - round(y_paras[0] * ns[0])))
+y_area2 = np.append(np.repeat(1, round(y_paras[1] * ns[1])), np.repeat(0, ns[1] - round(y_paras[1] * ns[1])))
+y_area3 = np.append(np.repeat(1, round(y_paras[2] * ns[2])), np.repeat(0, ns[2] - round(y_paras[2] * ns[2])))
+y_area4 = np.append(np.repeat(1, round(y_paras[3] * ns[3])), np.repeat(0, ns[3] - round(y_paras[3] * ns[3])))
+y_area5 = np.append(np.repeat(1, round(y_paras[4] * ns[4])), np.repeat(0, ns[4] - round(y_paras[4] * ns[4])))
 
 
 data = np.array((np.hstack([x1_area1, x1_area2, x1_area3, x1_area4, x1_area5]),
                  np.hstack([x2_area1, x2_area2, x2_area3, x2_area4, x2_area5]),
                  np.hstack([y_area1, y_area2, y_area3, y_area4, y_area5])))
+data = data.T
 
 X = np.array([np.hstack([x1_area1, x1_area2, x1_area3, x1_area4, x1_area5]),
-              np.hstack([x2_area1, x2_area2, x2_area3, x2_area4, x2_area5])])
+              np.hstack([x2_area1, x2_area2, x2_area3, x2_area4, x2_area5])]).T
 y = np.hstack([y_area1, y_area2, y_area3, y_area4, y_area5])
+
+
+data_info = DataInfo(data=data, features=X, target=y, max_bin_num=20)
+
+# Init the Rule, Elserule, Ruleset, ModelingGroupSet, ModelingGroup;
+ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_info.target,
+                  number_of_init_rules=1)
+
+# Grow rules;
+ruleset.build(max_iter=1000, beam_width=1, candidate_cuts=data_info.candidate_cuts, print_or_not=True)
 
 
 
