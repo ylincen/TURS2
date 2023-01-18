@@ -48,7 +48,7 @@ class ModelingGroupSet:
             else:
                 new_modeling_group_list.append(new_modeling_group)
 
-        new_else_modeling_group = self.else_rule_modeling_group.update_else_rule_modeling_group(rule)
+        new_else_modeling_group = self.else_rule_modeling_group.update_else_rule_modeling_group(rule)  # new_else_modelling_group = else_modelling_group & rule
         if new_else_modeling_group is None:
             pass
         else:
@@ -72,7 +72,7 @@ class ModelingGroupSet:
         reg = np.sum([r.regret for r in self.rules])
         cl_model = np.sum([r.cl_model for r in self.rules]) + rule.cl_model
 
-        return else_surrogate_score + neglog_likelihood + rule.regret + reg + cl_model
+        return else_surrogate_score + neglog_likelihood + (rule.regret + reg) + cl_model
 
     def total_surrogate_score(self):
         neglog_likelihoods = [modeling_group.neglog_likelihood for modeling_group in self.modeling_group_set]
