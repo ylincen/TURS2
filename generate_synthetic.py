@@ -5,12 +5,12 @@ from DataInfo import *
 from sklearn.model_selection import KFold, StratifiedKFold
 from newRuleset import *
 from utils_pred import *
-
+import matplotlib.pyplot as plt
 
 # generate n1, ..., n5, such that \sum n_i = n
 np.random.seed(1)
 n = 1000
-x_paras = np.random.dirichlet(alpha=[2,2,4,3,32], size=None)
+x_paras = np.random.dirichlet(alpha=[2, 2, 4, 3, 32], size=None)
 ns = np.array(n * x_paras, dtype=int)
 
 real_n = np.sum(ns)
@@ -78,7 +78,7 @@ X = np.array([np.hstack([x1_area1, x1_area2, x1_area3, x1_area4, x1_area5]),
 y = np.hstack([y_area1, y_area2, y_area3, y_area4, y_area5])
 
 
-data_info = DataInfo(data=data, features=X, target=y, max_bin_num=20)
+data_info = DataInfo(data=data, features=X, target=y, max_bin_num=40)
 
 # Init the Rule, Elserule, Ruleset, ModelingGroupSet, ModelingGroup;
 ruleset = Ruleset(data_info=data_info, features=data_info.features, target=data_info.target,
