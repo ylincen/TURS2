@@ -46,20 +46,24 @@ def get_test_p(ruleset, X):
 
     test_p = np.zeros((len(X), ruleset.data_info.num_class), dtype=float)
     test_bool_all = np.array(test_bool_all, dtype=bool)
-    for icol in range(test_bool_all.shape[1]):
-        rules_involved = test_bool_all[:, icol]
-        if np.count_nonzero(rules_involved) == 0:
-            test_p[icol] = ruleset.modeling_groups.else_rule_modeling_group.p
-        else:
-            for mdg in ruleset.modeling_groups.modeling_group_set:
-                if np.all(mdg.rules_involved_boolean == rules_involved):
-                    test_p[icol] = mdg.p
-                    break
+
+    if len(ruleset.rules) == 0:
+        test_p = np.repeat(ruleset.else_rule.p, len(X)).reshape((ruleset.data_info.num_class, len(X))).T
+    else:
+        for icol in range(test_bool_all.shape[1]):
+            rules_involved = test_bool_all[:, icol]
+            if np.count_nonzero(rules_involved) == 0:
+                test_p[icol] = ruleset.modeling_groups.else_rule_modeling_group.p
             else:
-                modelling_bool = np.zeros(ruleset.data_info.nrow, dtype=bool)
-                for index in np.where(rules_involved)[0]:
-                    modelling_bool = np.bitwise_or(modelling_bool, ruleset.rules[index].bool_array)
-                test_p[icol] = calc_probs(ruleset.data_info.target[modelling_bool], ruleset.data_info.num_class)
+                for mdg in ruleset.modeling_groups.modeling_group_set:
+                    if np.all(mdg.rules_involved_boolean == rules_involved):
+                        test_p[icol] = mdg.p
+                        break
+                else:
+                    modelling_bool = np.zeros(ruleset.data_info.nrow, dtype=bool)
+                    for index in np.where(rules_involved)[0]:
+                        modelling_bool = np.bitwise_or(modelling_bool, ruleset.rules[index].bool_array)
+                    test_p[icol] = calc_probs(ruleset.data_info.target[modelling_bool], ruleset.data_info.num_class)
     return test_p
 
 
