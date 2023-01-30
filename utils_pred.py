@@ -35,6 +35,26 @@ def test_bool(rule, X):
     """
     return [cover_by_this_rule(rule, x) for x in X]
 
+def get_test_p_rulelist(rulelist, X):
+    test_bool_all = []
+    for rule in rulelist.rules:
+        test_bool_all.append(test_bool(rule, X))
+
+    covered_so_far = np.zeros(len(X), dtype=bool)
+    test_bool_all = np.array(test_bool_all, dtype=bool)
+    for i, test_bool_single_rule in enumerate(test_bool_all):
+        test_bool_all[i] = np.bitwise_and(~covered_so_far, test_bool_single_rule)
+        covered_so_far = np.bitwise_or(covered_so_far, test_bool_single_rule)
+
+    # test_p = np.zeros((len(X), rulelist.data_info.num_class), dtype=float)
+    # if len(rulelist.rules) == 0:
+    test_p = np.repeat(rulelist.else_rule.p, len(X)).reshape((rulelist.data_info.num_class, len(X))).T
+    if len(rulelist.rules) > 0:
+        for irow in range(test_bool_all.shape[0]):
+            covered_bool_array = test_bool_all[irow]
+
+            test_p[covered_bool_array] = rulelist.rules[irow].prob_excl
+    return test_p
 
 def get_test_p(ruleset, X):
     """
