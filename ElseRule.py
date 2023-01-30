@@ -39,7 +39,7 @@ class ElseRule:
 
     def _calc_prob(self, target):
         p = calc_probs(target, self.data_info.num_class)
-        p = p[p != 0]
+        # p = p[p != 0]
         return p
 
     def _surrogate_score_else_rule(self, target, features):
