@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 # generate n1, ..., n5, such that \sum n_i = n
 np.random.seed(1)
-n = 1000
+n = 5000
 x_paras = np.random.dirichlet(alpha=[2, 2, 4, 3, 32], size=None)
 ns = np.array(n * x_paras, dtype=int)
 
