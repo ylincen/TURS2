@@ -1,3 +1,5 @@
+import numpy as np
+
 from utils import *
 from nml_regret import *
 import itertools
@@ -26,6 +28,9 @@ class Rule:
 
         self.bool_array = self.get_bool_array(self.indices)
         self.bool_array_excl = self.get_bool_array(self.indices_excl_overlap)
+
+        self.coverage = len(self.indices)
+        self.coverage_excl = len(self.indices_excl_overlap)
 
         self.rule_base = rule_base  # the previous level of this rule, i.e., the rule from which "self" is obtained
 
@@ -78,25 +83,56 @@ class Rule:
             search_phase = 2
 
         if self.rule_base is None:
-            self.cl_model = self.get_cl_model(search_phase=search_phase)
+            self.cl_model = self.get_cl_model_indep_data()
         else:
-            self.cl_model = self.get_cl_model(search_phase=search_phase) + self.rule_base.cl_model
+            self.cl_model = self.get_cl_model_indep_data() + self.rule_base.cl_model
 
         self.local_gain = local_gain
 
-    def get_cl_model(self, search_phase):
-        if search_phase == 2:
-            if self.rule_base is None:
-                features = self.features
-            else:
-                features = self.rule_base.features
-        else:
-            if self.rule_base is None:
-                features = self.features_excl_overlap
-            else:
-                features = self.rule_base.features_excl_overlap
+    def get_cl_model_indep_data(self):
         icols = self.condition["icols"]
         cut_options = self.condition["cut_options"]
+
+        cl_icol = 0
+
+        if len(icols) == 0:
+            cl_model = 0
+        else:
+            icol = self.condition["icols"][-1]
+            cut_option = self.condition["cut_options"][-1]
+
+            if cut_option == WITHIN_CUT:
+                if icol in icols[:len(icols) - 1]:
+                    cl_model = 0
+                else:
+                    if len(self.categorical_levels[icol]) == 0:
+                        cl_model = 0
+                    else:
+                        cl_model = np.log2(len(self.categorical_levels[icol])) + cl_icol
+            else:
+                if icol in icols[:len(icols) - 1]:
+                    update_cl_model = True
+                    for kcol, cut_option_k in zip(icols, cut_options):
+                        if kcol == icol and cut_option_k == cut_option:
+                            update_cl_model = False
+                            break
+
+                    if update_cl_model:
+                        cl_model = np.log2(len(self.data_info.candidate_cuts[icol])) + 1 + cl_icol  # 1 is for LEFT_CUT/RIGHT_CUT
+                    else:
+                        cl_model = 0
+                        # cl_model = np.log2(len(self.data_info.candidate_cuts[icol])) + 1 + cl_icol  # avoid the overfitting by making the same dimension's cut smaller and smaller
+
+                else:
+                    cl_model = np.log2(len(self.data_info.candidate_cuts[icol])) + 1 + cl_icol
+        return cl_model
+
+    def get_cl_model(self):
+        icols = self.condition["icols"]
+        cut_options = self.condition["cut_options"]
+
+        cl_icol = np.log2(self.data_info.ncol)
+        cl_icol = 0
 
         if len(icols) == 0:
             cl_model = 0
@@ -108,28 +144,40 @@ class Rule:
                 if icol in icols[:len(icols)-1]:
                     cl_model = 0
                 else:
-                    # print(len(self.categorical_levels[icol]))
                     if len(self.categorical_levels[icol]) == 0:
                         cl_model = 0
                     else:
-                        cl_model = np.log2(len(self.categorical_levels[icol]))
+                        cl_model = np.log2(len(self.categorical_levels[icol])) + cl_icol
             else:
                 if icol in icols[:len(icols)-1]:
-
                     update_cl_model = True
                     for kcol, cut_option_k in zip(icols, cut_options):
                         if kcol == icol and cut_option_k == cut_option:
-                            cl_model = 0
                             update_cl_model = False
                             break
 
                     if update_cl_model:
-                        shrinking_factor = len(features[:, icol]) / len(self.data_info.target)
-                        cl_model = np.log2(len(self.data_info.candidate_cuts[icol]) * shrinking_factor)
+                        # cl_model = np.log2(len(self.data_info.candidate_cuts[icol]))
+                        candidate_cuts_selector = (self.data_info.candidate_cuts[icol] < np.max(
+                            self.features[:, icol])) & (self.data_info.candidate_cuts[icol] >= np.min(
+                            self.features[:, icol]))
+                        num_candidate_cuts = np.count_nonzero(candidate_cuts_selector)
+                        if num_candidate_cuts > 0:
+                            cl_model = np.log2(num_candidate_cuts) + cl_icol
+                        else:
+                            cl_model = 0
+                    else:
+                        cl_model = 0
+                        # candidate_cuts_selector = (self.data_info.candidate_cuts[icol] < np.max(
+                        #     self.features[:, icol])) & (self.data_info.candidate_cuts[icol] >= np.min(
+                        #     self.features[:, icol]))
+                        # num_candidate_cuts = np.count_nonzero(candidate_cuts_selector)
+                        # if num_candidate_cuts > 0:
+                        #     cl_model = np.log2(num_candidate_cuts) + cl_icol
+                        # else:
+                        #     cl_model = 0
                 else:
-                    shrinking_factor = len(features[:, icol]) / len(self.data_info.target)
-                    cl_model = np.log2(len(self.data_info.candidate_cuts[icol]) * shrinking_factor)
-
+                    cl_model = np.log2(len(self.data_info.candidate_cuts[icol])) + cl_icol
         return cl_model
 
     def get_categorical_levels(self, max_number_levels_together):
@@ -212,13 +260,15 @@ class Rule:
             regret_refiment = self._regret(N=candidate_coverage, K=self.data_info.num_class)
             regret_previous = self._regret(N=self.nrow_excl, K=self.data_info.num_class) / self.nrow_excl * candidate_coverage
         else:
-            candidate_coverage = np.count_nonzero(bi_array_incl)
+            candidate_coverage = np.count_nonzero(bi_array_excl)
+            candidate_coverage_incl = np.count_nonzero(bi_array_incl)
             p = self._calc_prob(bi_array=bi_array_incl)
-            neglog_likelihood_refiment = -candidate_coverage * np.sum(p[p != 0] * np.log2(p[p != 0]))
-            neglog_likelihood_previous = -candidate_coverage * np.sum(np.log2(self.prob[p != 0]) * p[p != 0])  # BE CAREFUL HERE FOR THE ELSE_RULE!!!
+            p_excl = self._calc_prob_excl(bi_array=bi_array_excl)
+            neglog_likelihood_refiment = -candidate_coverage * np.sum(p_excl[p != 0] * np.log2(p[p != 0]))
+            neglog_likelihood_previous = -candidate_coverage * np.sum(p_excl[self.prob != 0] * np.log2(self.prob[self.prob != 0]))  # BE CAREFUL HERE FOR THE ELSE_RULE!!!
 
-            regret_refiment = self._regret(N=candidate_coverage, K=self.data_info.num_class)
-            regret_previous = self._regret(N=self.nrow_excl, K=self.data_info.num_class) / self.nrow_excl * candidate_coverage
+            regret_refiment = self._regret(N=candidate_coverage_incl, K=self.data_info.num_class) / candidate_coverage_incl * candidate_coverage
+            regret_previous = self._regret(N=self.nrow, K=self.data_info.num_class) / self.nrow * candidate_coverage
         mdl_gain = neglog_likelihood_previous + regret_previous - (neglog_likelihood_refiment + regret_refiment)
 
         return mdl_gain

@@ -43,6 +43,27 @@ class Ruleset:
         self.grow_history_scores = [self.modeling_groups.else_rule_modeling_group.non_surrogate_score]
         self.grow_history_surroage_scores = [self.modeling_groups.else_rule_modeling_group.surrogate_score]
 
+    def build_rule_list(self, max_iter, beam_width, candidate_cuts):
+        for iter in range(max_iter):
+            if iter == 4:
+                print(" ")
+            rule_beam = self.find_beam_ignore_overlap(beam_width=beam_width, number_of_init_rules=1, candidate_cuts=candidate_cuts)
+
+            if len(rule_beam) == 0:
+                break
+            else:
+                rule = rule_beam[0]
+                print(rule.condition)
+                self.rules.append(rule)
+
+                self.else_rule = ElseRule(
+                    bool_array=np.bitwise_and(self.else_rule.bool_array, ~rule.bool_array_excl),
+                    data_info=self.data_info, target=self.target, features=self.features,
+                    get_surrogate_score=False)
+
+                # update the ruleset itself
+                self.covered_boolarray = ~self.else_rule.bool_array
+
     def update_ruleset(self, rule):
         """
         Given the next "rule", CHECK for STOPPING CRITERION &
@@ -83,7 +104,7 @@ class Ruleset:
             rule = self.find_next_rule(beam_width, candidate_cuts)
             mdl_score_if_added_this_rule = self.evaluate_rule(rule, surrogate=False)
 
-            if mdl_score_if_added_this_rule < self.grow_history_scores[-1] or buffer_count < 5:
+            if mdl_score_if_added_this_rule < self.grow_history_scores[-1] or buffer_count < 0:
                 if mdl_score_if_added_this_rule < self.grow_history_scores[-1]:
                     buffer_count = 0
                 else:
@@ -150,37 +171,54 @@ class Ruleset:
             # print([r.condition for r in beam.rules])
 
         surrogate_scores = []
-        # rules_alldepth.pop(1)
+        non_surrogate_scores = []
 
         for rule in rules_alldepth:
-            rule_score = rule.neglog_likelihood_excl + rule.regret_excl
+            rule_score = rule.neglog_likelihood_excl + rule.regret_excl + rule.cl_model
 
             else_rule_cover_updated = copy.deepcopy(self.else_rule.bool_array)
             else_rule_cover_updated[rule.indices_excl_overlap] = False
 
-            if len(rule.condition["icols"]) == 0: # for the empty rule
-                surrogate_score_else_rule = rule_score
-            elif any(else_rule_cover_updated):
-                surrogate_score_else_rule = \
-                    surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
-                                               y_train=self.target[else_rule_cover_updated],
-                                               num_class=self.data_info.num_class)
-            else:
-                surrogate_score_else_rule = 0 # as no indices in the else rule, i.e, the rule fully covers the else-rule
+            p_else_non_surrogate = calc_probs(self.target[else_rule_cover_updated], self.data_info.num_class)
+            else_coverage = np.count_nonzero(else_rule_cover_updated)
+            p_else_non_surrogate = p_else_non_surrogate[p_else_non_surrogate != 0]
+            else_rule_non_surrogate_score = else_coverage * np.sum(-p_else_non_surrogate * np.log2(p_else_non_surrogate)) + regret(else_coverage, self.data_info.num_class)
+            non_surrogate_score = rule_score + else_rule_non_surrogate_score
+            non_surrogate_scores.append(non_surrogate_score)
 
-            # surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
-            if len(rule.condition["icols"]) == 0:
-                surrogate_score = np.sum(surrogate_score_else_rule) + rule.cl_model
-            else:
-                surrogate_score = rule_score + np.sum(surrogate_score_else_rule) + rule.cl_model
-            surrogate_scores.append(surrogate_score)
+            # if len(rule.condition["icols"]) == 0: # for the empty rule
+            #     surrogate_score_else_rule = rule_score
+            # elif any(else_rule_cover_updated):
+            #     surrogate_score_else_rule = \
+            #         surrogate_tree.get_tree_cl(x_train=self.features[else_rule_cover_updated],
+            #                                    y_train=self.target[else_rule_cover_updated],
+            #                                    num_class=self.data_info.num_class)
+            # else:
+            #     surrogate_score_else_rule = 0 # as no indices in the else rule, i.e, the rule fully covers the else-rule
+            #
+            # # surrogate_score = rule_score + np.sum(surrogate_score_else_rule)
+            # if len(rule.condition["icols"]) == 0:
+            #     surrogate_score = np.sum(surrogate_score_else_rule) + rule.cl_model
+            # else:
+            #     surrogate_score = rule_score + np.sum(surrogate_score_else_rule) + rule.cl_model
+            # surrogate_scores.append(surrogate_score)
+
+        absolute_gain = np.array(non_surrogate_scores)[0] - np.array(non_surrogate_scores)
+        normalized_gain = absolute_gain / np.array([np.count_nonzero(r.bool_array) for r in rules_alldepth])
 
         best_rules = []
-        surrogate_score_order = np.argsort(surrogate_scores)
-        for i in surrogate_score_order:
+        # surrogate_score_order = np.argsort(surrogate_scores)
+        # for i in surrogate_score_order:
+        #     if len(best_rules) >= number_of_init_rules:
+        #         break
+        #
+        #     best_rules.append(rules_alldepth[i])
+        normalized_gain_order = np.argsort(-normalized_gain)
+        for i in normalized_gain_order:
             if len(best_rules) >= number_of_init_rules:
                 break
-
+            if normalized_gain[i] <= 0:
+                break
             best_rules.append(rules_alldepth[i])
 
         return best_rules

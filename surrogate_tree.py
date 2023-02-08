@@ -46,21 +46,22 @@ def get_cl_model(tree, X_train):
     # Assume that we always go left if we can, the bits we need are:
     bits_for_number_of_nodes = 2 * np.log2(n_nodes)
     # bits_for_leaves_position = chooselog2(len(is_leaf), n_leaves)  ## To MUCH REDUNDANCY HERE;
-    bits_for_leaves_position = np.log2(n_nodes)  # Just a guess, probably wrong..
+    # bits_for_leaves_position = np.log2(n_nodes)  # Just a guess, probably wrong..
+    bits_for_leaves_position = n_leaves
 
     num_features = len(X_train[0])
 
     features_non_leaf = features[~is_leaf]
-    p_feature_name = calc_probs(features_non_leaf, num_features)
+    # p_feature_name = calc_probs(features_non_leaf, num_features)
 
-    # naive_bits_for_which_dimension_in_condition = np.log2(num_features) * len(features_non_leaf)
-    nml_bits_for_which_dimension_in_condition = \
-        -np.sum(np.log2(p_feature_name[p_feature_name != 0]) * p_feature_name[p_feature_name != 0]) + \
-        regret(len(features_non_leaf), num_features)
+    naive_bits_for_which_dimension_in_condition = np.log2(num_features) * len(features_non_leaf)
+    # nml_bits_for_which_dimension_in_condition = \
+    #     -np.sum(np.log2(p_feature_name[p_feature_name != 0]) * p_feature_name[p_feature_name != 0]) + \
+    #     regret(len(features_non_leaf), num_features)
 
     bits_for_cuts = np.sum(np.log2(tree.n_node_samples[~is_leaf]))
 
-    cl_model = bits_for_number_of_nodes + bits_for_leaves_position + nml_bits_for_which_dimension_in_condition + bits_for_cuts
+    cl_model = bits_for_number_of_nodes + bits_for_leaves_position + naive_bits_for_which_dimension_in_condition + bits_for_cuts
 
     return cl_model
 
@@ -80,10 +81,13 @@ def get_tree_cl(x_train, y_train, num_class):
         clf.fit(x_train, y_train)
 
         nml_cl_data = get_nml_cldata(x_test, y_test, clf) * 5  # since the test size is 0.2;
-        cl_model = get_cl_model(clf.tree_, x_train)
+        # cl_model = get_cl_model(clf.tree_, x_train)
+        cl_model = 0
         tree_cl = nml_cl_data + cl_model
+        tree_updated = False
 
         if tree_cl < best_tree_cl:
+            tree_updated = True
             best_tree_cl = tree_cl
             best_cl_model = cl_model
             best_nml_cl_data = nml_cl_data

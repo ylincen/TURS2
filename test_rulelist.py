@@ -11,7 +11,7 @@ datasets_without_header_row = ["waveform", "backnote", "chess", "contracept", "i
 datasets_with_header_row = ["avila", "anuran", "diabetes"]
 
 
-beam_width = 20
+beam_width = 1
 number_of_init_rules = 1
 num_cut_numeric = 100
 
@@ -112,4 +112,4 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
     pd_res["num_cut_numeric"] = Num_cut_numeric
     pd_res["time"] = Time
 
-    pd_res.to_csv("./res_UCIdataset_rulelis_20beam.csv")
+    pd_res.to_csv("./res_UCIdataset_rulelis_1beam.csv")
