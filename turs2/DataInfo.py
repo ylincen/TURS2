@@ -42,7 +42,7 @@ def universal_code_integers(value: int) -> float:
 
 
 class DataInfo:
-    def __init__(self, X, y, num_candidate_cuts, max_rule_length):
+    def __init__(self, X, y, num_candidate_cuts, max_rule_length, feature_names):
         """
         Meta-data for an input data
         data: pandas data frame
@@ -63,6 +63,7 @@ class DataInfo:
         self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
 
         self.cl_model = {}
+        self.feature_names = feature_names
 
     def cache_cl_model(self):
         l_number_of_variables = [universal_code_integers_maximum(n=i+1, maximum=self.ncol) for i in range(self.ncol)]
