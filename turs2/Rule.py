@@ -14,6 +14,11 @@ def store_grow_info(excl_bi_array, incl_bi_array, icol, cut, cut_option, excl_no
             "incl_normalized_gain": incl_normalized_gain}
 
 
+def store_grow_info_rulelist(excl_bi_array, icol, cut, cut_option, excl_normalized_gain):
+    return {"excl_bi_array": excl_bi_array, "icol": icol, "cut": cut,
+            "cut_option": cut_option, "excl_normalized_gain": excl_normalized_gain}
+
+
 class Rule:
     def __init__(self, indices, indices_excl_overlap, data_info, rule_base, condition_matrix, ruleset,
                  excl_normalized_gain, incl_normalized_gain):
@@ -36,14 +41,14 @@ class Rule:
         self.features_excl_overlap = self.data_info.features[indices_excl_overlap]  # feature rows covered by this rule WITHOUT ruleset's cover
         self.target_excl_overlap = self.data_info.target[indices_excl_overlap]  # target covered by this rule WITHOUT ruleset's cover
 
-        self.nrow, self.ncol = self.data_info.features.shape  # local nrow and local ncol
-        self.nrow_excl, self.ncol_excl = self.data_info.features_excl_overlap.shape  # local nrow and ncol, excluding ruleset's cover
+        self.nrow, self.ncol = len(self.indices), self.data_info.features.shape[1]  # local nrow and local ncol
+        self.nrow_excl, self.ncol_excl = len(self.indices_excl_overlap), self.data_info.features.shape[1]  # local nrow and ncol, excluding ruleset's cover
 
         self.condition_matrix = condition_matrix
         self.condition_count = (~np.isnan(condition_matrix[0])).astype(int) + (~np.isnan(condition_matrix[1])).astype(int)
 
-        self.prob_excl = self._calc_probs(target=self.target[indices_excl_overlap])
-        self.prob = self._calc_probs(target=self.target[indices])
+        self.prob_excl = self._calc_probs(target=self.target_excl_overlap)
+        self.prob = self._calc_probs(target=self.target)
         self.regret_excl = regret(self.nrow_excl, data_info.num_class)
         self.regret = regret(self.nrow, data_info.num_class)
 
@@ -64,14 +69,14 @@ class Rule:
             if self.condition_matrix[LEFT_CUT, icol] == 1:
                 return self.cl_model
             else:
-                condition_count = np.array(self.condition_matrix)
-                condition_count[icol] += 1
+                condition_count = np.array(self.condition_count)
+                condition_count[icol] = 1
                 return self.get_cl_model_indep_data(condition_count)
         else:
             if self.condition_matrix[RIGHT_CUT, icol] == 1:
                 return self.cl_model
             else:
-                condition_count = np.array(self.condition_matrix)
+                condition_count = np.array(self.condition_count)
                 condition_count[icol] += 1
                 return self.get_cl_model_indep_data(condition_count)
 
@@ -80,16 +85,42 @@ class Rule:
         if num_variables == 0:
             return 0
         else:
-            l_num_variables = self.data_info.cl_model["l_number_of_variables"][num_variables]
-            l_which_variables = self.data_info.cl_model["l_which_variables"][num_variables]
-            l_cuts = self.data_info.cl_model["l_cut"][0][condition_count == 1] + \
-                self.data_info.cl_model["l_cut"][1][condition_count == 2]
+            l_num_variables = self.data_info.cl_model["l_number_of_variables"][num_variables - 1]
+            l_which_variables = self.data_info.cl_model["l_which_variables"][num_variables - 1]
+            l_cuts = np.sum(self.data_info.cl_model["l_cut"][0][condition_count == 1]) + \
+                np.sum(self.data_info.cl_model["l_cut"][1][condition_count == 2])
             return l_num_variables + l_which_variables + l_cuts  # TODO I NEED TO ENCODE THE NUMBER OF RULES?
 
     def get_bool_array(self, indices):
         bool_array = np.zeros(self.data_info.nrow, dtype=bool)
         bool_array[indices] = True
         return bool_array
+
+    def grow_rulelist(self):
+        candidate_cuts = self.data_info.candidate_cuts
+        excl_best_normalized_gain = -np.Inf
+        for icol in range(self.ncol):
+            candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features_excl_overlap[:, icol])) & \
+                                      (candidate_cuts[icol] >= np.min(self.features_excl_overlap[:, icol]))
+            candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+
+            for i, cut in enumerate(candidate_cuts_icol):
+                excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
+                excl_right_bi_array = ~excl_left_bi_array
+
+                excl_left_normalized_gain, cl_model, two_total_cl_left_excl = self.calculate_excl_gain(bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT, cl_model=None)
+                excl_right_normalized_gain, cl_model, two_total_cl_right_excl = self.calculate_excl_gain(bi_array=excl_right_bi_array, icol=icol, cut_option=LEFT_CUT, cl_model=cl_model)
+
+                if excl_left_normalized_gain > excl_best_normalized_gain and excl_left_normalized_gain > excl_right_normalized_gain:
+                    best_excl_grow_info = store_grow_info_rulelist(excl_left_bi_array, icol, cut, LEFT_CUT, excl_left_normalized_gain)
+                    excl_best_normalized_gain = excl_left_normalized_gain
+                elif excl_right_normalized_gain > excl_best_normalized_gain and excl_right_normalized_gain > excl_left_normalized_gain:
+                    best_excl_grow_info = store_grow_info_rulelist(excl_right_bi_array, icol, cut, RIGHT_CUT, excl_right_normalized_gain)
+                    excl_best_normalized_gain = excl_right_normalized_gain
+                else:
+                    pass
+        excl_grow_res = self.make_rule_from_grow_info_rulelist(best_excl_grow_info)
+        return excl_grow_res
 
     def grow(self):
         candidate_cuts = self.data_info.candidate_cuts
@@ -148,6 +179,18 @@ class Rule:
                     incl_normalized_gain=grow_info["incl_normalized_gain"])  # TODO: this is wrong
         return rule
 
+    def make_rule_from_grow_info_rulelist(self, grow_info):
+        indices_excl_overlap = self.indices_excl_overlap[grow_info["excl_bi_array"]]
+        indices = indices_excl_overlap
+
+        condition_matrix = np.array(self.condition_matrix)
+        condition_matrix[grow_info["cut_option"], grow_info["icol"]] = grow_info["cut"]
+        rule = Rule(indices=indices, indices_excl_overlap=indices_excl_overlap, data_info=self.data_info,
+                    rule_base=self, condition_matrix=condition_matrix, ruleset=self.ruleset,
+                    excl_normalized_gain=grow_info["excl_normalized_gain"],
+                    incl_normalized_gain=grow_info["excl_normalized_gain"])  # TODO: this is wrong
+        return rule
+
     def calculate_incl_gain(self, incl_bi_array, excl_bi_array, icol, cut_option, cl_model=None):
         excl_coverage, incl_coverage = np.count_nonzero(excl_bi_array), np.count_nonzero(incl_bi_array)
 
@@ -185,10 +228,10 @@ class Rule:
         negloglike = calc_negloglike(p, coverage)
 
         else_bool = np.zeros(self.data_info.nrow, dtype=bool)
+        else_bool[self.ruleset.uncovered_indices] = True
+        else_bool[self.indices_excl_overlap[bi_array]] = False
         else_coverage = np.count_nonzero(else_bool)
 
-        else_bool[self.ruleset.else_indices] = True
-        else_bool[self.indices_excl_overlap[bi_array]] = False
         else_p = self._calc_probs(self.data_info.target[else_bool])
         else_negloglike = calc_negloglike(else_p, else_coverage)
 

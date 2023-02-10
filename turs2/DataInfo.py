@@ -50,11 +50,11 @@ class DataInfo:
         target: target variable in numpy 1d array
         """
 
-        self.features = X
-        self.target = y
+        self.features = X.to_numpy()
+        self.target = y.to_numpy().flatten()
 
         self.max_rule_length = max_rule_length
-        self.nrow, self.ncol = X.shape[0], X.shapep[1]
+        self.nrow, self.ncol = X.shape[0], X.shape[1]
 
         # get num_class, ncol, nrow,
         self.num_class = len(np.unique(self.target))
@@ -63,6 +63,8 @@ class DataInfo:
         self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
 
         self.cl_model = {}
+        self.cache_cl_model()
+
         self.feature_names = feature_names
         self.beam_width = beam_width
 
@@ -71,9 +73,9 @@ class DataInfo:
         l_which_variables = log2comb(self.ncol, np.arange(self.max_rule_length) + 1)
 
         candidate_cuts_length = np.array([len(candi) for candi in self.candidate_cuts.values()], dtype=float)
-        l_one_cut = np.log2(candidate_cuts_length)
+        l_one_cut = np.log2(candidate_cuts_length) + 1
         l_two_cut = np.log2(candidate_cuts_length) * 2
-        l_cut = np.array(l_one_cut, l_two_cut)
+        l_cut = np.array([l_one_cut, l_two_cut])
 
         self.cl_model["l_number_of_variables"] = l_number_of_variables
         self.cl_model["l_cut"] = l_cut
