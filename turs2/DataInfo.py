@@ -60,7 +60,9 @@ class DataInfo:
         self.num_class = len(np.unique(self.target))
 
         # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
-        self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
+        self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
+        # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
+        # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
 
         self.cl_model = {}
         self.cache_cl_model()
@@ -80,6 +82,51 @@ class DataInfo:
         self.cl_model["l_number_of_variables"] = l_number_of_variables
         self.cl_model["l_cut"] = l_cut
         self.cl_model["l_which_variables"] = l_which_variables
+
+    def get_candidate_cuts_CLASSY(self, num_candidate_cuts):
+        candidate_cuts = {}
+
+        for i, feature in enumerate(self.features.T):
+            unique_value = np.unique(feature)
+
+            num_candidate_cuts_i = min(num_candidate_cuts, len(unique_value) - 1)
+
+            if len(unique_value) < 2:
+                candidate_cuts[i] = np.array([], dtype=float)
+            else:
+                quantile_percentage = [1 / (num_candidate_cuts_i + 1) * ncut for ncut in range(0, num_candidate_cuts_i + 2)]
+                value_quantiles = np.nanquantile(feature, quantile_percentage, interpolation='midpoint')[1:-1]
+                value_quantiles = np.unique(value_quantiles)
+                candidate_cuts[i] = value_quantiles
+        return candidate_cuts
+
+    def get_candidate_cuts_quantile(self, num_candidate_cuts):
+        candidate_cuts = {}
+
+        for i, feature in enumerate(self.features.T):
+            unique_value = np.unique(feature)
+
+            num_candidate_cuts_i = min(num_candidate_cuts, len(unique_value) - 1)
+
+            if len(unique_value) < 2:
+                candidate_cuts[i] = np.array([], dtype=float)
+            else:
+                quantile_percentage = np.linspace(0, 1, num_candidate_cuts_i + 2)[1:-1]
+                candidate_cuts[i] = np.quantile(feature, quantile_percentage)
+        return candidate_cuts
+
+    def get_candidate_cuts_indep_data(self, num_candidate_cuts):
+        candidate_cuts = {}
+        for i, feature in enumerate(self.features.T):
+            unique_value = np.unique(feature)
+
+            num_candidate_cuts_i = min(num_candidate_cuts, len(unique_value) - 1)
+
+            if len(unique_value) < 2:
+                candidate_cuts[i] = np.array([], dtype=float)
+            else:
+                candidate_cuts[i] = np.linspace(unique_value[0], unique_value[-1], num_candidate_cuts_i)
+        return candidate_cuts
 
     def get_candidate_cuts(self, num_candidate_cuts):
         candidate_cuts = {}
