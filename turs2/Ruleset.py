@@ -24,15 +24,18 @@ def get_readable_rules(ruleset):
     for rule in ruleset.rules:
         readable = ""
         which_variables = np.where(rule.condition_count != 0)[0]
-        for v in which_variables:
+        for i, v in enumerate(which_variables):
             cut = rule.condition_matrix[:, v][::-1]
             icol_name = ruleset.data_info.feature_names[v]
-            readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
+            if i == len(which_variables) - 1:
+                readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + "   ===>   "
+            else:
+                readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + "   &   "
 
-        readable += "Prob: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
+        readable += "Prob Neg/Pos: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
         readables.append(readable)
 
-    readable = "Else-rule, Prob: " + str(ruleset.else_rule_p) + ", Coverage: " + str(ruleset.else_rule_coverage)
+    readable = "Else-rule, Prob Neg/Pos: " + str(ruleset.else_rule_p) + ", Coverage: " + str(ruleset.else_rule_coverage)
     readables.append(readable)
     return readables
 
@@ -85,12 +88,13 @@ class Ruleset:
         self.total_cl = self.cl_model + self.negloglike + self.regret
 
         self.data_info = data_info
-        self.modelling_groups = [ModellingGroup(data_info=data_info)]
+        self.modelling_groups = []
 
         self.allrules_neglolglike = 0
         self.allrules_regret = 0
 
         self.cl_model = 0
+        self.allrules_cl_model = 0
 
         self.else_rule_p = self.default_p
         self.else_rule_negloglike = self.negloglike
@@ -100,6 +104,31 @@ class Ruleset:
 
         self.uncovered_indices = np.arange(data_info.nrow)
         self.uncovered_bool = np.ones(self.data_info.nrow, dtype=bool)
+
+    def add_rule(self, rule):
+        self.rules.append(rule)
+        self.uncovered_bool = np.bitwise_and(self.uncovered_bool, ~rule.bool)
+        self.uncovered_indices = np.where(self.uncovered_bool)[0]
+
+        self.else_rule_coverage = len(self.uncovered_indices)
+        self.else_rule_p = calc_probs(self.data_info.target[self.uncovered_indices], self.data_info.num_class)
+        self.else_rule_negloglike = calc_negloglike(self.else_rule_p, self.else_rule_coverage)
+        self.else_rule_regret = regret(self.else_rule_coverage, self.data_info.num_class)
+        self.elserule_total_cl = self.else_rule_regret + self.else_rule_negloglike
+
+        self.allrules_cl_model += rule.cl_model
+        self.allrules_regret += rule.regret
+        self.allrules_neglolglike = [m.update_and_evaluate_rule(rule) for m in self.modelling_groups]  # TODO: split the modelling group here
+        self.modelling_groups.append()  # TODO: append more modelling groups
+
+        self.negloglike = np.sum(self.allrules_neglolglike) + self.else_rule_negloglike
+        self.regret = self.allrules_regret + self.else_rule_regret
+        self.total_cl = self.negloglike + self.regret + self.cl_model
+
+        if len(self.rules) > self.data_info.cached_number_of_rules_for_cl_model - 5:  # I am not sure whether to put 1 or 2 here, so for the safe side, just do 5;
+            self.data_info.cached_number_of_rules_for_cl_model = 2 * self.data_info.cached_number_of_rules_for_cl_model
+            self.data_info.cl_model["l_number_of_rules"] = \
+                [universal_code_integers(i + 1) for i in range(self.data_info.cached_number_of_rules_for_cl_model)]
 
     def add_rule_in_rulelist(self, rule):
         self.rules.append(rule)
@@ -163,4 +192,59 @@ class Ruleset:
                 break
 
         return rule_to_add
+
+    def fit(self, max_iter=1000):
+        for iter in range(max_iter):
+            print("iteration ", iter)
+            rule_to_add = self.find_next_rule()
+            if rule_to_add.incl_normalized_gain > 0:
+                self.add_rule(rule_to_add)
+            else:
+                break
+
+    def find_next_rule(self):
+        rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
+                    data_info=self.data_info, rule_base=None,
+                    condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
+                    ruleset=self, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf)
+        rule_to_add = rule
+
+        excl_beam_list = [Beam(width=self.data_info.beam_width, rule_length=0)]
+        excl_beam_list[0].update(rule=rule, gain=rule.excl_normalized_gain)
+        incl_beam_list = []
+
+        # TODO: store the cover of the rules as a bit string (like CLASSY's implementation) and then do diverse search.
+
+        # now we start the real search
+        previous_excl_beam = excl_beam_list[0]
+        previous_incl_beam = Beam(width=self.data_info.beam_width, rule_length=1)
+
+        for i in range(self.data_info.max_rule_length - 1):
+            current_incl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 2)
+            current_excl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 2)
+
+            for rule in previous_incl_beam.rules + previous_excl_beam.rules:
+                excl_res, incl_res = rule.grow_incl_and_excl()  # TODO: implement this later
+                current_incl_beam.update(incl_res,
+                                         incl_res.incl_normalized_gain)  # TODO: whether to constrain all excl_grow_res have positive normalized gain?
+                current_excl_beam.update(excl_res,
+                                         excl_res.excl_normalized_gain)
+
+            if len(current_excl_beam.rules) > 0:   # Can change to some other (early) stopping criteria;
+                previous_excl_beam = current_excl_beam
+                previous_incl_beam = current_incl_beam
+                excl_beam_list.append(current_excl_beam)
+                incl_beam_list.append(current_incl_beam)
+            else:
+                break
+
+        for incl_beam in incl_beam_list:
+            for r in incl_beam.rules:
+                scores = self.evaluate_rule(rule)
+                if scores["incl_normalized_gain"] > rule_to_add.incl_normalized_gain:
+                    rule_to_add = rule
+
+        return rule_to_add
+
+    def evaluate_rule(self, rule):
 
