@@ -5,18 +5,33 @@ from turs2.Beam import *
 from turs2.ModellingGroup import *
 
 
+def get_readable_rule(rule, feature_names):
+    readable = ""
+    which_variables = np.where(rule.condition_count != 0)[0]
+    for v in which_variables:
+        cut = rule.condition_matrix[:, v][::-1]
+        icol_name = feature_names[v]
+        readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
+
+    readable += "Prob: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
+    return(readable)
+
+
 def get_readable_rules(ruleset):
     readables = []
     for rule in ruleset.rules:
         readable = ""
         which_variables = np.where(rule.condition_count != 0)[0]
         for v in which_variables:
-            cut = rule.condition_matrix[:, v]
+            cut = rule.condition_matrix[:, v][::-1]
             icol_name = ruleset.data_info.feature_names[v]
             readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
 
         readable += "Prob: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
         readables.append(readable)
+
+    readable = "Else-rule, Prob: " + str(ruleset.else_rule_p) + ", Coverage: " + str(ruleset.else_rule_coverage)
+    readables.append(readable)
     return readables
 
 
@@ -49,6 +64,10 @@ def predict_rulelist(ruleset, X_test, y_test):
         covered = np.bitwise_or(covered, rule_cover)
 
     prob_predicted[~covered] = ruleset.else_rule_p
+    if any(~covered):
+        rules_test_p.append(calc_probs(y_test[~covered], ruleset.data_info.num_class))
+    else:
+        rules_test_p.append([0, 0])
     return [prob_predicted, rules_test_p]
 
 
