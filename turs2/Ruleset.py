@@ -3,9 +3,11 @@ import numpy as np
 from turs2.Rule import *
 from turs2.Beam import *
 from turs2.ModellingGroup import *
+from DataInfo import *
 
 
-def get_readable_rule(rule, feature_names):
+def get_readable_rule(rule):
+    feature_names = rule.ruleset.data_info.feature_names
     readable = ""
     which_variables = np.where(rule.condition_count != 0)[0]
     for v in which_variables:
@@ -118,6 +120,11 @@ class Ruleset:
         self.negloglike = self.allrules_neglolglike + self.else_rule_negloglike
         self.regret = self.allrules_regret + self.else_rule_regret
         self.total_cl = self.negloglike + self.regret + self.cl_model
+
+        if len(self.rules) > self.data_info.cached_number_of_rules_for_cl_model - 5: # I am not sure whether to put 1 or 2 here, so for the safe side, just do 5;
+            self.data_info.cached_number_of_rules_for_cl_model = 2 * self.data_info.cached_number_of_rules_for_cl_model
+            self.data_info.cl_model["l_number_of_rules"] = \
+                [universal_code_integers(i + 1) for i in range(self.data_info.cached_number_of_rules_for_cl_model)]
 
     def fit_rulelist(self, max_iter=1000):
         for iter in range(max_iter):
