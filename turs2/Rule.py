@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from turs2.utils_calculating_cl import *
 from turs2.nml_regret import *
@@ -71,16 +73,16 @@ class Rule:
             else:
                 condition_count = np.array(self.condition_count)
                 condition_count[icol] = 1
-                return self.get_cl_model_indep_data(condition_count)
+                return self.get_cl_model_indep_data(condition_count, update_cl_model_for_debug=False)
         else:
             if self.condition_matrix[RIGHT_CUT, icol] == 1:
                 return self.cl_model
             else:
                 condition_count = np.array(self.condition_count)
                 condition_count[icol] += 1
-                return self.get_cl_model_indep_data(condition_count)
+                return self.get_cl_model_indep_data(condition_count, update_cl_model_for_debug=False)
 
-    def get_cl_model_indep_data(self, condition_count):
+    def get_cl_model_indep_data(self, condition_count, update_cl_model_for_debug=True):
         num_variables = np.count_nonzero(condition_count)
         if num_variables == 0:
             return 0
@@ -89,7 +91,11 @@ class Rule:
             l_which_variables = self.data_info.cl_model["l_which_variables"][num_variables - 1]
             l_cuts = np.sum(self.data_info.cl_model["l_cut"][0][condition_count == 1]) + \
                 np.sum(self.data_info.cl_model["l_cut"][1][condition_count == 2])
-            return l_num_variables + l_which_variables + l_cuts  # TODO I NEED TO ENCODE THE NUMBER OF RULES?
+            if update_cl_model_for_debug:
+                self.cl_model_for_debug = {"l_num_variables": l_num_variables,
+                                           "l_which_variables": l_which_variables,
+                                           "l_cuts": l_cuts}
+            return l_num_variables + l_which_variables + l_cuts
 
     def get_bool_array(self, indices):
         bool_array = np.zeros(self.data_info.nrow, dtype=bool)
@@ -240,5 +246,13 @@ class Rule:
 
         both_total_cl = both_negloglike + both_regret + cl_model  # "Both" is to emphasize that we ignore the rules already added to the ruleset.
 
-        normalized_gain = (self.ruleset.elserule_total_cl - both_total_cl) / coverage  # TODO: get the elserule_total_cl
+        cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
+                                        self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
+
+        # cl_permutations_of_rules_current = math.lgamma(len(self.ruleset.rules) + 1) / np.log(2)   # log factorial
+        # cl_permutations_of_rules_candidate = math.lgamma(len(self.ruleset.rules) + 2) / np.log(2)
+        cl_permutations_of_rules_current, cl_permutations_of_rules_candidate = 0, 0  # Note that in rule list the order of rules does matter!!
+
+        normalized_gain = (self.ruleset.elserule_total_cl - cl_permutations_of_rules_current - both_total_cl -
+                           cl_extra_cost_number_of_rules + cl_permutations_of_rules_candidate) / coverage
         return [normalized_gain, cl_model, both_total_cl]
