@@ -246,8 +246,9 @@ class Rule:
 
         both_total_cl = both_negloglike + both_regret + cl_model  # "Both" is to emphasize that we ignore the rules already added to the ruleset.
 
-        cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
-                                        self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
+        # cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
+        #                                 self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
+        cl_extra_cost_number_of_rules = 0
 
         # cl_permutations_of_rules_current = math.lgamma(len(self.ruleset.rules) + 1) / np.log(2)   # log factorial
         # cl_permutations_of_rules_candidate = math.lgamma(len(self.ruleset.rules) + 2) / np.log(2)
