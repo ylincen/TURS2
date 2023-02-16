@@ -257,6 +257,10 @@ class Rule:
             normalized_gain = (self.ruleset.elserule_total_cl - cl_permutations_of_rules_current - both_total_cl -
                                cl_extra_cost_number_of_rules + cl_permutations_of_rules_candidate) / coverage
         else:
-            normalized_gain = (self.ruleset.elserule_total_cl - both_total_cl) / coverage # Note that in rule list the order of rules does matter!!
+            # TODO: this is wrong! We do need to encode the number of rules..
+            cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
+                                            self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
+            normalized_gain = (self.ruleset.elserule_total_cl - both_total_cl -
+                               cl_extra_cost_number_of_rules) / coverage
 
         return [normalized_gain, cl_model, both_total_cl]
