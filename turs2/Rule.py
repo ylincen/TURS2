@@ -87,8 +87,8 @@ class Rule:
         if num_variables == 0:
             return 0
         else:
-            l_num_variables = self.data_info.cl_model["l_number_of_variables"][num_variables - 1]
-            l_which_variables = self.data_info.cl_model["l_which_variables"][num_variables - 1]
+            l_num_variables = self.data_info.cl_model["l_number_of_variables"][num_variables]
+            l_which_variables = self.data_info.cl_model["l_which_variables"][num_variables]
             l_cuts = np.sum(self.data_info.cl_model["l_cut"][0][condition_count == 1]) + \
                 np.sum(self.data_info.cl_model["l_cut"][1][condition_count == 2])
             if update_cl_model_for_debug:
