@@ -49,5 +49,62 @@ class ModellingGroup:
 
             return negloglike_rule_and_mg + negloglike_NonRule_and_mg
 
+    def evaluate_rule(self, rule, update_rule_index=None):
+        """
+        calculate the negloglikelihood for the rule_and_mg and nonRule_and_mg;
+        update_rule_index: integer, what is the index of the rule in the ruleset that is to be added, equal to the current ruleset length
+        """
+        rule_and_mg_covering_bool = np.bitwise_and(self.bool_cover, rule.bool_array)
+        rule_and_mg_covering_coverage = np.count_nonzero(rule_and_mg_covering_bool)
+        if rule_and_mg_covering_coverage == 0:
+            if update_rule_index is None:
+                return self.negloglike
+            else:
+                return [self.negloglike, None]
+        else:
+            rule_and_mg_modeling_bool = np.bitwise_or(rule.bool_array, self.bool_model)
+            rule_and_mg_modelling_p = calc_probs(self.data_info.target[rule_and_mg_modeling_bool], self.data_info.num_class)
+            rule_and_mg_covering_p = calc_probs(self.data_info.target[rule_and_mg_covering_bool], self.data_info.num_class)
+            rule_and_mg_negloglike = (
+                    -rule_and_mg_covering_coverage *
+                    np.sum(
+                        rule_and_mg_covering_p[rule_and_mg_modelling_p != 0] *
+                        np.log2(rule_and_mg_modelling_p[rule_and_mg_modelling_p != 0])
+                    )
+            )
+
+            nonRule_and_mg_covering_bool = np.bitwise_and(self.bool_cover, ~rule.bool_array)
+            nonRule_and_mg_covering_coverage = np.count_nonzero(nonRule_and_mg_covering_bool)
+            nonRule_and_mg_covering_p = calc_probs(self.data_info.target[nonRule_and_mg_covering_bool], self.data_info.num_class)
+            nonRule_and_mg_negloglike = (
+                    -nonRule_and_mg_covering_coverage *
+                    np.sum(
+                        nonRule_and_mg_covering_p[self.prob_model != 0] *
+                        np.log2(self.prob_model[self.prob_model != 0])
+                    )
+            )
+            if update_rule_index is None:
+                return rule_and_mg_negloglike + nonRule_and_mg_negloglike
+            else:
+                self.bool_cover = nonRule_and_mg_covering_bool
+                # self.bool_model = self.bool_model  # Just to put it here to remind me that this will remain unchanged
+                self.cover_count = np.count_nonzero(self.bool_cover)
+
+                # self.prob_model = self.prob_model  # Again, this remains unchanged
+                self.prob_cover = nonRule_and_mg_covering_p
+                self.negloglike = -self.cover_count * np.sum(
+                    self.prob_cover[self.prob_model != 0] *
+                    np.log2(
+                        self.prob_model[self.prob_model != 0]
+                    )
+                )
+
+                new_mg = ModellingGroup(data_info=self.data_info,
+                                        bool_cover=rule_and_mg_covering_bool,
+                                        bool_use_for_model=rule_and_mg_modeling_bool,
+                                        rules_involved=self.rules_involvde + [update_rule_index],
+                                        prob_model=rule_and_mg_modelling_p,
+                                        prob_cover=rule_and_mg_covering_p)
+                return [rule_and_mg_negloglike + nonRule_and_mg_negloglike, new_mg]
 
 
