@@ -31,6 +31,12 @@ print(auc(pr_curve[1], pr_curve[0]))
 
 print(roc_auc)
 
+covered = (res[0][:, 0] != ruleset.else_rule_p[0])
+roc_auc_score(y_test[covered], res[0][covered, 1])
+
+with open("ruleset.pkl" as "wb"):
+
+
 
 
 
