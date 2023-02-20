@@ -19,7 +19,7 @@ def get_readable_rule(rule):
     return(readable)
 
 
-def get_readable_rules(ruleset):
+def get_readable_rules(ruleset, option="incl"):
     readables = []
     for rule in ruleset.rules:
         readable = ""
@@ -32,12 +32,19 @@ def get_readable_rules(ruleset):
             else:
                 readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + "   &   "
 
-        readable += "Prob Neg/Pos: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
+        if option == "incl":
+            readable += "Prob Neg/Pos: " + str(rule.prob) + ", Coverage: " + str(rule.coverage)
+        else:
+            readable += "Prob Neg/Pos: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
+
         readables.append(readable)
+        print(readable)
 
     readable = "Else-rule, Prob Neg/Pos: " + str(ruleset.else_rule_p) + ", Coverage: " + str(ruleset.else_rule_coverage)
     readables.append(readable)
+    print(readable)
     return readables
+
 
 class Ruleset:
     def __init__(self, data_info):
@@ -258,7 +265,7 @@ class Ruleset:
 
         rule_to_add = rule
 
-        for i in range(self.data_info.max_rule_length):
+        for i in range(self.data_info.max_rule_length - 1):
             current_excl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 1)
 
             for rule in previous_excl_beam.rules:
@@ -275,6 +282,28 @@ class Ruleset:
                 break
 
         return rule_to_add
+
+    def _print(self):
+        readables = []
+        for rule in self.rules:
+            readable = ""
+            which_variables = np.where(rule.condition_count != 0)[0]
+            for i, v in enumerate(which_variables):
+                cut = rule.condition_matrix[:, v][::-1]
+                icol_name = self.data_info.feature_names[v]
+                if i == len(which_variables) - 1:
+                    readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + "   ===>   "
+                else:
+                    readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + "   &   "
+
+            readable += "Prob Neg/Pos: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
+            print(readable)
+            readables.append(readable)
+
+        readable = "Else-rule, Prob Neg/Pos: " + str(self.else_rule_p) + ", Coverage: " + str(
+            self.else_rule_coverage)
+        readables.append(readable)
+        print(readable)
 
 
 

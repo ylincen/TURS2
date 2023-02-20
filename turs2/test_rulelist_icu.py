@@ -32,3 +32,5 @@ print(auc(pr_curve[1], pr_curve[0]))
 print(roc_auc)
 
 
+for i, r in enumerate(ruleset.rules):
+    print(r.prob_excl, res[1][i], r.coverage_excl)

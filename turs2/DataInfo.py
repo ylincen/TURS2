@@ -60,12 +60,12 @@ class DataInfo:
         # get num_class, ncol, nrow,
         self.num_class = len(np.unique(self.target))
 
+        self.num_candidate_cuts = num_candidate_cuts
         # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
-        # self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
+        self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
-        self.num_candidate_cuts = num_candidate_cuts
-        self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
+        # self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
 
         self.cl_model = {}
         self.cache_cl_model()

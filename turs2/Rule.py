@@ -88,6 +88,7 @@ class Rule:
             return 0
         else:
             l_num_variables = self.data_info.cl_model["l_number_of_variables"][num_variables]
+
             l_which_variables = self.data_info.cl_model["l_which_variables"][num_variables]
             l_cuts = np.sum(self.data_info.cl_model["l_cut"][0][condition_count == 1]) + \
                 np.sum(self.data_info.cl_model["l_cut"][1][condition_count == 2])
@@ -292,3 +293,18 @@ class Rule:
                                cl_extra_cost_number_of_rules) / coverage
 
         return [normalized_gain, cl_model, both_total_cl]
+
+    def local_test_prob(self):
+        pass
+
+    def _print(self):
+        feature_names = self.ruleset.data_info.feature_names
+        readable = ""
+        which_variables = np.where(self.condition_count != 0)[0]
+        for v in which_variables:
+            cut = self.condition_matrix[:, v][::-1]
+            icol_name = feature_names[v]
+            readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
+
+        readable += "Prob: " + str(self.prob) + ", Coverage: " + str(self.coverage)
+        return (readable)
