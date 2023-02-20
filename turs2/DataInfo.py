@@ -64,6 +64,7 @@ class DataInfo:
         # self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
+        self.num_candidate_cuts = num_candidate_cuts
         self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
 
         self.cl_model = {}

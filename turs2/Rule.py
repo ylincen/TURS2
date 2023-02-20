@@ -134,10 +134,13 @@ class Rule:
         for icol in range(self.ncol):
             if self.rule_base is None:
                 candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features_excl_overlap[:, icol])) & \
-                                          (candidate_cuts[icol] >= np.min(self.features_excl_overlap[:, icol]))
+                                          (candidate_cuts[icol] > np.min(self.features_excl_overlap[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
             else:
-                candidate_cuts_icol = candidate_cuts[icol]
+                # candidate_cuts_icol = candidate_cuts[icol]
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(self.features[:, icol]))
+                candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
             for i, cut in enumerate(candidate_cuts_icol):
                 excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
                 excl_right_bi_array = ~excl_left_bi_array
@@ -200,6 +203,9 @@ class Rule:
     def calculate_incl_gain(self, incl_bi_array, excl_bi_array, icol, cut_option, cl_model=None):
         excl_coverage, incl_coverage = np.count_nonzero(excl_bi_array), np.count_nonzero(incl_bi_array)
 
+        if excl_coverage == 0:
+            return [-np.Inf, cl_model, -np.Inf]
+
         if cl_model is None:
             cl_model = self.update_cl_model_indep_data(icol, cut_option)
 
@@ -210,13 +216,35 @@ class Rule:
         both_negloglike = np.zeros(len(modelling_groups), dtype=float)  # "both" in the name is to emphasize that this is the overlap of both the rule and a modelling_group
         for i, modeling_group in enumerate(modelling_groups):
             # Note: both_negloglike[i] represents negloglike(modelling_group \setdiff rule) + negloglike(modelling_Group, rule) # noqa
-            both_negloglike[i] = modeling_group.evaluate_rule_approximate(indices=self.indices[incl_bi_array])  # TODO: implement this later in the ModellingGroup class.
+            both_negloglike[i] = modeling_group.evaluate_rule_approximate(indices=self.indices[incl_bi_array],
+                                                                          rule_prob_incl=p_incl)
 
         non_overlapping_negloglike = -excl_coverage * np.sum(p_excl[p_incl != 0] * np.log2(p_incl[p_incl != 0]))
-        total_negloglike = non_overlapping_negloglike + np.sum(both_negloglike)
 
-        # NOTE that for absolute gain: the regret for all rules already in the rule set will cancel out
-        absolute_gain = self.ruleset.total_negloglike - total_negloglike - regret(incl_coverage, self.data_info.num_class) - cl_model # TODO: implement this later
+        new_else_bool = np.zeros(self.data_info.nrow, dtype=bool)
+        new_else_bool[self.ruleset.uncovered_indices] = True
+        new_else_bool[self.indices_excl_overlap[excl_bi_array]] = False
+        new_else_coverage = np.count_nonzero(new_else_bool)
+        new_else_p = calc_probs(self.data_info.target[new_else_bool], self.data_info.num_class)
+
+        else_negloglike = calc_negloglike(p=new_else_p, n=new_else_coverage)
+        new_else_regret = regret(new_else_coverage, self.data_info.num_class)
+
+        total_negloglike = else_negloglike + non_overlapping_negloglike + np.sum(both_negloglike)
+
+        cl_permutations_of_rules_after_adding = math.lgamma(len(self.ruleset.rules) + 2) / np.log(2)
+        cl_model_after_adding = self.ruleset.allrules_cl_model + cl_model - cl_permutations_of_rules_after_adding + \
+            self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1]
+
+        total_cl_after_growing = (
+                total_negloglike +
+                (
+                    new_else_regret + regret(incl_coverage, self.data_info.num_class) + self.ruleset.allrules_regret
+                ) +
+                cl_model_after_adding
+        )
+
+        absolute_gain = self.ruleset.total_cl - total_cl_after_growing
         normalized_gain = absolute_gain / excl_coverage
 
         return [normalized_gain, cl_model, total_negloglike]

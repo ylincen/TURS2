@@ -39,43 +39,6 @@ def get_readable_rules(ruleset):
     readables.append(readable)
     return readables
 
-
-def predict_rulelist(ruleset, X_test, y_test):
-    X_test = X_test.to_numpy()
-    y_test = y_test.to_numpy().flatten()
-    covered = np.zeros(len(X_test), dtype=bool)
-    prob_predicted = np.zeros((len(X_test), ruleset.data_info.num_class), dtype=float)
-
-    rules_test_p = []
-
-    for rule in ruleset.rules:
-        rule_cover = ~covered
-
-        condition_matrix = np.array(rule.condition_matrix)
-        condition_count = np.array(rule.condition_count)
-        which_vars = np.where(condition_count > 0)[0]
-
-        upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-        upper_bound[np.isnan(upper_bound)] = np.Inf
-        lower_bound[np.isnan(lower_bound)] = -np.Inf
-
-        for v in which_vars:
-            rule_cover = rule_cover & (X_test[:, v] < upper_bound[v]) & (X_test[:, v] >= lower_bound[v])
-
-        rule_test_p = calc_probs(y_test[rule_cover], ruleset.data_info.num_class)
-        rules_test_p.append(rule_test_p)
-
-        prob_predicted[rule_cover] = rule.prob_excl
-        covered = np.bitwise_or(covered, rule_cover)
-
-    prob_predicted[~covered] = ruleset.else_rule_p
-    if any(~covered):
-        rules_test_p.append(calc_probs(y_test[~covered], ruleset.data_info.num_class))
-    else:
-        rules_test_p.append([0, 0])
-    return [prob_predicted, rules_test_p]
-
-
 class Ruleset:
     def __init__(self, data_info):
         self.rules = []
@@ -108,7 +71,7 @@ class Ruleset:
     def add_rule(self, rule):
         self.rules.append(rule)
 
-        self.uncovered_bool = np.bitwise_and(self.uncovered_bool, ~rule.bool)
+        self.uncovered_bool = np.bitwise_and(self.uncovered_bool, ~rule.bool_array)
         self.uncovered_indices = np.where(self.uncovered_bool)[0]
 
         self.else_rule_coverage = len(self.uncovered_indices)
@@ -121,11 +84,22 @@ class Ruleset:
         self.allrules_regret += rule.regret
 
         all_mg_neglolglike = []
-        for m in self.modelling_groups:
-            evaluate_res = m.evaluate(rule, update_rule_index=len(self.rules))
-            all_mg_neglolglike.append(evaluate_res[0])
-            if evaluate_res[1] is not None:
-                self.modelling_groups.append(evaluate_res[1])
+        if len(self.modelling_groups) == 0:
+            mg = ModellingGroup(data_info=self.data_info, bool_cover=rule.bool_array,
+                                bool_use_for_model=rule.bool_array,
+                                rules_involved=[0], prob_model=rule.prob,
+                                prob_cover=rule.prob)
+            all_mg_neglolglike.append(mg.negloglike)
+            self.modelling_groups.append(mg)
+        else:
+            num_mgs = len(self.modelling_groups)
+            for jj in range(num_mgs):
+            # for m in self.modelling_groups:
+                m = self.modelling_groups[jj]
+                evaluate_res = m.evaluate_rule(rule, update_rule_index=len(self.rules) - 1)
+                all_mg_neglolglike.append(evaluate_res[0])
+                if evaluate_res[1] is not None:
+                    self.modelling_groups.append(evaluate_res[1])
 
         self.allrules_neglolglike = np.sum(all_mg_neglolglike)
         self.negloglike = np.sum(all_mg_neglolglike) + self.else_rule_negloglike
@@ -143,9 +117,11 @@ class Ruleset:
 
     def fit(self, max_iter=1000):
         for iter in range(max_iter):
+            if iter == 4:
+                print("here")
             print("iteration ", iter)
-            rule_to_add = self.find_next_rule()
-            if rule_to_add.incl_normalized_gain > 0:
+            rule_to_add, incl_normalized_gain = self.find_next_rule()
+            if incl_normalized_gain > 0:
                 self.add_rule(rule_to_add)
             else:
                 break
@@ -175,10 +151,13 @@ class Ruleset:
                 excl_res, incl_res = rule.grow_incl_and_excl()
                 current_incl_beam.update(incl_res,
                                          incl_res.incl_normalized_gain)  # TODO: whether to constrain all excl_grow_res have positive normalized gain?
-                current_excl_beam.update(excl_res,
-                                         excl_res.excl_normalized_gain)
+                if np.array_equal(incl_res.bool_array, excl_res.bool_array):
+                    pass
+                else:
+                    current_excl_beam.update(excl_res,
+                                             excl_res.excl_normalized_gain)
 
-            if len(current_excl_beam.rules) > 0:   # Can change to some other (early) stopping criteria;
+            if len(current_excl_beam.rules) > 0 or len(current_incl_beam.rules) > 0:   # Can change to some other (early) stopping criteria;
                 previous_excl_beam = current_excl_beam
                 previous_incl_beam = current_incl_beam
                 excl_beam_list.append(current_excl_beam)
@@ -194,7 +173,7 @@ class Ruleset:
                 cl_permutations_of_rules_candidate = math.lgamma(len(self.rules) + 2) / np.log(2)  # math.lgamma(k + 1) = np.log(math.factorial(k))
 
                 incl_absolute_gain = self.total_cl - scores["total_negloglike_including_else_rule"] - self.allrules_regret - \
-                                     scores["reg_excluding_all_rules_in_ruleset"] - scores["cl_model_rule"] - self.allrules_cl_model - \
+                                     scores["reg_excluding_all_rules_in_ruleset"] - scores["rule_cl_model"] - self.allrules_cl_model - \
                                      cl_number_of_rules + cl_permutations_of_rules_candidate
                 incl_normalized_gain = incl_absolute_gain / r.coverage_excl
 

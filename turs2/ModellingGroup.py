@@ -16,9 +16,17 @@ class ModellingGroup:
         self.prob_cover = prob_cover
         self.negloglike = -self.cover_count * np.sum(prob_cover[prob_model != 0] * np.log2(prob_model[prob_model != 0]))
 
-    def evaluate_rule_approximate(self, rule):
-        new_bool_cover = np.bitwise_and(rule.bool_array, self.bool_cover)
-        nonRule_cover = np.bitwise_and(~rule.bool_array, self.bool_cover)
+    def evaluate_rule_approximate(self, indices, rule_prob_incl):
+        """
+        Approximately evaluate the neg_log_likelihood when growing the rule.
+        indices: the indices after the growth if we were to grow this rule
+        rule_prob_incl: the probability (including overlap) after the growth if we were to grow this rule.
+        """
+        rule_cover = np.zeros(self.data_info.nrow, dtype=bool)
+        rule_cover[indices] = True
+        new_bool_cover = np.bitwise_and(rule_cover, self.bool_cover)
+
+        nonRule_cover = np.bitwise_and(~rule_cover, self.bool_cover)
 
         new_cover_count = np.count_nonzero(new_bool_cover)
         if new_cover_count == 0:
@@ -27,7 +35,11 @@ class ModellingGroup:
             new_prob_cover = calc_probs(self.data_info.target[new_bool_cover], self.data_info.num_class)
 
             # The probability of the intersection part is approximately evaluated as the weighted average
-            weighted_p = self.use_for_model_count * self.prob_model + rule.prob * rule.coverage
+            weighted_p = (
+                    (
+                            self.use_for_model_count * self.prob_model + rule_prob_incl * len(indices)
+                    ) / (len(indices) + self.use_for_model_count)
+            )
             negloglike_rule_and_mg = (
                     -new_cover_count *
                     np.sum(
@@ -35,6 +47,7 @@ class ModellingGroup:
                     )
             )
 
+            # Now, we calculate for NonRule & self
             nonRule_cover_count = np.count_nonzero(nonRule_cover)
             if nonRule_cover_count > 0:
                 prob_nonRule = calc_probs(self.data_info.target[nonRule_cover], self.data_info.num_class)
@@ -46,6 +59,9 @@ class ModellingGroup:
                 )
             else:
                 negloglike_NonRule_and_mg = 0
+
+            # Finally, we also need to calculate for Rule & NonSelf, but this will be calculated directly in
+            #   Rule.calculate_incl_gain
 
             return negloglike_rule_and_mg + negloglike_NonRule_and_mg
 
