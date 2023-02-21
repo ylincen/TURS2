@@ -63,9 +63,10 @@ class DataInfo:
         self.num_candidate_cuts = num_candidate_cuts
         # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
         # self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
-        self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
+        # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
+        self.candidate_cuts = self.candidate_cuts_quantile_mid_points(num_candidate_cuts)
 
         self.cl_model = {}
         self.cache_cl_model()
@@ -165,6 +166,42 @@ class DataInfo:
                 # to set the bins for each numeric dimension
                 if (num_candidate_cuts[i] > 1) & (len(candidate_cut_this_dimension) > num_candidate_cuts[i]):
                     select_indices = np.linspace(0, len(candidate_cut_this_dimension) - 1, num_candidate_cuts[i] + 1,
+                                                 endpoint=True, dtype=int)
+                    select_indices = select_indices[
+                                     1:(len(select_indices) - 1)]  # remove the start and end point
+                    candidate_cuts[i] = candidate_cut_this_dimension[select_indices]
+                else:
+                    candidate_cuts[i] = candidate_cut_this_dimension
+
+        return candidate_cuts
+
+    def candidate_cuts_quantile_mid_points(self, num_candidate_cuts):
+        candidate_cuts = {}
+        dim_iter_counter = -1
+
+        if num_candidate_cuts is list:
+            pass
+        else:
+            num_candidate_cuts = np.repeat(num_candidate_cuts, self.ncol)
+
+        for i, feature in enumerate(self.features.T):
+            dim_iter_counter += 1
+
+            sort_feature = np.sort(feature + np.random.random(len(feature)) * 0.000001)
+            unique_feature = np.unique(feature)
+            if len(unique_feature) <= 1:
+                candidate_cut_this_dimension = np.array([], dtype=float)
+                candidate_cuts[i] = candidate_cut_this_dimension
+            elif np.array_equal(unique_feature, np.array([0.0, 1.0])):
+                candidate_cuts[i] = np.array([0.5])
+            else:
+                candidate_cut_this_dimension = \
+                    (sort_feature[0:(len(sort_feature) - 1)] + sort_feature[1:len(sort_feature)]) / 2
+
+                num_candidate_cuts_i = np.min([len(unique_feature) - 1, num_candidate_cuts[i]])
+
+                if (num_candidate_cuts[i] > 1) & (len(candidate_cut_this_dimension) > num_candidate_cuts_i):
+                    select_indices = np.linspace(0, len(candidate_cut_this_dimension) - 1, num_candidate_cuts_i + 2,
                                                  endpoint=True, dtype=int)
                     select_indices = select_indices[
                                      1:(len(select_indices) - 1)]  # remove the start and end point
