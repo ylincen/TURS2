@@ -250,33 +250,70 @@ class Rule:
 
         return [normalized_gain, cl_model, total_negloglike]
 
+    # def calculate_excl_gain(self, bi_array, icol, cut_option, cl_model, for_rule_set):
+    #     """
+    #     for_rule_set: Boolean. Whether it is for building a rule list, or it is for the search of a rule set.
+    #     """
+    #     if cl_model is None:
+    #         cl_model = self.update_cl_model_indep_data(icol, cut_option)
+    #
+    #     coverage = np.count_nonzero(bi_array)
+    #
+    #     if coverage == 0:
+    #         return [-np.Inf, cl_model, self.ruleset.elserule_total_cl + cl_model]
+    #
+    #     p = self._calc_probs(self.target_excl_overlap[bi_array])
+    #     negloglike = calc_negloglike(p, coverage)
+    #
+    #     else_bool = np.zeros(self.data_info.nrow, dtype=bool)
+    #     else_bool[self.ruleset.uncovered_indices] = True
+    #     else_bool[self.indices_excl_overlap[bi_array]] = False
+    #     else_coverage = np.count_nonzero(else_bool)
+    #
+    #     else_p = self._calc_probs(self.data_info.target[else_bool])
+    #     else_negloglike = calc_negloglike(else_p, else_coverage)
+    #
+    #     both_negloglike = negloglike + else_negloglike
+    #     both_regret = regret(else_coverage, self.data_info.num_class) + regret(coverage, self.data_info.num_class)
+    #
+    #     both_total_cl = both_negloglike + both_regret + cl_model  # "Both" is to emphasize that we ignore the rules already added to the ruleset.
+    #
+    #     if for_rule_set:
+    #         cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
+    #                                         self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
+    #         cl_permutations_of_rules_current = math.lgamma(len(self.ruleset.rules) + 1) / np.log(2)   # log factorial
+    #         cl_permutations_of_rules_candidate = math.lgamma(len(self.ruleset.rules) + 2) / np.log(2)
+    #         normalized_gain = (self.ruleset.elserule_total_cl - cl_permutations_of_rules_current - both_total_cl -
+    #                            cl_extra_cost_number_of_rules + cl_permutations_of_rules_candidate) / coverage
+    #     else:
+    #         cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
+    #                                         self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
+    #         cl_extra_cost_random_design = np.log2(self.ruleset.else_rule_coverage)
+    #         normalized_gain = (self.ruleset.elserule_total_cl - both_total_cl -
+    #                            cl_extra_cost_number_of_rules - cl_extra_cost_random_design) / coverage
+    #
+    #     return [normalized_gain, cl_model, both_total_cl]
+
     def calculate_excl_gain(self, bi_array, icol, cut_option, cl_model, for_rule_set):
-        """
-        for_rule_set: Boolean. Whether it is for building a rule list, or it is for the search of a rule set.
-        """
         if cl_model is None:
-            cl_model = self.update_cl_model_indep_data(icol, cut_option)
+                cl_model = self.update_cl_model_indep_data(icol, cut_option)
 
         coverage = np.count_nonzero(bi_array)
 
         if coverage == 0:
             return [-np.Inf, cl_model, self.ruleset.elserule_total_cl + cl_model]
 
-        p = self._calc_probs(self.target_excl_overlap[bi_array])
-        negloglike = calc_negloglike(p, coverage)
+        negloglike = calc_prequential(self.target_excl_overlap[bi_array], self.data_info.num_class)
 
         else_bool = np.zeros(self.data_info.nrow, dtype=bool)
         else_bool[self.ruleset.uncovered_indices] = True
         else_bool[self.indices_excl_overlap[bi_array]] = False
-        else_coverage = np.count_nonzero(else_bool)
 
-        else_p = self._calc_probs(self.data_info.target[else_bool])
-        else_negloglike = calc_negloglike(else_p, else_coverage)
+        else_negloglike = calc_prequential(self.data_info.target[else_bool], self.data_info.num_class)
 
         both_negloglike = negloglike + else_negloglike
-        both_regret = regret(else_coverage, self.data_info.num_class) + regret(coverage, self.data_info.num_class)
 
-        both_total_cl = both_negloglike + both_regret + cl_model  # "Both" is to emphasize that we ignore the rules already added to the ruleset.
+        both_total_cl = both_negloglike + cl_model
 
         if for_rule_set:
             cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
@@ -286,7 +323,6 @@ class Rule:
             normalized_gain = (self.ruleset.elserule_total_cl - cl_permutations_of_rules_current - both_total_cl -
                                cl_extra_cost_number_of_rules + cl_permutations_of_rules_candidate) / coverage
         else:
-            # TODO: this is wrong! We do need to encode the number of rules..
             cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
                                             self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
             normalized_gain = (self.ruleset.elserule_total_cl - both_total_cl -
@@ -307,4 +343,4 @@ class Rule:
             readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
 
         readable += "Prob: " + str(self.prob) + ", Coverage: " + str(self.coverage)
-        return (readable)
+        return readable
