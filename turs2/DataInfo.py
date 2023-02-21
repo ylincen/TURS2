@@ -62,8 +62,8 @@ class DataInfo:
 
         self.num_candidate_cuts = num_candidate_cuts
         # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
-        self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
-        # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
+        # self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
+        self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
 
@@ -74,14 +74,17 @@ class DataInfo:
         self.beam_width = beam_width
 
     def cache_cl_model(self):
-        l_number_of_variables = [universal_code_integers_maximum(n=i, maximum=self.ncol) for i in range(self.max_rule_length)]
+        # l_number_of_variables = [universal_code_integers_maximum(n=i, maximum=self.ncol) for i in range(self.max_rule_length)]
+        l_number_of_variables = [universal_code_integers(i) for i in range(self.max_rule_length)]
         l_which_variables = log2comb(self.ncol, np.arange(self.max_rule_length))
 
         candidate_cuts_length = np.array([len(candi) for candi in self.candidate_cuts.values()], dtype=float)
+        only_one_candi_selector = (candidate_cuts_length == 1)
+
         l_one_cut = np.log2(candidate_cuts_length) + 1 + 1  # 1 bit for LEFT/RIGHT, and 1 bit for one/two cuts
+        l_one_cut[only_one_candi_selector] = l_one_cut[only_one_candi_selector] - 1
 
         l_two_cut = np.zeros(len(candidate_cuts_length))
-        only_one_candi_selector = (candidate_cuts_length == 1)
         l_two_cut[only_one_candi_selector] = np.nan
         l_two_cut[~only_one_candi_selector] = np.log2(candidate_cuts_length[~only_one_candi_selector]) + \
                                               np.log2(candidate_cuts_length[~only_one_candi_selector] - 1) - np.log2(2) \
