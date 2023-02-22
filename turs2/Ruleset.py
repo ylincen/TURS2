@@ -3,7 +3,7 @@ import numpy as np
 from turs2.Rule import *
 from turs2.Beam import *
 from turs2.ModellingGroup import *
-from DataInfo import *
+from turs2.DataInfo import *
 
 
 def get_readable_rule(rule):
@@ -43,7 +43,7 @@ def get_readable_rules(ruleset, option="incl"):
     readable = "Else-rule, Prob Neg/Pos: " + str(ruleset.else_rule_p) + ", Coverage: " + str(ruleset.else_rule_coverage)
     readables.append(readable)
     print(readable)
-    return readables
+    # return readables
 
 
 class Ruleset:
@@ -75,8 +75,12 @@ class Ruleset:
         self.uncovered_indices = np.arange(data_info.nrow)
         self.uncovered_bool = np.ones(self.data_info.nrow, dtype=bool)
 
+        self.cl_cost_random_design = 0
+
     def add_rule(self, rule):
         self.rules.append(rule)
+        self.cl_cost_random_design += np.log2(self.else_rule_coverage)
+        ruleset_old_uncovered_bool = np.array(self.uncovered_bool)
 
         self.uncovered_bool = np.bitwise_and(self.uncovered_bool, ~rule.bool_array)
         self.uncovered_indices = np.where(self.uncovered_bool)[0]
@@ -90,6 +94,7 @@ class Ruleset:
         self.allrules_cl_model += rule.cl_model
         self.allrules_regret += rule.regret
 
+
         all_mg_neglolglike = []
         if len(self.modelling_groups) == 0:
             mg = ModellingGroup(data_info=self.data_info, bool_cover=rule.bool_array,
@@ -101,19 +106,25 @@ class Ruleset:
         else:
             num_mgs = len(self.modelling_groups)
             for jj in range(num_mgs):
-            # for m in self.modelling_groups:
                 m = self.modelling_groups[jj]
                 evaluate_res = m.evaluate_rule(rule, update_rule_index=len(self.rules) - 1)
                 all_mg_neglolglike.append(evaluate_res[0])
                 if evaluate_res[1] is not None:
                     self.modelling_groups.append(evaluate_res[1])
 
+            mg = ModellingGroup(data_info=self.data_info, bool_cover=np.bitwise_and(rule.bool_array, ruleset_old_uncovered_bool),
+                                bool_use_for_model=rule.bool_array,
+                                rules_involved=[len(self.rules) - 1], prob_model=rule.prob,
+                                prob_cover=rule.prob_excl)
+            all_mg_neglolglike.append(mg.negloglike)
+            self.modelling_groups.append(mg)
+
         self.allrules_neglolglike = np.sum(all_mg_neglolglike)
         self.negloglike = np.sum(all_mg_neglolglike) + self.else_rule_negloglike
 
         self.regret = self.allrules_regret + self.else_rule_regret
 
-        self.cl_model = self.allrules_cl_model + universal_code_integers(len(self.rules)) - math.lgamma(len(self.rules) + 1) / np.log(2)  # TODO: change universal_code_integers to cached code length
+        self.cl_model = self.allrules_cl_model + universal_code_integers(len(self.rules)) - math.lgamma(len(self.rules) + 1) / np.log(2) + self.cl_cost_random_design
 
         self.total_cl = self.negloglike + self.regret + self.cl_model
 
@@ -124,10 +135,12 @@ class Ruleset:
 
     def fit(self, max_iter=1000):
         for iter in range(max_iter):
-            if iter == 4:
+            if iter == 9:
                 print("here")
             print("iteration ", iter)
             rule_to_add, incl_normalized_gain = self.find_next_rule()
+            print(rule_to_add._print())
+            print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
             if incl_normalized_gain > 0:
                 self.add_rule(rule_to_add)
             else:
@@ -172,6 +185,7 @@ class Ruleset:
             else:
                 break
 
+        best_incl_normalized_gain = -np.inf
         for incl_beam in incl_beam_list:
             for r in incl_beam.rules:
                 scores = self.evaluate_rule(r)
@@ -179,15 +193,18 @@ class Ruleset:
                 cl_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.rules) + 1]
                 cl_permutations_of_rules_candidate = math.lgamma(len(self.rules) + 2) / np.log(2)  # math.lgamma(k + 1) = np.log(math.factorial(k))
 
+                cl_extra_cost_random_design = np.log2(self.else_rule_coverage) + self.cl_cost_random_design
+
                 incl_absolute_gain = self.total_cl - scores["total_negloglike_including_else_rule"] - self.allrules_regret - \
                                      scores["reg_excluding_all_rules_in_ruleset"] - scores["rule_cl_model"] - self.allrules_cl_model - \
-                                     cl_number_of_rules + cl_permutations_of_rules_candidate
+                                     cl_number_of_rules + cl_permutations_of_rules_candidate - cl_extra_cost_random_design
                 incl_normalized_gain = incl_absolute_gain / r.coverage_excl
 
-                if incl_normalized_gain > rule_to_add.incl_normalized_gain:
+                if incl_normalized_gain > best_incl_normalized_gain:
                     rule_to_add = r
+                    best_incl_normalized_gain = incl_normalized_gain
 
-        return [rule_to_add, incl_normalized_gain]
+        return [rule_to_add, best_incl_normalized_gain]
 
     def evaluate_rule(self, rule):
         scores_all_mgs = []
@@ -199,7 +216,8 @@ class Ruleset:
         coverage_rule_and_else = np.count_nonzero(rule_and_else_bool)
         p_rule_and_else = calc_probs(self.data_info.target[rule_and_else_bool], self.data_info.num_class)
         negloglike_rule_and_else = -coverage_rule_and_else * np.sum(p_rule_and_else * np.log2(rule.prob))  # using the rule's probability
-        reg_rule_and_else = regret(coverage_rule_and_else, self.data_info.num_class)
+        # reg_rule_and_else = regret(coverage_rule_and_else, self.data_info.num_class)
+        reg_rule_and_else = rule.regret
 
         else_new_bool = np.bitwise_and(~rule.bool_array, self.uncovered_bool)
         coverage_else_new = np.count_nonzero(else_new_bool)

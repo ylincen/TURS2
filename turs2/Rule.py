@@ -138,11 +138,12 @@ class Rule:
                                           (candidate_cuts[icol] > np.min(self.features_excl_overlap[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
             else:
-                # candidate_cuts_icol = candidate_cuts[icol]
                 candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features[:, icol])) & \
                                           (candidate_cuts[icol] > np.min(self.features[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
             for i, cut in enumerate(candidate_cuts_icol):
+                # if icol == 1 and abs(cut - 0.10649775) < 0.01:
+                #     print("here")
                 excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
                 excl_right_bi_array = ~excl_left_bi_array
 
@@ -237,12 +238,14 @@ class Rule:
         cl_model_after_adding = self.ruleset.allrules_cl_model + cl_model - cl_permutations_of_rules_after_adding + \
             self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1]
 
+        cl_extra_cost_random_design = np.log2(self.ruleset.else_rule_coverage)
+
         total_cl_after_growing = (
                 total_negloglike +
                 (
                     new_else_regret + regret(incl_coverage, self.data_info.num_class) + self.ruleset.allrules_regret
                 ) +
-                cl_model_after_adding
+                cl_model_after_adding + (cl_extra_cost_random_design + self.ruleset.cl_cost_random_design)
         )
 
         absolute_gain = self.ruleset.total_cl - total_cl_after_growing
@@ -283,8 +286,10 @@ class Rule:
                                             self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
             cl_permutations_of_rules_current = math.lgamma(len(self.ruleset.rules) + 1) / np.log(2)   # log factorial
             cl_permutations_of_rules_candidate = math.lgamma(len(self.ruleset.rules) + 2) / np.log(2)
+            cl_extra_cost_random_design = np.log2(self.ruleset.else_rule_coverage)
+
             normalized_gain = (self.ruleset.elserule_total_cl - cl_permutations_of_rules_current - both_total_cl -
-                               cl_extra_cost_number_of_rules + cl_permutations_of_rules_candidate) / coverage
+                               cl_extra_cost_number_of_rules + cl_permutations_of_rules_candidate - cl_extra_cost_random_design) / coverage
         else:
             cl_extra_cost_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules) + 1] - \
                                             self.data_info.cl_model["l_number_of_rules"][len(self.ruleset.rules)]
