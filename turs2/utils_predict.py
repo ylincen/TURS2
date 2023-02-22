@@ -56,8 +56,12 @@ def predict_ruleset(ruleset, X_test, y_test):
 
 
 def predict_rulelist(ruleset, X_test, y_test):
-    X_test = X_test.to_numpy()
-    y_test = y_test.to_numpy().flatten()
+    if type(X_test) != np.ndarray:
+        X_test = X_test.to_numpy()
+
+    if type(y_test) != np.ndarray:
+        y_test = y_test.to_numpy().flatten()
+
     covered = np.zeros(len(X_test), dtype=bool)
     prob_predicted = np.zeros((len(X_test), ruleset.data_info.num_class), dtype=float)
 

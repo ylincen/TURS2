@@ -29,9 +29,9 @@ def get_readable_rules(ruleset, option="incl"):
             cut = rule.condition_matrix[:, v][::-1]
             icol_name = ruleset.data_info.feature_names[v]
             if i == len(which_variables) - 1:
-                readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + "   ===>   "
+                readable += "X" + str(v) + "-" + str(icol_name) + " in " + str(cut) + "   ===>   "
             else:
-                readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + "   &   "
+                readable += "X" + str(v) + "-" + str(icol_name) + " in " + str(cut) + "   &   "
 
         if option == "incl":
             readable += "Prob Neg/Pos: " + str(rule.prob) + ", Coverage: " + str(rule.coverage)
@@ -183,6 +183,8 @@ class Ruleset:
 
             for rule in previous_incl_beam.rules + previous_excl_beam.rules:
                 excl_res, incl_res = rule.grow_incl_and_excl()
+                if excl_res is None or incl_res is None:  # NOTE: will only return none when all data points have the same feature values in all dimensions
+                    continue
                 current_incl_beam.update(incl_res,
                                          incl_res.incl_normalized_gain)  # TODO: whether to constrain all excl_grow_res have positive normalized gain?
                 if np.array_equal(incl_res.bool_array, excl_res.bool_array):
@@ -278,7 +280,7 @@ class Ruleset:
 
     def fit_rulelist(self, max_iter=1000):
         for iter in range(max_iter):
-            print("iteration ", iter)
+            # print("iteration ", iter)
             rule_to_add = self.find_next_rule_inrulelist()
             if rule_to_add.excl_normalized_gain > 0:
                 self.add_rule_in_rulelist(rule_to_add)
