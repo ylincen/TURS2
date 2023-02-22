@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 
 from turs2.Rule import *
 from turs2.Beam import *
@@ -135,14 +136,26 @@ class Ruleset:
 
     def fit(self, max_iter=1000):
         for iter in range(max_iter):
-            if iter == 9:
-                print("here")
             print("iteration ", iter)
             rule_to_add, incl_normalized_gain = self.find_next_rule()
             print(rule_to_add._print())
             print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
             if incl_normalized_gain > 0:
                 self.add_rule(rule_to_add)
+            else:
+                break
+
+    def fit_for_tuning_cl(self, file_name, number_of_rules, max_iter=1000):
+        for iter in range(max_iter):
+            print("iteration ", iter)
+            rule_to_add, incl_normalized_gain = self.find_next_rule()
+            print(rule_to_add._print())
+            print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
+            if incl_normalized_gain > 0 or len(self.rules) < number_of_rules:
+                self.add_rule(rule_to_add)
+                with open(file_name + str(iter) + '.pickle', 'wb') as file:
+                    # Dump the Python object into the file
+                    pickle.dump(self, file)
             else:
                 break
 
@@ -158,7 +171,6 @@ class Ruleset:
         incl_beam_list = []
 
         # TODO: store the cover of the rules as a bit string (like CLASSY's implementation) and then do diverse search.
-
         # now we start the real search
         previous_excl_beam = excl_beam_list[0]
         previous_incl_beam = Beam(width=self.data_info.beam_width, rule_length=0)
