@@ -3,8 +3,11 @@ from turs2.utils_calculating_cl import *
 
 
 def predict_ruleset(ruleset, X_test, y_test):
-    X_test = X_test.to_numpy()
-    y_test = y_test.to_numpy().flatten()
+    if type(X_test) != np.ndarray:
+        X_test = X_test.to_numpy()
+
+    if type(y_test) != np.ndarray:
+        y_test = y_test.to_numpy().flatten()
     prob_predicted = np.zeros((len(X_test), ruleset.data_info.num_class), dtype=float)
     rules_test_p = []
     covered_all_rules = np.zeros(len(X_test), dtype=bool)  # for calculating the else_rule's cover

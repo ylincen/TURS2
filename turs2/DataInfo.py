@@ -49,9 +49,15 @@ class DataInfo:
         features: feature matrix in numpy nd array
         target: target variable in numpy 1d array
         """
+        if type(X) != np.ndarray:
+            self.features = X.to_numpy()
+        else:
+            self.features = X
 
-        self.features = X.to_numpy()
-        self.target = y.to_numpy().flatten()
+        if type(y) != np.ndarray:
+            self.target = y.to_numpy().flatten()
+        else:
+            self.target = y
 
         self.max_rule_length = max_rule_length
         self.nrow, self.ncol = X.shape[0], X.shape[1]
