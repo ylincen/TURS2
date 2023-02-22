@@ -345,7 +345,7 @@ class Rule:
         for v in which_variables:
             cut = self.condition_matrix[:, v][::-1]
             icol_name = feature_names[v]
-            readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
+            readable += "X" + str(v) + "-" + str(icol_name) + " in " + str(cut) + ";   "
 
         readable += "Prob: " + str(self.prob) + ", Coverage: " + str(self.coverage)
         return readable
