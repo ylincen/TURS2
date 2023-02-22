@@ -134,12 +134,14 @@ class Ruleset:
             self.data_info.cl_model["l_number_of_rules"] = \
                 [universal_code_integers(i) for i in range(self.data_info.cached_number_of_rules_for_cl_model)]
 
-    def fit(self, max_iter=1000):
+    def fit(self, max_iter=1000, printing=True):
         for iter in range(max_iter):
-            print("iteration ", iter)
+            if printing:
+                print("iteration ", iter)
             rule_to_add, incl_normalized_gain = self.find_next_rule()
-            print(rule_to_add._print())
-            print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
+            if printing:
+                print(rule_to_add._print())
+                print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
             if incl_normalized_gain > 0:
                 self.add_rule(rule_to_add)
             else:
@@ -227,7 +229,7 @@ class Ruleset:
         rule_and_else_bool = np.bitwise_and(rule.bool_array, self.uncovered_bool)
         coverage_rule_and_else = np.count_nonzero(rule_and_else_bool)
         p_rule_and_else = calc_probs(self.data_info.target[rule_and_else_bool], self.data_info.num_class)
-        negloglike_rule_and_else = -coverage_rule_and_else * np.sum(p_rule_and_else * np.log2(rule.prob))  # using the rule's probability
+        negloglike_rule_and_else = -coverage_rule_and_else * np.sum(p_rule_and_else[rule.prob!=0] * np.log2(rule.prob[rule.prob!=0]))  # using the rule's probability
         # reg_rule_and_else = regret(coverage_rule_and_else, self.data_info.num_class)
         reg_rule_and_else = rule.regret
 
