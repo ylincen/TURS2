@@ -16,7 +16,7 @@ class ModellingGroup:
         self.prob_cover = prob_cover
         self.negloglike = -self.cover_count * np.sum(prob_cover[prob_model != 0] * np.log2(prob_model[prob_model != 0]))
 
-    def evaluate_rule_approximate(self, indices, rule_prob_incl):
+    def evaluate_rule_approximate(self, indices):
         """
         Approximately evaluate the neg_log_likelihood when growing the rule.
         indices: the indices after the growth if we were to grow this rule
@@ -35,11 +35,12 @@ class ModellingGroup:
             new_prob_cover = calc_probs(self.data_info.target[new_bool_cover], self.data_info.num_class)
 
             # The probability of the intersection part is approximately evaluated as the weighted average
-            weighted_p = (
-                    (
-                            self.use_for_model_count * self.prob_model + rule_prob_incl * len(indices)
-                    ) / (len(indices) + self.use_for_model_count)
-            )
+            # weighted_p = (
+            #         (
+            #                 self.use_for_model_count * self.prob_model + rule_prob_incl * len(indices)
+            #         ) / (len(indices) + self.use_for_model_count)
+            # )
+            weighted_p = calc_probs(self.data_info.target[np.bitwise_or(rule_cover, self.bool_model)], self.data_info.num_class)
             negloglike_rule_and_mg = (
                     -new_cover_count *
                     np.sum(

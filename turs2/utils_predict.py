@@ -52,7 +52,7 @@ def predict_ruleset(ruleset, X_test, y_test):
         rules_test_p.append(calc_probs(y_test[~covered_all_rules], ruleset.data_info.num_class))
     else:
         rules_test_p.append([0, 0])
-    return [prob_predicted, rules_test_p]
+    return [prob_predicted, rules_test_p, ~covered_all_rules]
 
 
 def predict_rulelist(ruleset, X_test, y_test):

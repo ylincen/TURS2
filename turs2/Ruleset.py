@@ -5,97 +5,53 @@ from turs2.Rule import *
 from turs2.Beam import *
 from turs2.ModellingGroup import *
 from turs2.DataInfo import *
-
-
-def get_readable_rule(rule):
-    feature_names = rule.ruleset.data_info.feature_names
-    readable = ""
-    which_variables = np.where(rule.condition_count != 0)[0]
-    for v in which_variables:
-        cut = rule.condition_matrix[:, v][::-1]
-        icol_name = feature_names[v]
-        readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
-
-    readable += "Prob: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
-    return(readable)
-
-
-def get_readable_rules(ruleset, option="incl"):
-    readables = []
-    for rule in ruleset.rules:
-        readable = ""
-        which_variables = np.where(rule.condition_count != 0)[0]
-        for i, v in enumerate(which_variables):
-            cut = rule.condition_matrix[:, v][::-1]
-            icol_name = ruleset.data_info.feature_names[v]
-            if i == len(which_variables) - 1:
-                readable += "X" + str(v) + "-" + str(icol_name) + " in " + str(cut) + "   ===>   "
-            else:
-                readable += "X" + str(v) + "-" + str(icol_name) + " in " + str(cut) + "   &   "
-
-        if option == "incl":
-            readable += "Prob Neg/Pos: " + str(rule.prob) + ", Coverage: " + str(rule.coverage)
-        else:
-            readable += "Prob Neg/Pos: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
-
-        readables.append(readable)
-        print(readable)
-
-    readable = "Else-rule, Prob Neg/Pos: " + str(ruleset.else_rule_p) + ", Coverage: " + str(ruleset.else_rule_coverage)
-    readables.append(readable)
-    print(readable)
-    # return readables
+from turs2.utils_readable import *
 
 
 class Ruleset:
-    def __init__(self, data_info):
-        self.rules = []
-
-        self.default_p = calc_probs(target=data_info.target, num_class=data_info.num_class)
-
-        self.negloglike = -np.sum(data_info.nrow * np.log2(self.default_p[self.default_p != 0]) * self.default_p[self.default_p != 0])
-        self.regret = regret(data_info.nrow, data_info.num_class)
-        self.cl_model = 0
-        self.total_cl = self.cl_model + self.negloglike + self.regret  # total cl with 0 rules
-
+    def __init__(self, data_info, data_encoding, model_encoding):
         self.data_info = data_info
-        self.modelling_groups = []
+        self.model_encoding = model_encoding
+        self.data_encoding = data_encoding
 
-        self.allrules_neglolglike = 0  # keep track of negloglike for all rules (and their overlaps, through all modelling groups)
-        self.allrules_regret = 0  # keep track of all rules regret
-
-        self.cl_model = 0  # cl model for the whole rule set (including the number of rules)
-        self.allrules_cl_model = 0  # cl model for all rules, summed up
-
-        self.else_rule_p = self.default_p  # for now, else rule is everything
-        self.else_rule_negloglike = self.negloglike
-        self.else_rule_regret = self.regret
-        self.else_rule_coverage = self.data_info.nrow
-        self.elserule_total_cl = self.else_rule_regret + self.else_rule_negloglike
+        self.rules = []
 
         self.uncovered_indices = np.arange(data_info.nrow)
         self.uncovered_bool = np.ones(self.data_info.nrow, dtype=bool)
+        self.else_rule_p = calc_probs(target=data_info.target, num_class=data_info.num_class)
+        self.else_rule_coverage = self.data_info.nrow
+        self.elserule_total_cl = self.data_encoding.get_cl_data_elserule(ruleset=self)
 
-        self.cl_cost_random_design = 0
+        self.negloglike = -np.sum(data_info.nrow * np.log2(self.else_rule_p[self.else_rule_p != 0]) * self.else_rule_p[self.else_rule_p != 0])
+        self.else_rule_negloglike = self.negloglike
+
+        self.cl_data = self.elserule_total_cl
+        self.cl_model = 0  # cl model for the whole rule set (including the number of rules)
+        self.allrules_cl_model = 0  # cl model for all rules, summed up
+        self.total_cl = self.cl_model + self.cl_data  # total cl with 0 rules
+
+        self.modelling_groups = []
+
+        self.allrules_cl_data = 0
 
     def add_rule(self, rule):
         self.rules.append(rule)
-        self.cl_cost_random_design += np.log2(self.else_rule_coverage)
-        ruleset_old_uncovered_bool = np.array(self.uncovered_bool)
+        self.cl_data, self.allrules_cl_data = \
+            self.data_encoding.update_ruleset_and_get_cl_data_ruleset_after_adding_rule(ruleset=self, rule=rule)
+        self.cl_model = \
+            self.model_encoding.cl_model_after_growing_rule_on_icol(rule=None, ruleset=self, icol=None, cut_option=None)
 
+        self.total_cl = self.cl_data + self.cl_model
+        self.allrules_cl_model += rule.cl_model
+
+    def update_else_rule(self, rule):
         self.uncovered_bool = np.bitwise_and(self.uncovered_bool, ~rule.bool_array)
         self.uncovered_indices = np.where(self.uncovered_bool)[0]
-
         self.else_rule_coverage = len(self.uncovered_indices)
         self.else_rule_p = calc_probs(self.data_info.target[self.uncovered_indices], self.data_info.num_class)
         self.else_rule_negloglike = calc_negloglike(self.else_rule_p, self.else_rule_coverage)
-        self.else_rule_regret = regret(self.else_rule_coverage, self.data_info.num_class)
-        self.elserule_total_cl = self.else_rule_regret + self.else_rule_negloglike
 
-        self.allrules_cl_model += rule.cl_model
-        self.allrules_regret += rule.regret
-
-
+    def get_negloglike_all_modelling_groups(self, rule):
         all_mg_neglolglike = []
         if len(self.modelling_groups) == 0:
             mg = ModellingGroup(data_info=self.data_info, bool_cover=rule.bool_array,
@@ -113,53 +69,42 @@ class Ruleset:
                 if evaluate_res[1] is not None:
                     self.modelling_groups.append(evaluate_res[1])
 
-            mg = ModellingGroup(data_info=self.data_info, bool_cover=np.bitwise_and(rule.bool_array, ruleset_old_uncovered_bool),
+            mg = ModellingGroup(data_info=self.data_info,
+                                bool_cover=np.bitwise_and(rule.bool_array, self.uncovered_bool),
                                 bool_use_for_model=rule.bool_array,
                                 rules_involved=[len(self.rules) - 1], prob_model=rule.prob,
                                 prob_cover=rule.prob_excl)
             all_mg_neglolglike.append(mg.negloglike)
             self.modelling_groups.append(mg)
-
-        self.allrules_neglolglike = np.sum(all_mg_neglolglike)
-        self.negloglike = np.sum(all_mg_neglolglike) + self.else_rule_negloglike
-
-        self.regret = self.allrules_regret + self.else_rule_regret
-
-        self.cl_model = self.allrules_cl_model + universal_code_integers(len(self.rules)) - math.lgamma(len(self.rules) + 1) / np.log(2) + self.cl_cost_random_design
-
-        self.total_cl = self.negloglike + self.regret + self.cl_model
-
-        if len(self.rules) > self.data_info.cached_number_of_rules_for_cl_model - 5:  # I am not sure whether to put 1 or 2 here, so for the safe side, just do 5;
-            self.data_info.cached_number_of_rules_for_cl_model = 2 * self.data_info.cached_number_of_rules_for_cl_model
-            self.data_info.cl_model["l_number_of_rules"] = \
-                [universal_code_integers(i) for i in range(self.data_info.cached_number_of_rules_for_cl_model)]
+        return np.sum(all_mg_neglolglike)
 
     def fit(self, max_iter=1000, printing=True):
         for iter in range(max_iter):
             if printing:
                 print("iteration ", iter)
             rule_to_add, incl_normalized_gain = self.find_next_rule()
-            if printing:
-                print(rule_to_add._print())
-                print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
+
             if incl_normalized_gain > 0:
+                if printing:
+                    print(rule_to_add._print())
+                    print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
                 self.add_rule(rule_to_add)
             else:
                 break
 
-    def fit_for_tuning_cl(self, file_name, number_of_rules, max_iter=1000):
-        for iter in range(max_iter):
-            print("iteration ", iter)
-            rule_to_add, incl_normalized_gain = self.find_next_rule()
-            print(rule_to_add._print())
-            print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
-            if incl_normalized_gain > 0 or len(self.rules) < number_of_rules:
-                self.add_rule(rule_to_add)
-                with open(file_name + str(iter) + '.pickle', 'wb') as file:
-                    # Dump the Python object into the file
-                    pickle.dump(self, file)
-            else:
-                break
+    # def fit_for_tuning_cl(self, file_name, number_of_rules, max_iter=1000):
+    #     for iter in range(max_iter):
+    #         print("iteration ", iter)
+    #         rule_to_add, incl_normalized_gain = self.find_next_rule()
+    #         print(rule_to_add._print())
+    #         print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
+    #         if incl_normalized_gain > 0 or len(self.rules) < number_of_rules:
+    #             self.add_rule(rule_to_add)
+    #             with open(file_name + str(iter) + '.pickle', 'wb') as file:
+    #                 # Dump the Python object into the file
+    #                 pickle.dump(self, file)
+    #         else:
+    #             break
 
     def find_next_rule(self):
         rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
@@ -204,17 +149,18 @@ class Ruleset:
         best_incl_normalized_gain = -np.inf
         for incl_beam in incl_beam_list:
             for r in incl_beam.rules:
-                scores = self.evaluate_rule(r)
-
-                cl_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.rules) + 1]
-                cl_permutations_of_rules_candidate = math.lgamma(len(self.rules) + 2) / np.log(2)  # math.lgamma(k + 1) = np.log(math.factorial(k))
-
-                cl_extra_cost_random_design = np.log2(self.else_rule_coverage) + self.cl_cost_random_design
-
-                incl_absolute_gain = self.total_cl - scores["total_negloglike_including_else_rule"] - self.allrules_regret - \
-                                     scores["reg_excluding_all_rules_in_ruleset"] - scores["rule_cl_model"] - self.allrules_cl_model - \
-                                     cl_number_of_rules + cl_permutations_of_rules_candidate - cl_extra_cost_random_design
-                incl_normalized_gain = incl_absolute_gain / r.coverage_excl
+                # scores = self.evaluate_rule(r)
+                #
+                # cl_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.rules) + 1]
+                # cl_permutations_of_rules_candidate = math.lgamma(len(self.rules) + 2) / np.log(2)  # math.lgamma(k + 1) = np.log(math.factorial(k))
+                #
+                # cl_extra_cost_random_design = np.log2(self.else_rule_coverage) + self.cl_cost_random_design
+                #
+                # incl_absolute_gain = self.total_cl - scores["total_negloglike_including_else_rule"] - self.allrules_regret - \
+                #                      scores["reg_excluding_all_rules_in_ruleset"] - scores["rule_cl_model"] - self.allrules_cl_model - \
+                #                      cl_number_of_rules + cl_permutations_of_rules_candidate - cl_extra_cost_random_design
+                # incl_normalized_gain = incl_absolute_gain / r.coverage_excl
+                incl_normalized_gain = r.incl_normalized_gain
 
                 if incl_normalized_gain > best_incl_normalized_gain:
                     rule_to_add = r

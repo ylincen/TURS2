@@ -36,3 +36,7 @@ def calc_prequential(target, num_class, num_rep=1, init_points=None):
             negloglike += negloglike_i
 
     return negloglike / num_rep
+
+
+def calc_negloglike(p, n):
+    return -n * np.sum(np.log2(p[p !=0 ]) * p[p != 0])
