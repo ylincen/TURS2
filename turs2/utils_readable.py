@@ -8,33 +8,26 @@ def get_readable_rule(rule):
     for v in which_variables:
         cut = rule.condition_matrix[:, v][::-1]
         icol_name = feature_names[v]
-        readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
+        # readable += "X" + str(v) + "-" + icol_name + " in " + str(cut) + ";   "
+        if np.isnan(cut[0]):
+            cut_condition = "(X" + str(v) + ") " + icol_name + " < " + str(cut[1]) + ";   "
+        elif np.isnan(cut[1]):
+            cut_condition = "(X" + str(v) + ") " + icol_name + " >= " + str(cut[0]) + ";   "
+        else:
+            cut_condition = str(cut[0]) + " <=    " + "(X" + str(v) + ") " + icol_name + " < " + str(cut[1]) + ";   "
+        readable += cut_condition
+    readable = "If  " + readable
 
-    readable += "Prob: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
+    readable += "\nProbability of READMISSION or NOT (in order): " + str(rule.prob_excl) + "\nNumber of patients who satisfy this rule: " + str(rule.coverage_excl) + "\n"
     return(readable)
 
 
-def get_readable_rules(ruleset, option="incl"):
+def get_readable_rules(ruleset):
     readables = []
     for rule in ruleset.rules:
-        readable = ""
-        which_variables = np.where(rule.condition_count != 0)[0]
-        for i, v in enumerate(which_variables):
-            cut = rule.condition_matrix[:, v][::-1]
-            icol_name = ruleset.data_info.feature_names[v]
-            if i == len(which_variables) - 1:
-                readable += "X" + str(v) + "-" + str(icol_name) + " in " + str(cut) + "   ===>   "
-            else:
-                readable += "X" + str(v) + "-" + str(icol_name) + " in " + str(cut) + "   &   "
-
-        if option == "incl":
-            readable += "Prob Neg/Pos: " + str(rule.prob) + ", Coverage: " + str(rule.coverage)
-        else:
-            readable += "Prob Neg/Pos: " + str(rule.prob_excl) + ", Coverage: " + str(rule.coverage_excl)
-
+        readable = get_readable_rule(rule)
         readables.append(readable)
         print(readable)
-
-    readable = "Else-rule, Prob Neg/Pos: " + str(ruleset.else_rule_p) + ", Coverage: " + str(ruleset.else_rule_coverage)
-    readables.append(readable)
+    readable = "If none of above,\nProbability of READMISSION or NOT (in order): " + str(ruleset.else_rule_p) + "\nNumber of patients who do not satisfy any above rules: : " + str(ruleset.else_rule_coverage)
     print(readable)
+    readables.append(readable)

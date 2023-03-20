@@ -11,6 +11,8 @@ y = pd.read_csv(
 Xnoscale = pd.read_csv(r'\\vf-DataSafe\DataSafe$\div0\ITenDI\Heropname_1136\Files_Lincen_Siri\Processed datasets\2020\Readmission\X_train_no_scale.csv')
 ynoscale = pd.read_csv(r'\\vf-DataSafe\DataSafe$\div0\ITenDI\Heropname_1136\Files_Lincen_Siri\Processed datasets\2020\Readmission\y_train.csv')
 
+Xnoscale = Xnoscale.loc[:, X.columns]
+
 print(X.shape)
 print(Xnoscale.shape)
 
