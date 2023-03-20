@@ -141,9 +141,9 @@ class Rule:
                 #     print("here")
                 excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
                 excl_right_bi_array = ~excl_left_bi_array
-                if len(self.indices_excl_overlap[excl_left_bi_array]) == 1 or len(self.indices_excl_overlap[excl_right_bi_array]) == 1:
-                    if self.indices_excl_overlap[excl_left_bi_array][0] == 2498 or self.indices_excl_overlap[excl_right_bi_array][0] == 2498:
-                        print("here")
+                # if len(self.indices_excl_overlap[excl_left_bi_array]) == 1 or len(self.indices_excl_overlap[excl_right_bi_array]) == 1:
+                #     if self.indices_excl_overlap[excl_left_bi_array][0] == 2498 or self.indices_excl_overlap[excl_right_bi_array][0] == 2498:
+                #         print("here")
 
                 excl_left_normalized_gain, cl_model, two_total_cl_left_excl = \
                     self.calculate_excl_gain(bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT)
@@ -152,6 +152,12 @@ class Rule:
 
                 incl_left_bi_array = (self.features[:, icol] < cut)
                 incl_right_bi_array = ~incl_left_bi_array
+
+                # if np.array_equal(np.where(incl_right_bi_array)[0], np.array([248, 1256, 1738, 3982])) or np.array_equal(np.where(incl_left_bi_array)[0], np.array([ 248, 1256, 1738, 3982])):
+                #     print("debug")
+                # if np.count_nonzero(incl_right_bi_array) == 4 or np.count_nonzero(incl_left_bi_array) == 4:
+                #     if icol > 140:
+                #         print("debug")
 
                 incl_left_normalized_gain, cl_model, total_negloglike = \
                     self.calculate_incl_gain(incl_bi_array=incl_left_bi_array, excl_bi_array=excl_left_bi_array,

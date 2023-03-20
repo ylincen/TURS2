@@ -55,10 +55,12 @@ class ModelEncodingDependingOnData:
 
         # when the rule is still being grown by adding condition using icol, we need to update the condition_count;
         if icol is not None and cut_option is not None:
-            if rule.condition_matrix[cut_option, icol] == 0:
+            # if rule.condition_matrix[cut_option, icol] is np.nan:  # HERE why it is 0??
+            if np.isnan(rule.condition_matrix[cut_option, icol]):
                 condition_count[icol] += 1
 
-        cl_model_rule_after_growing = self.rule_cl_model(rule.condition_count)
+        # cl_model_rule_after_growing = self.rule_cl_model(rule.condition_count)
+        cl_model_rule_after_growing = self.rule_cl_model(condition_count)
 
         l_num_rules = universal_code_integers(len(ruleset.rules) + 1)
         cl_redundancy_rule_orders = math.lgamma(len(ruleset.rules) + 2) / np.log(2)
