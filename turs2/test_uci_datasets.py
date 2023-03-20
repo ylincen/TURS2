@@ -1,6 +1,3 @@
-import numpy as np
-import pandas as pd
-import sklearn.datasets
 import copy
 
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
@@ -10,6 +7,8 @@ from sklearn.model_selection import StratifiedKFold
 from turs2.DataInfo import *
 from turs2.Ruleset import *
 from turs2.utils_predict import *
+from turs2.ModelEncoding import *
+from turs2.DataEncoding import *
 
 
 datasets_without_header_row = ["waveform", "backnote", "chess", "contracept", "iris", "ionosphere",
@@ -79,12 +78,16 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         y_test = dtest.iloc[:, -1].to_numpy()
 
         data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=10, max_rule_length=10, feature_names=dtrain.columns[:-1], beam_width=1)
-        ruleset = Ruleset(data_info=data_info)
+        # ruleset = Ruleset(data_info=data_info)
 
-        # ruleset.fit(max_iter=1000, printing=False)
-        # res = predict_ruleset(ruleset, X_test, y_test)
-        ruleset.fit_rulelist(max_iter=1000)
-        res = predict_rulelist(ruleset, X_test, y_test)
+        data_encoding = NMLencoding(data_info)
+        model_encoding = ModelEncodingDependingOnData(data_info)
+        ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
+
+        ruleset.fit(max_iter=1000, printing=True)
+        res = predict_ruleset(ruleset, X_test, y_test)
+        # ruleset.fit_rulelist(max_iter=1000)
+        # res = predict_rulelist(ruleset, X_test, y_test)
 
         if len(np.unique(y)) == 2:
             roc_auc = roc_auc_score(y_test, res[0][:, 1])

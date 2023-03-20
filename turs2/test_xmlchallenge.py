@@ -15,6 +15,9 @@ from turs2.DataInfo import *
 from turs2.Ruleset import *
 from turs2.utils_predict import *
 
+from turs2.ModelEncoding import *
+from turs2.DataEncoding import *
+
 data_path = "../xml_challenge/heloc_dataset_v1.csv"
 print("Running TURS on: " + data_path)
 
@@ -50,8 +53,11 @@ for fold in range(1):
     X_train = dtrain.iloc[:, 1:dtrain.shape[1]].to_numpy()
     y_train = dtrain.iloc[:, 0].to_numpy()
 
-    data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=100, max_rule_length=10, feature_names=dtrain.columns[:-1], beam_width=1)
-    ruleset = Ruleset(data_info=data_info)
+    data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=10, max_rule_length=10, feature_names=dtrain.columns[:-1], beam_width=1)
+    # ruleset = Ruleset(data_info=data_info)
+    data_encoding = NMLencoding(data_info)
+    model_encoding = ModelEncodingDependingOnData(data_info)
+    ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
 
     ruleset.fit(max_iter=1000, printing=True)
     X_test = dtest.iloc[:, 1:].to_numpy()
