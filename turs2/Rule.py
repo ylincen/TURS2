@@ -56,6 +56,63 @@ class Rule:
             self.excl_normalized_gain = excl_normalized_gain
             self.incl_normalized_gain = incl_normalized_gain
 
+    def new_rule_after_deleting_condition(self, icols, new_ruleset):
+        """
+        new_ruleset: the ruleset after deleting this rule, for calculating the cl_data aftering adding the new_rule back
+        """
+        condition_matrix = np.array(self.condition_matrix)
+        condition_count = np.array(self.condition_count)
+        for icol in icols:
+            if self.condition_count[icol] == 0:
+                print( "The" + str(icol) + "th feature is not in this rule!"  )
+                return -1
+            else:
+                condition_matrix[:, icol] = np.nan
+                condition_count[icol] = 0
+
+        new_rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.ruleset.uncovered_indices,
+                        data_info=self.data_info, rule_base=None,
+                        condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
+                        ruleset=new_ruleset, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf)
+
+        for icol in np.where(condition_count != 0)[0]:
+            left_cut, right_cut = condition_matrix[0, icol], condition_matrix[1, icol]
+
+            if not np.isnan(left_cut):
+                local_features = self.data_info.X[new_rule.indices, :]
+                local_features_excl = self.data_info.X[new_rule.indices_excl_overlap, :]
+                incl_bi_array = local_features[:, icol] < left_cut
+                excl_bi_array = local_features_excl[:, icol] < left_cut
+
+                grow_info = store_grow_info(excl_bi_array=excl_bi_array, incl_bi_array=incl_bi_array, icol=icol,
+                                            cut=left_cut, cut_option=LEFT_CUT,
+                                            incl_normalized_gain=np.nan, excl_normalized_gain=np.nan)
+                new_rule = new_rule.make_rule_from_grow_info(grow_info=grow_info)
+
+            if not np.isnan(right_cut):
+                local_features = self.data_info.features[new_rule.indices, :]
+                local_features_excl = self.data_info.features[new_rule.indices_excl_overlap, :]
+
+                incl_bi_array = local_features[:, icol] >= right_cut
+                excl_bi_array = local_features_excl[:, icol] >= right_cut
+
+                grow_info = store_grow_info(excl_bi_array=excl_bi_array, incl_bi_array=incl_bi_array, icol=icol,
+                                            cut=right_cut, cut_option=RIGHT_CUT,
+                                            incl_normalized_gain=np.nan, excl_normalized_gain=np.nan)
+                new_rule = new_rule.make_rule_from_grow_info(grow_info=grow_info)
+
+            new_rule_cl_data_excl = \
+                self.ruleset.data_encoding.get_cl_data_excl(ruleset=new_ruleset, rule=new_rule,
+                                                            bool=np.ones(new_rule.coverage_excl, dtype=bool))
+            new_rule_cl_data_incl = \
+                self.ruleset.data_encoding.get_cl_data_incl(ruleset=new_ruleset, rule=new_rule,
+                                                            excl_bi_array=np.ones(new_rule.coverage_excl, dtype=bool),
+                                                            incl_bi_array=np.ones(new_rule.coverage, dtype=bool))
+
+            new_rule.incl_normalized_gain = new_rule_cl_data_incl / new_rule.coverage_excl
+            new_rule.excl_normalized_gain = new_rule_cl_data_excl / new_rule.coverage_excl
+        return new_rule
+
     def _calc_probs(self, target):
         return calc_probs(target, num_class=self.data_info.num_class, smoothed=False)
     

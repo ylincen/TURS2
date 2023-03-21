@@ -106,12 +106,15 @@ class Ruleset:
     #         else:
     #             break
 
-    def find_next_rule(self):
-        rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
-                    data_info=self.data_info, rule_base=None,
-                    condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                    ruleset=self, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf)
-        rule_to_add = rule
+    def find_next_rule(self, rule_given=None):
+        if rule_given is None:
+            rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
+                        data_info=self.data_info, rule_base=None,
+                        condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
+                        ruleset=self, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf)
+            rule_to_add = rule
+        else:
+            rule = rule_given
 
         excl_beam_list = [Beam(width=self.data_info.beam_width, rule_length=0)]
         excl_beam_list[0].update(rule=rule, gain=rule.excl_normalized_gain)
@@ -194,6 +197,22 @@ class Ruleset:
         return {"total_negloglike_including_else_rule": total_negloglike_including_else_rule,
                 "reg_excluding_all_rules_in_ruleset": reg_excluding_all_rules_in_ruleset,
                 "rule_cl_model": rule_cl_model}
+
+    def modify_rule(self, rule_to_modify_index, cols_to_delete_in_rule, printing=True):
+        new_ruleset = self.ruleset_after_deleting_a_rule(rule_to_modify_index)
+        new_rule = self.rules[rule_to_modify_index].new_rule_after_deleting_condition(cols_to_delete_in_rule, new_ruleset)
+        rule_to_add, incl_normalized_gain = new_ruleset.find_next_rule(rule_given=new_rule)
+        if incl_normalized_gain > 0:
+            if printing:
+                print(rule_to_add._print())
+                print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
+            new_ruleset.add_rule(rule_to_add)
+            return new_ruleset
+        else:
+            return self
+
+
+
 
     #################################################################################################################
     ################################# Below are all for rule list searching #########################################
@@ -284,6 +303,15 @@ class Ruleset:
             self.else_rule_coverage)
         readables.append(readable)
         print(readable)
+
+    def ruleset_after_deleting_a_rule(self, rule_to_delete):
+        new_ruleset = Ruleset(self.data_info, self.data_encoding, self.model_encoding)
+        for i, r in enumerate(self.rules):
+            if i == rule_to_delete:
+                continue
+            else:
+                new_ruleset.add_rule(r)
+        return new_ruleset
 
 
 
