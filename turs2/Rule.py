@@ -19,10 +19,11 @@ def store_grow_info_rulelist(excl_bi_array, icol, cut, cut_option, excl_normaliz
 
 class Rule:
     def __init__(self, indices, indices_excl_overlap, data_info, rule_base, condition_matrix, ruleset,
-                 excl_normalized_gain, incl_normalized_gain):
+                 excl_normalized_gain, incl_normalized_gain, icols_in_order):
         self.ruleset = ruleset
         self.data_info = data_info  # meta data of the original whole dataset
         self.rule_base = rule_base  # the previous level of this rule, i.e., the rule from which "self" is obtained
+        self.icols_in_order = icols_in_order
 
         self.indices = indices  # corresponds to the original dataset
         self.indices_excl_overlap = indices_excl_overlap  # corresponds to the original
@@ -59,6 +60,7 @@ class Rule:
     def new_rule_after_deleting_condition(self, icols, new_ruleset):
         """
         new_ruleset: the ruleset after deleting this rule, for calculating the cl_data aftering adding the new_rule back
+        icols: variables (icols) to delete in self
         """
         condition_matrix = np.array(self.condition_matrix)
         condition_count = np.array(self.condition_count)
@@ -70,17 +72,20 @@ class Rule:
                 condition_matrix[:, icol] = np.nan
                 condition_count[icol] = 0
 
-        new_rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.ruleset.uncovered_indices,
+        # initilize the new rule
+        new_rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=new_ruleset.uncovered_indices,
                         data_info=self.data_info, rule_base=None,
                         condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                        ruleset=new_ruleset, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf)
+                        ruleset=new_ruleset, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf,
+                        icols_in_order=[ic for ic in self.icols_in_order if ic not in icols])
 
-        for icol in np.where(condition_count != 0)[0]:
+        # grow the rule by following the condition_matrix
+        for icol in new_rule.icols_in_order:
             left_cut, right_cut = condition_matrix[0, icol], condition_matrix[1, icol]
 
             if not np.isnan(left_cut):
-                local_features = self.data_info.X[new_rule.indices, :]
-                local_features_excl = self.data_info.X[new_rule.indices_excl_overlap, :]
+                local_features = self.data_info.features[new_rule.indices, :]
+                local_features_excl = self.data_info.features[new_rule.indices_excl_overlap, :]
                 incl_bi_array = local_features[:, icol] < left_cut
                 excl_bi_array = local_features_excl[:, icol] < left_cut
 
@@ -102,10 +107,10 @@ class Rule:
                 new_rule = new_rule.make_rule_from_grow_info(grow_info=grow_info)
 
             new_rule_cl_data_excl = \
-                self.ruleset.data_encoding.get_cl_data_excl(ruleset=new_ruleset, rule=new_rule,
+                new_rule.ruleset.data_encoding.get_cl_data_excl(ruleset=new_ruleset, rule=new_rule,
                                                             bool=np.ones(new_rule.coverage_excl, dtype=bool))
             new_rule_cl_data_incl = \
-                self.ruleset.data_encoding.get_cl_data_incl(ruleset=new_ruleset, rule=new_rule,
+                new_rule.ruleset.data_encoding.get_cl_data_incl(ruleset=new_ruleset, rule=new_rule,
                                                             excl_bi_array=np.ones(new_rule.coverage_excl, dtype=bool),
                                                             incl_bi_array=np.ones(new_rule.coverage, dtype=bool))
 
@@ -115,38 +120,6 @@ class Rule:
 
     def _calc_probs(self, target):
         return calc_probs(target, num_class=self.data_info.num_class, smoothed=False)
-    
-    # def update_cl_model_indep_data(self, icol, cut_option):
-    #     if cut_option == LEFT_CUT:
-    #         if self.condition_matrix[LEFT_CUT, icol] == 1:
-    #             return self.cl_model
-    #         else:
-    #             condition_count = np.array(self.condition_count)
-    #             condition_count[icol] += 1
-    #             return self.get_cl_model_indep_data(condition_count, update_cl_model_for_debug=False)
-    #     else:
-    #         if self.condition_matrix[RIGHT_CUT, icol] == 1:
-    #             return self.cl_model
-    #         else:
-    #             condition_count = np.array(self.condition_count)
-    #             condition_count[icol] += 1
-    #             return self.get_cl_model_indep_data(condition_count, update_cl_model_for_debug=False)
-    #
-    # def get_cl_model_indep_data(self, condition_count, update_cl_model_for_debug=True):
-    #     num_variables = np.count_nonzero(condition_count)
-    #     if num_variables == 0:
-    #         return 0
-    #     else:
-    #         l_num_variables = self.data_info.cl_model["l_number_of_variables"][num_variables]
-    #
-    #         l_which_variables = self.data_info.cl_model["l_which_variables"][num_variables]
-    #         l_cuts = np.sum(self.data_info.cl_model["l_cut"][0][condition_count == 1]) + \
-    #             np.sum(self.data_info.cl_model["l_cut"][1][condition_count == 2])
-    #         if update_cl_model_for_debug:
-    #             self.cl_model_for_debug = {"l_num_variables": l_num_variables,
-    #                                        "l_which_variables": l_which_variables,
-    #                                        "l_cuts": l_cuts}
-    #         return l_num_variables + l_which_variables + l_cuts
 
     def get_bool_array(self, indices):
         bool_array = np.zeros(self.data_info.nrow, dtype=bool)
@@ -180,11 +153,14 @@ class Rule:
         excl_grow_res = self.make_rule_from_grow_info_rulelist(best_excl_grow_info)
         return excl_grow_res
 
-    def grow_incl_and_excl(self):
+    def grow_incl_and_excl(self, constraints=None):
         best_excl_grow_info, best_incl_grow_info = None, None
         candidate_cuts = self.data_info.candidate_cuts
         excl_best_normalized_gain, incl_best_normalized_gain = -np.Inf, -np.Inf
         for icol in range(self.ncol):
+            if constraints is not None and icol in constraints["icols_to_skip"]:
+                continue
+
             if self.rule_base is None:
                 candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features_excl_overlap[:, icol])) & \
                                           (candidate_cuts[icol] > np.min(self.features_excl_overlap[:, icol]))
@@ -194,52 +170,12 @@ class Rule:
                                           (candidate_cuts[icol] > np.min(self.features[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
             for i, cut in enumerate(candidate_cuts_icol):
-                # if icol == 8 and abs(cut - 14.166667405592676) < 0.001 and len(self.ruleset.rules)==4:
-                #     print("here")
-                excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
-                excl_right_bi_array = ~excl_left_bi_array
-                # if len(self.indices_excl_overlap[excl_left_bi_array]) == 1 or len(self.indices_excl_overlap[excl_right_bi_array]) == 1:
-                #     if self.indices_excl_overlap[excl_left_bi_array][0] == 2498 or self.indices_excl_overlap[excl_right_bi_array][0] == 2498:
-                #         print("here")
+                best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain \
+                    = self.search_for_this_cut(
+                    icol=icol, option=None, cut=cut, excl_best_normalized_gain=excl_best_normalized_gain,
+                    incl_best_normalized_gain=incl_best_normalized_gain,
+                    best_excl_grow_info=best_excl_grow_info, best_incl_grow_info=best_incl_grow_info)
 
-                excl_left_normalized_gain, cl_model, two_total_cl_left_excl = \
-                    self.calculate_excl_gain(bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT)
-                excl_right_normalized_gain, cl_model, two_total_cl_right_excl = \
-                    self.calculate_excl_gain(bi_array=excl_right_bi_array, icol=icol, cut_option=LEFT_CUT)
-
-                incl_left_bi_array = (self.features[:, icol] < cut)
-                incl_right_bi_array = ~incl_left_bi_array
-
-                # if np.array_equal(np.where(incl_right_bi_array)[0], np.array([248, 1256, 1738, 3982])) or np.array_equal(np.where(incl_left_bi_array)[0], np.array([ 248, 1256, 1738, 3982])):
-                #     print("debug")
-                # if np.count_nonzero(incl_right_bi_array) == 4 or np.count_nonzero(incl_left_bi_array) == 4:
-                #     if icol > 140:
-                #         print("debug")
-
-                incl_left_normalized_gain, cl_model, total_negloglike = \
-                    self.calculate_incl_gain(incl_bi_array=incl_left_bi_array, excl_bi_array=excl_left_bi_array,
-                                             icol=icol, cut_option=LEFT_CUT)
-                incl_right_normalized_gain, cl_model, total_negloglike = \
-                    self.calculate_incl_gain(incl_bi_array=incl_right_bi_array, excl_bi_array=excl_right_bi_array,
-                                             icol=icol, cut_option=RIGHT_CUT)
-
-                if excl_left_normalized_gain > excl_best_normalized_gain and excl_left_normalized_gain >= excl_right_normalized_gain:
-                    best_excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT, excl_left_normalized_gain, incl_left_normalized_gain)
-                    excl_best_normalized_gain = excl_left_normalized_gain
-                elif excl_right_normalized_gain > excl_best_normalized_gain and excl_right_normalized_gain > excl_left_normalized_gain:
-                    best_excl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT, excl_right_normalized_gain, incl_right_normalized_gain)
-                    excl_best_normalized_gain = excl_right_normalized_gain
-                else:
-                    pass
-
-                if incl_left_normalized_gain > incl_best_normalized_gain and incl_left_normalized_gain >= incl_right_normalized_gain:
-                    best_incl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT, excl_left_normalized_gain, incl_left_normalized_gain)
-                    incl_best_normalized_gain = incl_left_normalized_gain
-                elif incl_right_normalized_gain > incl_best_normalized_gain and incl_right_normalized_gain > incl_left_normalized_gain:
-                    best_incl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT, excl_right_normalized_gain, incl_right_normalized_gain)
-                    incl_best_normalized_gain = incl_right_normalized_gain
-                else:
-                    pass
         if best_excl_grow_info is not None:
             excl_grow_res = self.make_rule_from_grow_info(best_excl_grow_info)
         else:
@@ -251,6 +187,61 @@ class Rule:
 
         return [excl_grow_res, incl_grow_res]
 
+    def search_for_this_cut(self, option, icol, cut, excl_best_normalized_gain, incl_best_normalized_gain,
+                            best_excl_grow_info, best_incl_grow_info):
+        if option is None:
+            return self.search_for_this_cut_left_and_right(icol, cut, excl_best_normalized_gain,
+                                                           incl_best_normalized_gain, best_excl_grow_info,
+                                                           best_incl_grow_info)
+        elif option == LEFT_CUT:
+            pass
+        elif option == RIGHT_CUT:
+            pass
+        else:
+            pass
+
+    def search_for_this_cut_left_and_right(self, icol, cut, excl_best_normalized_gain, incl_best_normalized_gain,
+                                           best_excl_grow_info, best_incl_grow_info):
+        excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
+        excl_right_bi_array = ~excl_left_bi_array
+
+        excl_left_normalized_gain, cl_model, two_total_cl_left_excl = \
+            self.calculate_excl_gain(bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT)
+        excl_right_normalized_gain, cl_model, two_total_cl_right_excl = \
+            self.calculate_excl_gain(bi_array=excl_right_bi_array, icol=icol, cut_option=LEFT_CUT)
+
+        incl_left_bi_array = (self.features[:, icol] < cut)
+        incl_right_bi_array = ~incl_left_bi_array
+
+        incl_left_normalized_gain, cl_model, total_negloglike = \
+            self.calculate_incl_gain(incl_bi_array=incl_left_bi_array, excl_bi_array=excl_left_bi_array,
+                                     icol=icol, cut_option=LEFT_CUT)
+        incl_right_normalized_gain, cl_model, total_negloglike = \
+            self.calculate_incl_gain(incl_bi_array=incl_right_bi_array, excl_bi_array=excl_right_bi_array,
+                                     icol=icol, cut_option=RIGHT_CUT)
+
+        if excl_left_normalized_gain > excl_best_normalized_gain and excl_left_normalized_gain >= excl_right_normalized_gain:
+            best_excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
+                                                  excl_left_normalized_gain, incl_left_normalized_gain)
+            excl_best_normalized_gain = excl_left_normalized_gain
+        elif excl_right_normalized_gain > excl_best_normalized_gain and excl_right_normalized_gain > excl_left_normalized_gain:
+            best_excl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT,
+                                                  excl_right_normalized_gain, incl_right_normalized_gain)
+            excl_best_normalized_gain = excl_right_normalized_gain
+        else:
+            pass
+        if incl_left_normalized_gain > incl_best_normalized_gain and incl_left_normalized_gain >= incl_right_normalized_gain:
+            best_incl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
+                                                  excl_left_normalized_gain, incl_left_normalized_gain)
+            incl_best_normalized_gain = incl_left_normalized_gain
+        elif incl_right_normalized_gain > incl_best_normalized_gain and incl_right_normalized_gain > incl_left_normalized_gain:
+            best_incl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT,
+                                                  excl_right_normalized_gain, incl_right_normalized_gain)
+            incl_best_normalized_gain = incl_right_normalized_gain
+        else:
+            pass
+        return [best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain]
+
     def make_rule_from_grow_info(self, grow_info):
         indices = self.indices[grow_info["incl_bi_array"]]
         indices_excl_overlap = self.indices_excl_overlap[grow_info["excl_bi_array"]]
@@ -260,7 +251,8 @@ class Rule:
         rule = Rule(indices=indices, indices_excl_overlap=indices_excl_overlap, data_info=self.data_info,
                     rule_base=self, condition_matrix=condition_matrix, ruleset=self.ruleset,
                     excl_normalized_gain=grow_info["excl_normalized_gain"],
-                    incl_normalized_gain=grow_info["incl_normalized_gain"])
+                    incl_normalized_gain=grow_info["incl_normalized_gain"],
+                    icols_in_order=self.icols_in_order + [grow_info["icol"]])
         return rule
 
     def make_rule_from_grow_info_rulelist(self, grow_info):
