@@ -1,5 +1,6 @@
 import sys
-sys.path.extend(['~/projects/TURS'])
+# sys.path.extend(['~/projects/TURS'])
+sys.path.extend(['/Users/yanglincen/projects/TURS'])
 
 import os
 import copy
@@ -85,4 +86,14 @@ for data_name in data_names_selected:
         auc_all_data.append(roc_auc)
         F1_score_all_data.append(f1)
         PR_auc_all_data.append(pr_auc)
+
+        res_pd = pd.DataFrame({
+            "data": data_name,
+            "time": time_all_data,
+            "roc_auc": auc_all_data,
+            "f1": F1_score_all_data,
+            "pr_auc": PR_auc_all_data
+        })
+
+        res_pd.to_csv('res.csv')
 
