@@ -65,8 +65,8 @@ class Rule:
         condition_count = np.array(self.condition_count)
         for icol in icols:
             if self.condition_count[icol] == 0:
-                print( "The" + str(icol) + "th feature is not in this rule!"  )
-                return -1
+                # print( "The " + str(icol) + "th feature is not in this rule!"  )
+                continue
             else:
                 condition_matrix[:, icol] = np.nan
                 condition_count[icol] = 0
