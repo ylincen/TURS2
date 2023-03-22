@@ -15,15 +15,19 @@ class ModelEncodingDependingOnData:
 
         candidate_cuts_length = np.array([len(candi) for candi in candidate_cuts.values()], dtype=float)
         only_one_candi_selector = (candidate_cuts_length == 1)
+        zero_candi_selector = (candidate_cuts_length == 0)
 
-        l_one_cut = np.log2(candidate_cuts_length) + 1 + 1  # 1 bit for LEFT/RIGHT, and 1 bit for one/two cuts
+        l_one_cut = np.zeros(len(candidate_cuts_length), dtype=float)
+        l_one_cut[~zero_candi_selector] = np.log2(
+            candidate_cuts_length[~zero_candi_selector]) + 1 + 1  # 1 bit for LEFT/RIGHT, and 1 bit for one/two cuts
         l_one_cut[only_one_candi_selector] = l_one_cut[only_one_candi_selector] - 1
 
         l_two_cut = np.zeros(len(candidate_cuts_length))
         l_two_cut[only_one_candi_selector] = np.nan
-        l_two_cut[~only_one_candi_selector] = np.log2(candidate_cuts_length[~only_one_candi_selector]) + \
-                                              np.log2(candidate_cuts_length[~only_one_candi_selector] - 1) - np.log2(2) \
-                                              + 1 # the last 1 bit is for encoding one/two cuts
+        two_candi_selector = (candidate_cuts_length > 1)
+        l_two_cut[two_candi_selector] = np.log2(candidate_cuts_length[two_candi_selector]) + \
+                                        np.log2(candidate_cuts_length[two_candi_selector] - 1) - np.log2(2) \
+                                        + 1  # the last 1 bit is for encoding one/two cuts
         l_cut = np.array([l_one_cut, l_two_cut])
 
         l_number_of_rules = [universal_code_integers(i) for i in range(self.max_num_rules)]
