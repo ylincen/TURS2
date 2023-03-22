@@ -23,7 +23,7 @@ def get_readable_rule(rule):
         readable += cut_condition
     readable = "If  " + readable
 
-    readable += "\nProbability of READMISSION or NOT (in order): " + str(rule.prob[::-1]) + "\nNumber of patients who satisfy this rule: " + str(rule.coverage_excl) + "\n"
+    readable += "\nProbability of READMISSION or NOT (in order): " + str(rule.prob[::-1]) + "\nNumber of patients who satisfy this rule: " + str(rule.coverage) + "\n"
     return(readable)
 
 
