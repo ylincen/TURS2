@@ -92,29 +92,15 @@ class Ruleset:
             else:
                 break
 
-    # def fit_for_tuning_cl(self, file_name, number_of_rules, max_iter=1000):
-    #     for iter in range(max_iter):
-    #         print("iteration ", iter)
-    #         rule_to_add, incl_normalized_gain = self.find_next_rule()
-    #         print(rule_to_add._print())
-    #         print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
-    #         if incl_normalized_gain > 0 or len(self.rules) < number_of_rules:
-    #             self.add_rule(rule_to_add)
-    #             with open(file_name + str(iter) + '.pickle', 'wb') as file:
-    #                 # Dump the Python object into the file
-    #                 pickle.dump(self, file)
-    #         else:
-    #             break
-
-    def find_next_rule(self, rule_given=None):
+    def find_next_rule(self, rule_given=None, constraints=None):
         if rule_given is None:
             rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
                         data_info=self.data_info, rule_base=None,
                         condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                        ruleset=self, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf)
-            rule_to_add = rule
+                        ruleset=self, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf, icols_in_order=[])
         else:
             rule = rule_given
+        rule_to_add = rule
 
         excl_beam_list = [Beam(width=self.data_info.beam_width, rule_length=0)]
         excl_beam_list[0].update(rule=rule, gain=rule.excl_normalized_gain)
@@ -130,7 +116,7 @@ class Ruleset:
             current_excl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 1)
 
             for rule in previous_incl_beam.rules + previous_excl_beam.rules:
-                excl_res, incl_res = rule.grow_incl_and_excl()
+                excl_res, incl_res = rule.grow_incl_and_excl(constraints=constraints)
                 if excl_res is None or incl_res is None:  # NOTE: will only return none when all data points have the same feature values in all dimensions
                     continue
                 current_incl_beam.update(incl_res,
@@ -152,17 +138,6 @@ class Ruleset:
         best_incl_normalized_gain = -np.inf
         for incl_beam in incl_beam_list:
             for r in incl_beam.rules:
-                # scores = self.evaluate_rule(r)
-                #
-                # cl_number_of_rules = self.data_info.cl_model["l_number_of_rules"][len(self.rules) + 1]
-                # cl_permutations_of_rules_candidate = math.lgamma(len(self.rules) + 2) / np.log(2)  # math.lgamma(k + 1) = np.log(math.factorial(k))
-                #
-                # cl_extra_cost_random_design = np.log2(self.else_rule_coverage) + self.cl_cost_random_design
-                #
-                # incl_absolute_gain = self.total_cl - scores["total_negloglike_including_else_rule"] - self.allrules_regret - \
-                #                      scores["reg_excluding_all_rules_in_ruleset"] - scores["rule_cl_model"] - self.allrules_cl_model - \
-                #                      cl_number_of_rules + cl_permutations_of_rules_candidate - cl_extra_cost_random_design
-                # incl_normalized_gain = incl_absolute_gain / r.coverage_excl
                 incl_normalized_gain = r.incl_normalized_gain
 
                 if incl_normalized_gain > best_incl_normalized_gain:
@@ -172,6 +147,7 @@ class Ruleset:
         return [rule_to_add, best_incl_normalized_gain]
 
     def evaluate_rule(self, rule):
+        # TODO: check if this method still being used??
         scores_all_mgs = []
         for mg in self.modelling_groups:
             mg_and_rule_score = mg.evaluate_rule(rule)
@@ -181,7 +157,6 @@ class Ruleset:
         coverage_rule_and_else = np.count_nonzero(rule_and_else_bool)
         p_rule_and_else = calc_probs(self.data_info.target[rule_and_else_bool], self.data_info.num_class)
         negloglike_rule_and_else = -coverage_rule_and_else * np.sum(p_rule_and_else[rule.prob!=0] * np.log2(rule.prob[rule.prob!=0]))  # using the rule's probability
-        # reg_rule_and_else = regret(coverage_rule_and_else, self.data_info.num_class)
         reg_rule_and_else = rule.regret
 
         else_new_bool = np.bitwise_and(~rule.bool_array, self.uncovered_bool)
@@ -199,9 +174,20 @@ class Ruleset:
                 "rule_cl_model": rule_cl_model}
 
     def modify_rule(self, rule_to_modify_index, cols_to_delete_in_rule, printing=True):
+        pass
+
+    def delete_rule_i_and_search_again(self, rule_to_delete_index, printing=True):
+        new_ruleset = self.ruleset_after_deleting_a_rule(rule_to_delete_index)
+        new_ruleset.fit(printing=printing)
+        return new_ruleset
+
+    def modify_rule_i_other_conditions_kept(self, rule_to_modify_index, cols_to_delete_in_rule, printing=True):
         new_ruleset = self.ruleset_after_deleting_a_rule(rule_to_modify_index)
         new_rule = self.rules[rule_to_modify_index].new_rule_after_deleting_condition(cols_to_delete_in_rule, new_ruleset)
-        rule_to_add, incl_normalized_gain = new_ruleset.find_next_rule(rule_given=new_rule)
+
+        constraints = {}
+        constraints["icols_to_skip"] = cols_to_delete_in_rule
+        rule_to_add, incl_normalized_gain = new_ruleset.find_next_rule(rule_given=new_rule, constraints=constraints)
         if incl_normalized_gain > 0:
             if printing:
                 print(rule_to_add._print())
@@ -210,6 +196,38 @@ class Ruleset:
             return new_ruleset
         else:
             return self
+
+    def modify_rule_i_other_variables_kept(self, rule_to_modify_index, icols_to_delete):
+        new_ruleset = self.ruleset_after_deleting_a_rule(rule_to_modify_index)
+
+        new_rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=new_ruleset.uncovered_indices,
+                        data_info=self.data_info, rule_base=None,
+                        condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
+                        ruleset=new_ruleset, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf,
+                        icols_in_order=[])
+
+        icols_to_search = [icol for icol in self.rules[rule_to_modify_index].icols_in_order if icol not in icols_to_delete]
+        if len(icols_to_search) == 0:
+            pass
+            #
+
+
+
+
+
+
+
+
+    def ruleset_after_deleting_a_rule(self, rule_to_delete):
+        new_ruleset = Ruleset(self.data_info, self.data_encoding, self.model_encoding)
+        for i, r in enumerate(self.rules):
+            if i == rule_to_delete:
+                continue
+            else:
+                new_ruleset.add_rule(r)
+        return new_ruleset
+
+
 
 
 
@@ -304,14 +322,6 @@ class Ruleset:
         readables.append(readable)
         print(readable)
 
-    def ruleset_after_deleting_a_rule(self, rule_to_delete):
-        new_ruleset = Ruleset(self.data_info, self.data_encoding, self.model_encoding)
-        for i, r in enumerate(self.rules):
-            if i == rule_to_delete:
-                continue
-            else:
-                new_ruleset.add_rule(r)
-        return new_ruleset
 
 
 
