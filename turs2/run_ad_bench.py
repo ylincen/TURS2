@@ -33,12 +33,13 @@ for data_name in data_names:
     else:
         data_names_selected.append(data_name)
 
-trial_run = False
+trial_run = True
 
 time_all_data = []
 auc_all_data = []
 F1_score_all_data = []
 PR_auc_all_data = []
+data_name_all_data = []
 
 for data_name in data_names_selected:
     print("Running on: ", data_name)
@@ -86,9 +87,10 @@ for data_name in data_names_selected:
         auc_all_data.append(roc_auc)
         F1_score_all_data.append(f1)
         PR_auc_all_data.append(pr_auc)
+        data_name_all_data.append(data_name)
 
         res_pd = pd.DataFrame({
-            "data": data_name,
+            "data": data_name_all_data,
             "time": time_all_data,
             "roc_auc": auc_all_data,
             "f1": F1_score_all_data,
@@ -96,4 +98,3 @@ for data_name in data_names_selected:
         })
 
         res_pd.to_csv('res.csv')
-
