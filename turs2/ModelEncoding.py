@@ -12,8 +12,8 @@ class ModelEncodingDependingOnData:
     def cache_cl_model(self, data_ncol, max_rule_length, candidate_cuts):
         # l_number_of_variables = [universal_code_integers(i) for i in range(max_rule_length)]
         # l_which_variables = log2comb(data_ncol, np.arange(max_rule_length))
-        l_number_of_variables = [universal_code_integers(i) for i in range(data_ncol-1)]
-        l_which_variables = log2comb(data_ncol, np.arange(data_ncol-1))
+        l_number_of_variables = [universal_code_integers(i) for i in range(max(data_ncol-1, max_rule_length))]
+        l_which_variables = log2comb(data_ncol, np.arange(max(data_ncol-1, max_rule_length)))
 
         candidate_cuts_length = np.array([len(candi) for candi in candidate_cuts.values()], dtype=float)
         only_one_candi_selector = (candidate_cuts_length == 1)
