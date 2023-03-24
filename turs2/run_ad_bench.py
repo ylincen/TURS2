@@ -33,7 +33,9 @@ for data_name in data_names:
     else:
         data_names_selected.append(data_name)
 
+### GLOBAL OPTION ###
 trial_run = False
+add_noise = True
 
 time_all_data = []
 auc_all_data = []
@@ -42,6 +44,8 @@ PR_auc_all_data = []
 data_name_all_data = []
 
 for data_name in data_names_selected:
+    if data_name != "34_smtp.npz":
+        continue
     print("Running on: ", data_name)
     d = np.load("../ADbench_datasets_Classical/" + data_name)
     X = d["X"]
@@ -55,12 +59,17 @@ for data_name in data_names_selected:
 
     skf = StratifiedKFold(n_splits=5, shuffle=True,
                          random_state=1)  # can also use sklearn.model_selection.StratifiedKFold
+    if add_noise:
+        np.random.seed(0)
+        corrupted_indices = np.random.choice(np.arange(len(y)), size=int(0.2 * len(y)), replace=False)
+        y[corrupted_indices] = (~y[corrupted_indices].astype(bool)).astype(int)
+
     for i, (train_index, test_index) in enumerate(skf.split(X, y)):
         X_train, y_train = X[train_index], y[train_index]
         X_test, y_test = X[test_index], y[test_index]
 
         feature_names = ["X" + str(i) for i in range(X_train.shape[1])]
-        data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=20, max_rule_length=10,
+        data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=500, max_rule_length=10,
                              feature_names=feature_names, beam_width=1)
 
         time0 = time.time()
@@ -68,7 +77,7 @@ for data_name in data_names_selected:
         model_encoding = ModelEncodingDependingOnData(data_info)
         ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
 
-        ruleset.fit(max_iter=1000, printing=False)
+        ruleset.fit(max_iter=1000, printing=True)
         res = predict_ruleset(ruleset, X_test, y_test)
 
         if len(np.unique(y)) == 2:
@@ -97,4 +106,4 @@ for data_name in data_names_selected:
             "pr_auc": PR_auc_all_data
         })
 
-        res_pd.to_csv('res.csv')
+        # res_pd.to_csv('res.csv')
