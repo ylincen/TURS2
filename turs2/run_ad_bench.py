@@ -33,7 +33,7 @@ for data_name in data_names:
     else:
         data_names_selected.append(data_name)
 
-trial_run = True
+trial_run = False
 
 time_all_data = []
 auc_all_data = []
@@ -80,7 +80,7 @@ for data_name in data_names_selected:
         pr = precision_recall_curve(y_test, res[0][:, 1])  # all ad bench datasets are binary!
         pr_auc = auc(pr[1], pr[0])
 
-        f1 = f1_score(y_test, res[0][:, 0] > res[0][:, 1])
+        f1 = f1_score(y_test, res[0][:, 1] > res[0][:, 0])
         print("roc_auc: ", roc_auc)
 
         time_all_data.append(runtime)
