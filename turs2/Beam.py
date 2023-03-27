@@ -15,10 +15,11 @@ class Beam:
 
     def update(self, rule, gain):
         if len(self.rules) < self.width:
-            self.rules.append(rule)
-            self.gains.append(gain)
-            self.worst_gain = np.min(self.gains)
-            self.whichworst_gain = np.argmin(self.gains)
+            if gain > 0 or len(rule.icols_in_order) == 0:  # we always add the empty rule to start
+                self.rules.append(rule)
+                self.gains.append(gain)
+                self.worst_gain = np.min(self.gains)
+                self.whichworst_gain = np.argmin(self.gains)
         else:
             if gain > self.worst_gain:
                 self.gains.pop(self.whichworst_gain)
