@@ -9,7 +9,7 @@ from turs2.utils_readable import *
 
 
 class Ruleset:
-    def __init__(self, data_info, data_encoding, model_encoding):
+    def __init__(self, data_info, data_encoding, model_encoding, constraints=None):
         self.data_info = data_info
         self.model_encoding = model_encoding
         self.data_encoding = data_encoding
@@ -33,6 +33,11 @@ class Ruleset:
         self.modelling_groups = []
 
         self.allrules_cl_data = 0
+
+        if constraints is None:
+            self.constraints = {}
+        else:
+            self.constraints = constraints
 
     def add_rule(self, rule):
         self.rules.append(rule)
@@ -82,7 +87,7 @@ class Ruleset:
         for iter in range(max_iter):
             if printing:
                 print("iteration ", iter)
-            rule_to_add, incl_normalized_gain = self.find_next_rule()
+            rule_to_add, incl_normalized_gain = self.find_next_rule(constraints=self.constraints)
 
             if incl_normalized_gain > 0:
                 if printing:
@@ -111,7 +116,7 @@ class Ruleset:
         previous_excl_beam = excl_beam_list[0]
         previous_incl_beam = Beam(width=self.data_info.beam_width, rule_length=0)
 
-        for i in range(self.data_info.max_rule_length - 1):
+        for i in range(self.data_info.max_rule_length):
             current_incl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 1)
             current_excl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 1)
 

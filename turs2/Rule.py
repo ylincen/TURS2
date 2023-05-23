@@ -157,7 +157,8 @@ class Rule:
         candidate_cuts = self.data_info.candidate_cuts
         excl_best_normalized_gain, incl_best_normalized_gain = -np.Inf, -np.Inf
         for icol in range(self.ncol):
-            if constraints is not None and icol in constraints["icols_to_skip"]:
+            if constraints is not None and "icols_to_skip" in constraints and \
+                    icol in constraints["icols_to_skip"]:
                 continue
 
             if self.rule_base is None:
