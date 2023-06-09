@@ -2,6 +2,31 @@ import numpy as np
 from turs2.utils_calculating_cl import *
 
 
+def get_rule_local_prediction_for_unseen_data_this_rule_only(rule, X_test, y_test):
+    if type(X_test) != np.ndarray:
+        X_test = X_test.to_numpy()
+
+    if type(y_test) != np.ndarray:
+        y_test = y_test.to_numpy().flatten()
+    condition_matrix = np.array(rule.condition_matrix)
+    condition_count = np.array(rule.condition_count)
+    which_vars = np.where(condition_count > 0)[0]
+
+    upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
+    upper_bound[np.isnan(upper_bound)] = np.Inf
+    lower_bound[np.isnan(lower_bound)] = -np.Inf
+
+    rule_cover = np.ones(len(X_test), dtype=bool)
+    for v in which_vars:
+        rule_cover = rule_cover & (X_test[:, v] < upper_bound[v]) & (X_test[:, v] >= lower_bound[v])
+
+    # only for comparison with the estimated probability from the training set, not for evaluating the model!!!
+    rule_test_p = calc_probs(y_test[rule_cover], rule.ruleset.data_info.num_class)
+    rule_test_coverage = np.count_nonzero(rule_cover)
+
+    return [rule_test_p, rule_test_coverage]
+
+
 def get_rule_local_prediction_for_unseen_data(ruleset, X_test, y_test):
     if type(X_test) != np.ndarray:
         X_test = X_test.to_numpy()
