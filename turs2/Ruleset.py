@@ -1,15 +1,21 @@
 import numpy as np
 import pickle
+import os
+from datetime import datetime
+
+from sklearn.metrics import roc_auc_score
 
 from turs2.Rule import *
 from turs2.Beam import *
 from turs2.ModellingGroup import *
 from turs2.DataInfo import *
 from turs2.utils_readable import *
-
+from turs2.utils_predict import *
 
 class Ruleset:
     def __init__(self, data_info, data_encoding, model_encoding, constraints=None):
+        self.log_folder_name = None
+
         self.data_info = data_info
         self.model_encoding = model_encoding
         self.data_encoding = data_encoding
@@ -44,7 +50,7 @@ class Ruleset:
         self.cl_data, self.allrules_cl_data = \
             self.data_encoding.update_ruleset_and_get_cl_data_ruleset_after_adding_rule(ruleset=self, rule=rule)
         self.cl_model = \
-            self.model_encoding.cl_model_after_growing_rule_on_icol(rule=None, ruleset=self, icol=None, cut_option=None)
+            self.model_encoding.cl_model_after_growing_rule_on_icol(rule=rule, ruleset=self, icol=None, cut_option=None)
 
         self.total_cl = self.cl_data + self.cl_model
         self.allrules_cl_model += rule.cl_model
@@ -75,7 +81,8 @@ class Ruleset:
                     self.modelling_groups.append(evaluate_res[1])
 
             mg = ModellingGroup(data_info=self.data_info,
-                                bool_cover=np.bitwise_and(rule.bool_array, self.uncovered_bool),
+                                # bool_cover=np.bitwise_and(rule.bool_array, self.uncovered_bool),
+                                bool_cover=rule.bool_array_excl,
                                 bool_use_for_model=rule.bool_array,
                                 rules_involved=[len(self.rules) - 1], prob_model=rule.prob,
                                 prob_cover=rule.prob_excl)
@@ -84,18 +91,56 @@ class Ruleset:
         return np.sum(all_mg_neglolglike)
 
     def fit(self, max_iter=1000, printing=True):
+        if self.data_info.log_learning_process:
+            log_folder_name = self.data_info.log_folder_name
+
+        log_info_ruleset = ""
         for iter in range(max_iter):
+            log_info_ruleset += "  Iteration: "+ str(iter) + "\n" \
+                                "  ruleset total cl: " + str(self.total_cl) + "\n" \
+                                "  cl data: " + str(self.cl_data) + "\n" \
+                                "  cl model: "+ str(self.cl_model) + "\n" \
+                                "  self.allrules_regret: " + str(self.data_encoding.allrules_regret) + "\n" \
+                                "  self.allrules_cl_data: " + str(self.allrules_cl_data) + "\n\n"
             if printing:
                 print("iteration ", iter)
             rule_to_add, incl_normalized_gain = self.find_next_rule(constraints=self.constraints)
 
-            if incl_normalized_gain > 0:
+            # if incl_normalized_gain > 0:
+            #     add_to_ruleset = True
+
+            rf_oob = np.array(self.data_info.rf_oob_decision_)
+            rf_oob[self.uncovered_indices] = np.median(self.data_info.rf_oob_decision_[self.uncovered_indices])
+            auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob)
+
+            rf_oob[rule_to_add.bool_array] = np.median(self.data_info.rf_oob_decision_[rule_to_add.bool_array])
+            auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob)
+
+            add_to_ruleset = (auc_flatten_else_rule_and_rule_to_add > auc_flatten_else_rule) or (incl_normalized_gain > 0)
+
+            if add_to_ruleset:
                 if printing:
                     print(rule_to_add._print())
                     print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
+
                 self.add_rule(rule_to_add)
+                if self.data_info.log_learning_process:
+                    local_predict_res = get_rule_local_prediction_for_unseen_data(ruleset=self,
+                                                                                  X_test=self.data_info.X_test,
+                                                                                  y_test=self.data_info.y_test)
+                    log_info_ruleset += "Add rule: " + get_readable_rule(rule_to_add) + \
+                                        "\n Local information on test data: \n" + \
+                                        "Probability: " + str(local_predict_res["rules_test_p"][iter]) + \
+                                        "   Coverage: " + str(local_predict_res["rules_test_coverage"][iter]) + \
+                                        "   \n Else rule probability and coverage: " + \
+                                        str([local_predict_res["else_rule_p"],
+                                             local_predict_res["else_rule_coverage"]]) + \
+                                        "\n\n"
             else:
                 break
+        if self.data_info.log_learning_process:
+            with open(log_folder_name + "\\ruleset.txt", "w") as flog_ruleset:
+                flog_ruleset.write(log_info_ruleset)
 
     def find_next_rule(self, rule_given=None, constraints=None):
         if rule_given is None:
@@ -124,11 +169,15 @@ class Ruleset:
                 excl_res, incl_res = rule.grow_incl_and_excl(constraints=constraints)
                 if excl_res is None or incl_res is None:  # NOTE: will only return none when all data points have the same feature values in all dimensions
                     continue
+
+                # if incl_res.incl_normalized_gain > 0:
                 current_incl_beam.update(incl_res,
                                          incl_res.incl_normalized_gain)  # TODO: whether to constrain all excl_grow_res have positive normalized gain?
-                if np.array_equal(incl_res.bool_array, excl_res.bool_array):
+                # if np.array_equal(incl_res.bool_array, excl_res.bool_array):  # TODO: REMEMBER THAT THIS WAS A HUGE BUG!
+                if rule in current_incl_beam.rules:
                     pass
                 else:
+                    # if excl_res.excl_normalized_gain > 0:
                     current_excl_beam.update(excl_res,
                                              excl_res.excl_normalized_gain)
 
@@ -140,14 +189,66 @@ class Ruleset:
             else:
                 break
 
+        log_nextbestrule = ""
         best_incl_normalized_gain = -np.inf
+
         for incl_beam in incl_beam_list:
             for r in incl_beam.rules:
                 incl_normalized_gain = r.incl_normalized_gain
 
+                if self.data_info.log_learning_process:
+                    rule_test_p, rule_test_coverage = get_rule_local_prediction_for_unseen_data_this_rule_only(rule=r, X_test=self.data_info.X_test, y_test=self.data_info.y_test)
+
+                    oob_deci_flatten = np.array(self.data_info.rf_oob_decision_)
+                    oob_deci_flatten[r.bool_array] = np.median(oob_deci_flatten[r.bool_array])
+
+                    oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten)
+
+                    else_rule_p = calc_probs(self.data_info.target[self.uncovered_bool & (~r.bool_array)],
+                                             self.data_info.num_class)
+
+                    log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
+                                        "with incl_normalized_gain: " + str(r.incl_normalized_gain) +\
+                                        "\n with probability/coverage on test_set: " + str([rule_test_p, rule_test_coverage]) + \
+                                        "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(oob_flatten_roc_auc) + \
+                                        "\n with RF out-of-sample original ROC-AUC being: " + str(roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_)) + \
+                                        "\n with else-rule training prob: " + str(else_rule_p)
+
                 if incl_normalized_gain > best_incl_normalized_gain:
                     rule_to_add = r
                     best_incl_normalized_gain = incl_normalized_gain
+                    log_nextbestrule += "\n ======== update rule_to_add ======="
+
+        if self.data_info.log_learning_process:
+            log_nextbestrule += "\n\n\n\n%%%%%%%%%%%%%%%%checking excl_beam%%%%%%%%%%%%%%%%%%\n\n\n"
+
+            for excl_beam in excl_beam_list:
+                for r in excl_beam.rules:
+                    rule_test_p, rule_test_coverage = get_rule_local_prediction_for_unseen_data_this_rule_only(rule=r,
+                                                                                                               X_test=self.data_info.X_test,
+                                                                                                               y_test=self.data_info.y_test)
+
+                    oob_deci_flatten = np.array(self.data_info.rf_oob_decision_)
+                    oob_deci_flatten[r.bool_array] = np.median(oob_deci_flatten[r.bool_array])
+
+                    oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten)
+
+                    else_rule_p = calc_probs(self.data_info.target[self.uncovered_bool & (~r.bool_array)],
+                                             self.data_info.num_class)
+
+                    log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
+                                        " with coverage_excl: " + str(len(r.indices_excl_overlap)) + \
+                                        "with excl_normalized_gain: " + str(r.excl_normalized_gain) + \
+                                        "\n with probability/coverage on test_set: " + str(
+                        [rule_test_p, rule_test_coverage]) + \
+                                        "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(
+                        oob_flatten_roc_auc) + \
+                                        "\n with RF out-of-sample original ROC-AUC being: " + str(
+                        roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_)) + \
+                                        "\n with else-rule training prob: " + str(else_rule_p)
+
+        with open(self.data_info.log_folder_name + "\\rule" + str(len(self.rules)) +".txt", "w") as flog_ruleset:
+            flog_ruleset.write(log_nextbestrule)
 
         return [rule_to_add, best_incl_normalized_gain]
 
