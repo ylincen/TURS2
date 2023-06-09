@@ -5,16 +5,24 @@ from constant import *
 from math import log
 from scipy.special import gammaln, comb
 from turs2.utils_modelencoding import *
+from turs2.utils_calculating_cl import *
+
+from datetime import datetime
+import os
 
 
 class DataInfo:
-    def __init__(self, X, y, num_candidate_cuts, max_rule_length, feature_names, beam_width):
+    def __init__(self, X, y, num_candidate_cuts, max_rule_length, feature_names, beam_width, dataset_name=None,
+                 X_test=None, y_test=None, rf_oob_decision_=None, log_learning_process=True):
         """
         Meta-data for an input data
         data: pandas data frame
         features: feature matrix in numpy nd array
         target: target variable in numpy 1d array
         """
+        self.X_test, self.y_test = X_test, y_test
+        self.rf_oob_decision_ = rf_oob_decision_   # used for random-forest-assisted rule learning
+
         if type(X) != np.ndarray:
             self.features = X.to_numpy()
         else:
@@ -34,14 +42,43 @@ class DataInfo:
 
         self.num_candidate_cuts = num_candidate_cuts
         # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
-        # self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
+        self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
-        self.candidate_cuts = self.candidate_cuts_quantile_mid_points(num_candidate_cuts)
+        # self.candidate_cuts = self.candidate_cuts_quantile_mid_points(num_candidate_cuts)
 
         self.feature_names = feature_names
         self.beam_width = beam_width
+
+        self.dataset_name = dataset_name
+
+        self.default_p = calc_probs(self.target, self.num_class)
+
+        self.log_learning_process = log_learning_process
+        if log_learning_process:
+            log_folder_name = "log_results"
+            if dataset_name is not None:
+                log_folder_name = log_folder_name + "_" + dataset_name
+            date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_folder_name = log_folder_name + "_" + date_and_time
+            try:
+                os.makedirs(log_folder_name)
+                print("Directory", log_folder_name, "Created.")
+            except FileExistsError:
+                print("Directory", log_folder_name, "already exists.")
+
+            log_datainfo = "Parameters for this class: num_candidate_cuts, max_rule_length, feature_names, beam_width"
+            log_datainfo += "\n " + str([num_candidate_cuts, max_rule_length, feature_names, beam_width])
+
+            log_datainfo += "\n candidate cuts for each dimension: \n"
+            for j, v in self.candidate_cuts.items():
+                log_datainfo += str(self.candidate_cuts[j]) + "\n"
+
+            with open(log_folder_name + "\\datainfo.txt", "w") as flog:
+                flog.write(log_datainfo)
+            self.log_folder_name = log_folder_name
+
 
     def get_candidate_cuts_CLASSY(self, num_candidate_cuts):
         candidate_cuts = {}
