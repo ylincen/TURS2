@@ -3,6 +3,8 @@ import numpy as np
 import scipy.special
 from constant import *
 import random
+from nml_regret import *
+
 
 @njit
 def calc_probs(target, num_class, smoothed=False):
@@ -40,3 +42,21 @@ def calc_prequential(target, num_class, num_rep=1, init_points=None):
 
 def calc_negloglike(p, n):
     return -n * np.sum(np.log2(p[p !=0 ]) * p[p != 0])
+
+
+def check_validity_growth(r1, r2):
+    # assume r1 fully cover r2;
+    n1 = r1.coverage
+    n2 = r2.coverage
+    data_info_ = r1.data_info
+    p1 = calc_probs(data_info_.target[r1.indices], data_info_.num_class)
+    p2 = calc_probs(data_info_.target[r2.indices], data_info_.num_class)
+    p3 = calc_probs(data_info_.target[r1.bool_array & ~r2.bool_array], data_info_.num_class)
+
+    nll1 = calc_negloglike(p1, n1)
+    nll2 = calc_negloglike(p2, n2)
+    nll3 = calc_negloglike(p3, n1-n2)
+    validity = nll1 + regret(n1, 2) + r1.cl_model - nll2 - nll3 - regret(n2, 2) - regret(n1-n2, 2) - r2.cl_model
+    return validity
+
+
