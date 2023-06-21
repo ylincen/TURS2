@@ -1,13 +1,12 @@
 import numpy as np
 
-
 def get_readable_rule(rule):
     feature_names = rule.ruleset.data_info.feature_names
     readable = ""
     which_variables = np.where(rule.condition_count != 0)[0]
     for v in which_variables:
         cut = rule.condition_matrix[:, v][::-1]
-        icol_name = feature_names[v]
+        icol_name = str(feature_names[v])
         if np.isnan(cut[0]):
             if cut[1] == 0.5 and len(rule.data_info.candidate_cuts[v]) == 1:
                 cut_condition = "(X" + str(v) + "[binary variable]) " + icol_name + " = " + "0" + ";   "
@@ -23,7 +22,9 @@ def get_readable_rule(rule):
         readable += cut_condition
     readable = "If  " + readable
 
-    readable += "\nProbability of READMISSION or NOT (in order): " + str(rule.prob[::-1]) + "\nNumber of patients who satisfy this rule: " + str(rule.coverage) + "\n"
+    # readable += "\nProbability of NOT-READMISSION or READMISSION (in order): " + str(rule.prob) + "\nNumber of patients who satisfy this rule: " + str(rule.coverage) + "\n"
+    readable += "\nProbability: " + str(rule.prob) + "; Number of patients who satisfy this rule: " + str(rule.coverage) + "\n"
+
     return(readable)
 
 
