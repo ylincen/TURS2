@@ -61,7 +61,7 @@ class NMLencoding(DataEncoding):
 
         regret_else, regret_rule = regret(coverage_else, self.num_class), regret(coverage_rule, self.num_class)
 
-        cl_data = negloglike_else + regret_else + negloglike_rule + regret_rule + ruleset.allrules_cl_data  # TODO: ruleset.allrules_cl_data
+        cl_data = negloglike_else + regret_else + negloglike_rule + regret_rule + ruleset.allrules_cl_data
 
         return cl_data
 
