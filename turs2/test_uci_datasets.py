@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, OneHotEncoder
 from sklearn.metrics import roc_auc_score, precision_recall_curve, f1_score, auc
 from sklearn.model_selection import StratifiedKFold
+from sklearn.ensemble import RandomForestClassifier
 
 from turs2.DataInfo import *
 from turs2.Ruleset import *
@@ -106,7 +107,12 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         X_test = dtest.iloc[:, :-1].to_numpy()
         y_test = dtest.iloc[:, -1].to_numpy()
 
-        data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=20, max_rule_length=10, feature_names=dtrain.columns[:-1], beam_width=1)
+        rf = RandomForestClassifier(n_estimators=200, n_jobs=5, oob_score=True, min_samples_leaf=30)
+        rf.fit(X_train, y_train)
+
+        data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=20, max_rule_length=10,
+                             feature_names=dtrain.columns[:-1], beam_width=1, log_learning_process=False,
+                             rf_oob_decision_=rf.oob_decision_function_[:,-1])
         # ruleset = Ruleset(data_info=data_info)
 
         data_encoding = NMLencoding(data_info)
