@@ -170,8 +170,13 @@ class Ruleset:
                     continue
 
                 # if incl_res.incl_normalized_gain > 0:
+                # TODO: whether to constrain all excl_grow_res have positive normalized gain?
+                # current_incl_beam.update(incl_res,
+                #                          incl_res.incl_normalized_gain)
+                # TODO: this is a temporary solution for using absolute gain for incl_grow
                 current_incl_beam.update(incl_res,
-                                         incl_res.incl_normalized_gain)  # TODO: whether to constrain all excl_grow_res have positive normalized gain?
+                                         incl_res.incl_normalized_gain / incl_res.coverage_excl)
+
                 if rule in current_incl_beam.rules:
                     pass
                 else:
@@ -200,7 +205,9 @@ class Ruleset:
 
         for incl_beam in incl_beam_list:
             for r in incl_beam.rules:
-                incl_normalized_gain = r.incl_normalized_gain
+                # incl_normalized_gain = r.incl_normalized_gain
+                # TODO: a temporary solution for using absolute gain for choosing the cut point for incl_rule_grow
+                incl_normalized_gain = r.incl_normalized_gain / len(r.indices_excl_overlap)
 
                 # gain_data = self.cl_data - self.data_encoding.get_cl_data_incl(self, r, np.ones(r.coverage_excl, dtype=bool), np.ones(r.coverage, dtype=bool))
                 # gain_model = self.cl_model - self.allrules_cl_model - r.cl_model - universal_code_integers(len(self.rules) + 1)
@@ -228,7 +235,7 @@ class Ruleset:
                                              self.data_info.num_class)
 
                     log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
-                                        "with incl_normalized_gain: " + str(r.incl_normalized_gain) +\
+                                        "with incl_normalized_gain: " + str(r.incl_normalized_gain) + " **/** " + str(incl_normalized_gain) + \
                                         "\n with probability/coverage on test_set: " + str([rule_test_p, rule_test_coverage]) + \
                                         "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(oob_flatten_roc_auc) + \
                                         "\n with RF out-of-sample original ROC-AUC being: " + str(roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_)) + \
