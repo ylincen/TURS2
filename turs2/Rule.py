@@ -4,6 +4,7 @@ import numpy as np
 from turs2.utils_calculating_cl import *
 from turs2.nml_regret import *
 from functools import partial
+from utils_readable import *
 
 
 def store_grow_info(excl_bi_array, incl_bi_array, icol, cut, cut_option, excl_normalized_gain, incl_normalized_gain):
@@ -55,6 +56,8 @@ class Rule:
         else:
             self.excl_normalized_gain = excl_normalized_gain
             self.incl_normalized_gain = incl_normalized_gain
+
+        self.check_split_validity_res = None  # TODO: Here is a temporary solution for only doing validity check for searching excl_res, not incl_res
 
     def new_rule_after_deleting_condition(self, icols, new_ruleset):
         """
@@ -152,6 +155,75 @@ class Rule:
     #     excl_grow_res = self.make_rule_from_grow_info_rulelist(best_excl_grow_info)
     #     return excl_grow_res
 
+    def check_split_validity(self, icol, cut):
+        indices_left, indices_right = self.indices[self.features[:, icol] < cut], self.indices[self.features[:, icol] >= cut]
+
+        p_rule = self.prob
+        p_left = calc_probs(self.data_info.target[indices_left], self.data_info.num_class)
+        p_right = calc_probs(self.data_info.target[indices_right], self.data_info.num_class)
+
+        nll_rule = calc_negloglike(p_rule, self.coverage)
+        nll_left = calc_negloglike(p_left, len(indices_left))
+        nll_right = calc_negloglike(p_right, len(indices_right))
+
+        cl_model_extra = self.ruleset.model_encoding.cached_cl_model["l_cut"][0][icol]  # 0 represents for the "one split cut", instead of "two-splits cut"
+        cl_model_extra += np.log2(self.ruleset.model_encoding.data_ncol_for_encoding)
+        num_vars = np.sum(self.condition_count > 0)
+        cl_model_extra += self.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars + 1] - \
+                          self.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars]
+
+        validity = nll_rule + regret(self.coverage, 2) - nll_left - nll_right - regret(len(indices_left), 2) - regret(len(indices_right), 2) - cl_model_extra
+
+        validity_larger_than_zero = (validity > 0)
+
+        return validity_larger_than_zero
+
+    def check_split_validity_excl_with_biarray(self, icol, bi_array_excl):
+        indices_left_excl, indices_right_excl = self.indices_excl_overlap[bi_array_excl], self.indices[~bi_array_excl]
+        p_rule = self.prob_excl
+        p_left = calc_probs(self.data_info.target[indices_left_excl], self.data_info.num_class)
+        p_right = calc_probs(self.data_info.target[indices_right_excl], self.data_info.num_class)
+
+        nll_rule = calc_negloglike(p_rule, self.coverage_excl)
+        nll_left = calc_negloglike(p_left, len(indices_left_excl))
+        nll_right = calc_negloglike(p_right, len(indices_right_excl))
+
+        cl_model_extra = self.ruleset.model_encoding.cached_cl_model["l_cut"][0][icol]  # 0 represents for the "one split cut", instead of "two-splits cut"
+        cl_model_extra += np.log2(self.ruleset.model_encoding.data_ncol_for_encoding)
+        num_vars = np.sum(self.condition_count > 0)
+        cl_model_extra += self.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars + 1] - \
+                          self.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars]
+
+        validity = nll_rule + regret(self.coverage_excl, 2) - nll_left - nll_right - regret(len(indices_left_excl), 2) - \
+                   regret(len(indices_right_excl), 2) - cl_model_extra
+        validity_larger_than_zero = (validity > 0)
+        return validity_larger_than_zero
+
+    def check_split_validity_excl(self, icol, cut):
+        indices_left_excl, indices_right_excl = self.indices_excl_overlap[self.features_excl_overlap[:, icol] < cut], \
+                                                self.indices_excl_overlap[self.features_excl_overlap[:, icol] >= cut]
+
+        p_rule = self.prob_excl
+        p_left = calc_probs(self.data_info.target[indices_left_excl], self.data_info.num_class)
+        p_right = calc_probs(self.data_info.target[indices_right_excl], self.data_info.num_class)
+
+        nll_rule = calc_negloglike(p_rule, self.coverage_excl)
+        nll_left = calc_negloglike(p_left, len(indices_left_excl))
+        nll_right = calc_negloglike(p_right, len(indices_right_excl))
+
+        cl_model_extra = self.ruleset.model_encoding.cached_cl_model["l_cut"][0][icol]  # 0 represents for the "one split cut", instead of "two-splits cut"
+        cl_model_extra += np.log2(self.ruleset.model_encoding.data_ncol_for_encoding)
+        num_vars = np.sum(self.condition_count > 0)
+        cl_model_extra += self.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars + 1] - \
+                          self.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars]
+
+        validity = nll_rule + regret(self.coverage_excl, 2) - nll_left - nll_right - regret(len(indices_left_excl), 2) - \
+                   regret(len(indices_right_excl), 2) - cl_model_extra
+
+        validity_larger_than_zero = (validity > 0)
+
+        return validity_larger_than_zero
+
     def grow_incl_and_excl(self, constraints=None):
         best_excl_grow_info, best_incl_grow_info = None, None
         candidate_cuts = self.data_info.candidate_cuts
@@ -170,6 +242,11 @@ class Rule:
                                           (candidate_cuts[icol] > np.min(self.features[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
             for i, cut in enumerate(candidate_cuts_icol):
+                check_split_validity = self.check_split_validity(icol, cut)
+                # if not check_split_validity:
+                #     continue
+                self.check_split_validity_res = check_split_validity
+
                 best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain \
                     = self.search_for_this_cut(
                     icol=icol, option=None, cut=cut, excl_best_normalized_gain=excl_best_normalized_gain,
@@ -256,10 +333,15 @@ class Rule:
         excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
         excl_right_bi_array = ~excl_left_bi_array
 
-        excl_left_normalized_gain, cl_model, two_total_cl_left_excl = \
-            self.calculate_excl_gain(bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT)
-        excl_right_normalized_gain, cl_model, two_total_cl_right_excl = \
-            self.calculate_excl_gain(bi_array=excl_right_bi_array, icol=icol, cut_option=RIGHT_CUT)
+        # TODO: make here more readable
+        if self.check_split_validity_res:
+            excl_left_normalized_gain, cl_model, two_total_cl_left_excl = \
+                self.calculate_excl_gain(bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT)
+            excl_right_normalized_gain, cl_model, two_total_cl_right_excl = \
+                self.calculate_excl_gain(bi_array=excl_right_bi_array, icol=icol, cut_option=RIGHT_CUT)
+        else:
+            excl_left_normalized_gain, cl_model, two_total_cl_left_excl = -np.inf, np.inf, np.inf
+            excl_right_normalized_gain, cl_model, two_total_cl_right_excl = -np.inf, np.inf, np.inf
 
         incl_left_bi_array = (self.features[:, icol] < cut)
         incl_right_bi_array = ~incl_left_bi_array
@@ -325,6 +407,7 @@ class Rule:
         cl_model = model_encoding.cl_model_after_growing_rule_on_icol(rule=self, ruleset=self.ruleset, icol=icol, cut_option=cut_option)
 
         absolute_gain = self.ruleset.total_cl - cl_data - cl_model
+
         if np.count_nonzero(bi_array) == 0:
             normalized_gain = -np.Inf
         else:
@@ -339,11 +422,11 @@ class Rule:
         cl_model = model_encoding.cl_model_after_growing_rule_on_icol(rule=self, ruleset=self.ruleset, icol=icol, cut_option=cut_option)
 
         absolute_gain = self.ruleset.total_cl - cl_data - cl_model
+
         if np.count_nonzero(excl_bi_array) == 0:
             normalized_gain = -np.Inf
         else:
-            normalized_gain = absolute_gain / np.count_nonzero(excl_bi_array)   # use excl_bi_array so the normalized gain is some sort of "learning" rate;
-
+            normalized_gain = absolute_gain  # TODO: a temporary solution for using absolute gain instead of normalized gain;
         return [normalized_gain, cl_model, cl_data]
 
     def _print(self):
@@ -359,58 +442,58 @@ class Rule:
         return readable
 
     # def grow_incl_excl_beam(self, grow_info_beam_excl, grow_info_beam_incl):
-    #     candidate_cuts = self.data_info.candidate_cuts
-    #     excl_best_normalized_gain, incl_best_normalized_gain = -np.Inf, -np.Inf
-    #     for icol in range(self.ncol):
-    #         if self.rule_base is None:
-    #             candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features_excl_overlap[:, icol])) & \
-    #                                       (candidate_cuts[icol] > np.min(self.features_excl_overlap[:, icol]))
-    #             candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
-    #         else:
-    #             candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features[:, icol])) & \
-    #                                       (candidate_cuts[icol] > np.min(self.features[:, icol]))
-    #             candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
-    #         for i, cut in enumerate(candidate_cuts_icol):
-    #             excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
-    #             excl_right_bi_array = ~excl_left_bi_array
+    # candidate_cuts = self.data_info.candidate_cuts
+    # excl_best_normalized_gain, incl_best_normalized_gain = -np.Inf, -np.Inf
+    # for icol in range(self.ncol):
+    # if self.rule_base is None:
+    # candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features_excl_overlap[:, icol])) & \
+    # (candidate_cuts[icol] > np.min(self.features_excl_overlap[:, icol]))
+    # candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+    # else:
+    # candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features[:, icol])) & \
+    # (candidate_cuts[icol] > np.min(self.features[:, icol]))
+    # candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+    # for i, cut in enumerate(candidate_cuts_icol):
+    # excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
+    # excl_right_bi_array = ~excl_left_bi_array
     #
-    #             excl_left_normalized_gain, cl_model, two_total_cl_left_excl = self.calculate_excl_gain(
-    #                 bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT, cl_model=None, for_rule_set=True)
-    #             excl_right_normalized_gain, cl_model, two_total_cl_right_excl = self.calculate_excl_gain(
-    #                 bi_array=excl_right_bi_array, icol=icol, cut_option=LEFT_CUT, cl_model=cl_model, for_rule_set=True)
+    # excl_left_normalized_gain, cl_model, two_total_cl_left_excl = self.calculate_excl_gain(
+    # bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT, cl_model=None, for_rule_set=True)
+    # excl_right_normalized_gain, cl_model, two_total_cl_right_excl = self.calculate_excl_gain(
+    # bi_array=excl_right_bi_array, icol=icol, cut_option=LEFT_CUT, cl_model=cl_model, for_rule_set=True)
     #
-    #             incl_left_bi_array = (self.features[:, icol] < cut)
-    #             incl_right_bi_array = ~incl_left_bi_array
+    # incl_left_bi_array = (self.features[:, icol] < cut)
+    # incl_right_bi_array = ~incl_left_bi_array
     #
-    #             incl_left_normalized_gain, cl_model, total_negloglike = self.calculate_incl_gain(
-    #                 incl_bi_array=incl_left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT,
-    #                 cl_model=cl_model)
-    #             incl_right_normalized_gain, cl_model, total_negloglike = self.calculate_incl_gain(
-    #                 incl_bi_array=incl_right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
-    #                 cut_option=RIGHT_CUT, cl_model=cl_model)
+    # incl_left_normalized_gain, cl_model, total_negloglike = self.calculate_incl_gain(
+    # incl_bi_array=incl_left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT,
+    # cl_model=cl_model)
+    # incl_right_normalized_gain, cl_model, total_negloglike = self.calculate_incl_gain(
+    # incl_bi_array=incl_right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
+    # cut_option=RIGHT_CUT, cl_model=cl_model)
     #
-    #             if excl_left_normalized_gain > excl_best_normalized_gain and excl_left_normalized_gain >= excl_right_normalized_gain:
-    #                 excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
-    #                                                       excl_left_normalized_gain, incl_left_normalized_gain)
-    #                 grow_info_beam_excl.update(excl_grow_info)
-    #             elif excl_right_normalized_gain > excl_best_normalized_gain and excl_right_normalized_gain > excl_left_normalized_gain:
-    #                 excl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut,
-    #                                                       RIGHT_CUT, excl_right_normalized_gain,
-    #                                                       incl_right_normalized_gain)
-    #                 grow_info_beam_excl.update(excl_grow_info)
-    #             else:
-    #                 pass
+    # if excl_left_normalized_gain > excl_best_normalized_gain and excl_left_normalized_gain >= excl_right_normalized_gain:
+    # excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
+    # excl_left_normalized_gain, incl_left_normalized_gain)
+    # grow_info_beam_excl.update(excl_grow_info)
+    # elif excl_right_normalized_gain > excl_best_normalized_gain and excl_right_normalized_gain > excl_left_normalized_gain:
+    # excl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut,
+    # RIGHT_CUT, excl_right_normalized_gain,
+    # incl_right_normalized_gain)
+    # grow_info_beam_excl.update(excl_grow_info)
+    # else:
+    # pass
     #
-    #             if incl_left_normalized_gain > incl_best_normalized_gain and incl_left_normalized_gain >= incl_right_normalized_gain:
-    #                 incl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
-    #                                                       excl_left_normalized_gain, incl_left_normalized_gain)
-    #                 grow_info_beam_incl.update(excl_grow_info)
+    # if incl_left_normalized_gain > incl_best_normalized_gain and incl_left_normalized_gain >= incl_right_normalized_gain:
+    # incl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
+    # excl_left_normalized_gain, incl_left_normalized_gain)
+    # grow_info_beam_incl.update(excl_grow_info)
     #
-    #             elif incl_right_normalized_gain > incl_best_normalized_gain and incl_right_normalized_gain > incl_left_normalized_gain:
-    #                 incl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut,
-    #                                                       RIGHT_CUT, excl_right_normalized_gain,
-    #                                                       incl_right_normalized_gain)
-    #                 grow_info_beam_incl.update(excl_grow_info)
+    # elif incl_right_normalized_gain > incl_best_normalized_gain and incl_right_normalized_gain > incl_left_normalized_gain:
+    # incl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut,
+    # RIGHT_CUT, excl_right_normalized_gain,
+    # incl_right_normalized_gain)
+    # grow_info_beam_incl.update(excl_grow_info)
     #
-    #             else:
-    #                 pass
+    # else:
+    # pass
