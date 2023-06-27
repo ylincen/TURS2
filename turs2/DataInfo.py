@@ -42,11 +42,11 @@ class DataInfo:
 
         self.num_candidate_cuts = num_candidate_cuts
         # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
-        self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
+        # self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
         # self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
-        # self.candidate_cuts = self.candidate_cuts_quantile_mid_points(num_candidate_cuts)
+        self.candidate_cuts = self.candidate_cuts_quantile_mid_points(num_candidate_cuts)
 
         self.feature_names = feature_names
         self.beam_width = beam_width

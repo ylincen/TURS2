@@ -76,9 +76,13 @@ class ModelEncodingDependingOnData:
             num_cuts = np.count_nonzero((self.data_info.candidate_cuts[col] >= low_bound) &
                                         (self.data_info.candidate_cuts[col] <= up_bound))
             if condition_count[col] == 1:
+                assert num_cuts > 0
                 l_cuts += np.log2(num_cuts)
             else:
-                assert num_cuts >= 2
+                try:
+                    assert num_cuts >= 2
+                except AssertionError:
+                    print("debug")
                 l_cuts += np.log2(num_cuts) + np.log2(num_cuts - 1) - np.log2(2)
 
             if index != len(col_orders) - 1:
@@ -115,7 +119,7 @@ class ModelEncodingDependingOnData:
             # if rule.condition_matrix[cut_option, icol] is np.nan:  # HERE why it is 0??
             if np.isnan(rule.condition_matrix[cut_option, icol]):
                 condition_count[icol] += 1
-                condition_matrix[0, icol] = np.inf  # TODO: Note that this is just a place holder, to make this position not equal to np.nan; Make it better later.
+                condition_matrix[0, icol] = np.inf  # TODO: Note that this is just a place holder, to make this position not equal to np.nan; Need to make this more readable later.
 
             if icol not in icols_in_order:
                 icols_in_order = icols_in_order + [icol]

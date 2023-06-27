@@ -381,11 +381,15 @@ class Rule:
 
         condition_matrix = np.array(self.condition_matrix)
         condition_matrix[grow_info["cut_option"], grow_info["icol"]] = grow_info["cut"]
+        if grow_info["icol"] in self.icols_in_order:
+            new_icols_in_order = self.icols_in_order
+        else:
+            new_icols_in_order = self.icols_in_order + [grow_info["icol"]]
         rule = Rule(indices=indices, indices_excl_overlap=indices_excl_overlap, data_info=self.data_info,
                     rule_base=self, condition_matrix=condition_matrix, ruleset=self.ruleset,
                     excl_normalized_gain=grow_info["excl_normalized_gain"],
                     incl_normalized_gain=grow_info["incl_normalized_gain"],
-                    icols_in_order=self.icols_in_order + [grow_info["icol"]])
+                    icols_in_order=new_icols_in_order)
         return rule
 
     # def make_rule_from_grow_info_rulelist(self, grow_info):

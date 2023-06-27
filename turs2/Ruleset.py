@@ -106,16 +106,18 @@ class Ruleset:
                 print("iteration ", iter)
             rule_to_add, incl_normalized_gain = self.find_next_rule(constraints=self.constraints)
 
-            rf_oob = np.array(self.data_info.rf_oob_decision_)
-            rf_oob[self.uncovered_indices] = np.median(self.data_info.rf_oob_decision_[self.uncovered_indices])
-            auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob)
+            if self.data_info.rf_oob_decision_ is not None:
+                rf_oob = np.array(self.data_info.rf_oob_decision_)
+                rf_oob[self.uncovered_indices] = np.median(self.data_info.rf_oob_decision_[self.uncovered_indices])
+                auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob)
 
-            rf_oob[rule_to_add.bool_array] = np.median(self.data_info.rf_oob_decision_[rule_to_add.bool_array])
-            auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob)
+                rf_oob[rule_to_add.bool_array] = np.median(self.data_info.rf_oob_decision_[rule_to_add.bool_array])
+                auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob)
 
-            # TODO: choose which one to use
-            add_to_ruleset = (auc_flatten_else_rule_and_rule_to_add > auc_flatten_else_rule) or (incl_normalized_gain > 0)
-            add_to_ruleset = (incl_normalized_gain > 0)
+                # TODO: choose which one to use
+                add_to_ruleset = (auc_flatten_else_rule_and_rule_to_add > auc_flatten_else_rule) or (incl_normalized_gain > 0)
+            else:
+                add_to_ruleset = (incl_normalized_gain > 0)
 
             if add_to_ruleset:
                 # if printing:
