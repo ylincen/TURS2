@@ -1,6 +1,7 @@
 import copy
 import sys
-sys.path.extend(['/Users/yanglincen/projects/TURS'])
+# sys.path.extend(['/Users/yanglincen/projects/TURS'])
+sys.path.extend(['/Users/yangl3/projects/TURS'])
 
 import numpy as np
 import pandas as pd
@@ -55,7 +56,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
     for icol in range(d.shape[1] - 1):
         if d.iloc[:, icol].dtype == "float":
             d_transformed = d.iloc[:, icol]
-        elif d.loc[:, icol].dtype == "int" and len(np.unique(d.iloc[:, icol])) > 20:
+        elif d.iloc[:, icol].dtype == "int" and len(np.unique(d.iloc[:, icol])) > 20:
             d_transformed = d.iloc[:, icol]
         else:
             d_transformed = le_feature.fit_transform(d.iloc[:, icol:(icol+1)])
@@ -176,6 +177,9 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
                    "runtime": end_time - start_time}
         exp_res_alldata.append(exp_res)
     exp_res_df = pd.DataFrame(exp_res_alldata)
-    res_file_name = "./" + date_and_time + "_uci_datasets_res.csv"
+    if data_given is None:
+        res_file_name = "./" + date_and_time + "_uci_datasets_res.csv"
+    else:
+        res_file_name = "./" + date_and_time + "_" + data_given + "_uci_datasets_res.csv"
     exp_res_df.to_csv(res_file_name, index=False)
 
