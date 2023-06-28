@@ -1,7 +1,7 @@
 import copy
 import sys
 # sys.path.extend(['/Users/yanglincen/projects/TURS'])
-sys.path.extend(['/Users/yangl3/projects/TURS'])
+sys.path.extend(['/home/yangl3/projects/TURS'])
 
 import numpy as np
 import pandas as pd
