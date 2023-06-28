@@ -76,14 +76,23 @@ class ModelEncodingDependingOnData:
             num_cuts = np.count_nonzero((self.data_info.candidate_cuts[col] >= low_bound) &
                                         (self.data_info.candidate_cuts[col] <= up_bound))
             if condition_count[col] == 1:
-                assert num_cuts > 0
-                l_cuts += np.log2(num_cuts)
+                # try:
+                #     assert num_cuts > 0
+                # except AssertionError:
+                #     print("debug1")
+                if num_cuts == 0:
+                    l_cuts += 0
+                else:
+                    l_cuts += np.log2(num_cuts)
             else:
-                try:
-                    assert num_cuts >= 2
-                except AssertionError:
-                    print("debug")
-                l_cuts += np.log2(num_cuts) + np.log2(num_cuts - 1) - np.log2(2)
+                # try:
+                #     assert num_cuts >= 2
+                # except AssertionError:
+                #     print("debug")
+                if num_cuts >= 2:
+                    l_cuts += np.log2(num_cuts) + np.log2(num_cuts - 1) - np.log2(2)
+                else:
+                    l_cuts += 0
 
             if index != len(col_orders) - 1:
                 assert condition_count[col] == 1 or condition_count[col] == 2

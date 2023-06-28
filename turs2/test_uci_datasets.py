@@ -102,10 +102,10 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)
         ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
-        try:
-            ruleset.fit(max_iter=1000, printing=False)
-        except Exception:
-            print("Error in ", data_name, " with fold number ", fold)
+        # try:
+        ruleset.fit(max_iter=1000, printing=False)
+        # except Exception:
+            # print("Error in ", data_name, " with fold number ", fold)
 
         # collect the experiment results
 
@@ -138,6 +138,8 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
 
             Brier_train += np.sum((res_train[:, yy] - positive_mask_train)**2)
             Brier_test += np.sum((res[:, yy] - positive_mask_test)**2)
+            Brier_train = Brier_train / len(res_train)
+            Brier_test = Brier_test / len(res)
 
             pr_train = precision_recall_curve(positive_mask_train, res_train[:, yy])
             pr_test = precision_recall_curve(positive_mask_test, res[:, yy])

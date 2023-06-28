@@ -247,6 +247,9 @@ class Rule:
                 #     continue
                 self.check_split_validity_res = check_split_validity
 
+                if np.all(self.features[:, icol] < cut) or np.all(self.features[:, icol] >= cut):
+                    continue
+
                 best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain \
                     = self.search_for_this_cut(
                     icol=icol, option=None, cut=cut, excl_best_normalized_gain=excl_best_normalized_gain,
