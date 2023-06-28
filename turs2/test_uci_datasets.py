@@ -102,8 +102,10 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)
         ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
-
-        ruleset.fit(max_iter=1000, printing=False)
+        try:
+            ruleset.fit(max_iter=1000, printing=False)
+        except Exception:
+            print("Error in ", data_name, " with fold number ", fold)
 
         # collect the experiment results
 
