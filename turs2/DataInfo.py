@@ -1,4 +1,5 @@
 import sys
+import platform
 import pandas as pd
 import numpy as np
 from constant import *
@@ -13,7 +14,7 @@ import os
 
 class DataInfo:
     def __init__(self, X, y, num_candidate_cuts, max_rule_length, feature_names, beam_width, dataset_name=None,
-                 X_test=None, y_test=None, rf_oob_decision_=None, log_learning_process=True):
+                 X_test=None, y_test=None, rf_oob_decision_=None, log_learning_process=True, num_class_given=None):
         """
         Meta-data for an input data
         data: pandas data frame
@@ -39,6 +40,8 @@ class DataInfo:
 
         # get num_class, ncol, nrow,
         self.num_class = len(np.unique(self.target))
+        if num_class_given is not None:
+            self.num_class = num_class_given
 
         self.num_candidate_cuts = num_candidate_cuts
         # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
@@ -75,9 +78,15 @@ class DataInfo:
             for j, v in self.candidate_cuts.items():
                 log_datainfo += str(self.candidate_cuts[j]) + "\n"
 
-            with open(log_folder_name + "\\datainfo.txt", "w") as flog:
-                flog.write(log_datainfo)
-            self.log_folder_name = log_folder_name
+            system_name = platform.system()
+            if system_name == "Windows":
+                with open(log_folder_name + "\\datainfo.txt", "w") as flog:
+                    flog.write(log_datainfo)
+                self.log_folder_name = log_folder_name
+            else:
+                with open(log_folder_name + "/datainfo.txt", "w") as flog:
+                    flog.write(log_datainfo)
+                self.log_folder_name = log_folder_name
 
 
     def get_candidate_cuts_CLASSY(self, num_candidate_cuts):

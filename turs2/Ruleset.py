@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import os
 from datetime import datetime
+import platform
 
 from sklearn.metrics import roc_auc_score
 
@@ -108,22 +109,26 @@ class Ruleset:
 
             if self.data_info.rf_oob_decision_ is not None:
                 rf_oob = np.array(self.data_info.rf_oob_decision_)
-                rf_oob[self.uncovered_indices] = np.median(self.data_info.rf_oob_decision_[self.uncovered_indices])
-                auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob)
 
-                rf_oob[rule_to_add.bool_array] = np.median(self.data_info.rf_oob_decision_[rule_to_add.bool_array])
-                auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob)
+                if self.data_info.num_class == 2:
+                    rf_oob[self.uncovered_indices] = np.median(self.data_info.rf_oob_decision_[self.uncovered_indices])
+                    rf_oob[rule_to_add.bool_array] = np.median(self.data_info.rf_oob_decision_[rule_to_add.bool_array])
+                    auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob)
+                    auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob)
+                else:
+                    rf_oob[self.uncovered_indices] = np.mean(self.data_info.rf_oob_decision_[self.uncovered_indices], axis=0)
+                    rf_oob[rule_to_add.bool_array] = np.mean(self.data_info.rf_oob_decision_[rule_to_add.bool_array], axis=0)
+
+                    auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob, multi_class="ovr")
+                    auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob, multi_class="ovr")
 
                 # TODO: choose which one to use
                 add_to_ruleset = (auc_flatten_else_rule_and_rule_to_add > auc_flatten_else_rule) or (incl_normalized_gain > 0)
+                # add_to_ruleset = (incl_normalized_gain > 0)
             else:
                 add_to_ruleset = (incl_normalized_gain > 0)
 
             if add_to_ruleset:
-                # if printing:
-                #     print(rule_to_add._print())
-                #     print("incl_normalized_gain:", incl_normalized_gain, "coverage_excl: ", rule_to_add.coverage_excl)
-
                 self.add_rule(rule_to_add)
                 if self.data_info.log_learning_process:
                     local_predict_res = get_rule_local_prediction_for_unseen_data(ruleset=self,
@@ -140,8 +145,13 @@ class Ruleset:
             else:
                 break
         if self.data_info.log_learning_process:
-            with open(log_folder_name + "\\ruleset.txt", "w") as flog_ruleset:
-                flog_ruleset.write(log_info_ruleset)
+            system_name = platform.system()
+            if system_name == "Windows":
+                with open(log_folder_name + "\\ruleset.txt", "w") as flog_ruleset:
+                    flog_ruleset.write(log_info_ruleset)
+            else:
+                with open(log_folder_name + "/ruleset.txt", "w") as flog_ruleset:
+                    flog_ruleset.write(log_info_ruleset)
 
     def find_next_rule(self, rule_given=None, constraints=None):
         if rule_given is None:
@@ -228,20 +238,34 @@ class Ruleset:
                 if self.data_info.log_learning_process:
                     rule_test_p, rule_test_coverage = get_rule_local_prediction_for_unseen_data_this_rule_only(rule=r, X_test=self.data_info.X_test, y_test=self.data_info.y_test)
 
-                    oob_deci_flatten = np.array(self.data_info.rf_oob_decision_)
-                    oob_deci_flatten[r.bool_array] = np.median(oob_deci_flatten[r.bool_array])
+                    if self.data_info.rf_oob_decision_ is None:
+                        oob_flatten_roc_auc = "Not available"
+                        rf_original_oob_roc_auc = "Not available"
+                    else:
+                        oob_deci_flatten = np.array(self.data_info.rf_oob_decision_)
 
-                    oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten)
+                        if self.data_info.num_class == 2:
+                            oob_deci_flatten[r.bool_array] = np.median(oob_deci_flatten[r.bool_array])
+                            oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten)
+                            rf_original_oob_roc_auc = str(roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_))
+                        else:
+                            oob_deci_flatten[r.bool_array] = np.mean(oob_deci_flatten[r.bool_array], axis=0)
+                            oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten, multi_class="ovr")
+                            rf_original_oob_roc_auc = str(roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_,
+                                                                        multi_class="ovr"))
 
                     else_rule_p = calc_probs(self.data_info.target[self.uncovered_bool & (~r.bool_array)],
                                              self.data_info.num_class)
+
+                    rule_prob_diff_train_test_max = np.max(abs(rule_test_p - r.prob))
 
                     log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
                                         "with incl_normalized_gain: " + str(r.incl_normalized_gain) + " **/** " + str(incl_normalized_gain) + \
                                         "\n with probability/coverage on test_set: " + str([rule_test_p, rule_test_coverage]) + \
                                         "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(oob_flatten_roc_auc) + \
-                                        "\n with RF out-of-sample original ROC-AUC being: " + str(roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_)) + \
-                                        "\n with else-rule training prob: " + str(else_rule_p)
+                                        "\n with RF out-of-sample original ROC-AUC being: " + rf_original_oob_roc_auc + \
+                                        "\n with else-rule training prob: " + str(else_rule_p) + \
+                                        "\n with maximum rule_prob_diff_train/test: " + str(rule_prob_diff_train_test_max)
 
                 # if incl_normalized_gain > best_incl_normalized_gain and growth_validity > 0:
                 if incl_normalized_gain > best_incl_normalized_gain:
@@ -257,11 +281,19 @@ class Ruleset:
                     rule_test_p, rule_test_coverage = get_rule_local_prediction_for_unseen_data_this_rule_only(rule=r,
                                                                                                                X_test=self.data_info.X_test,
                                                                                                                y_test=self.data_info.y_test)
-
-                    oob_deci_flatten = np.array(self.data_info.rf_oob_decision_)
-                    oob_deci_flatten[r.bool_array] = np.median(oob_deci_flatten[r.bool_array])
-
-                    oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten)
+                    if self.data_info.rf_oob_decision_ is None:
+                        oob_flatten_roc_auc = "Not available "
+                        rf_original_oob_roc_auc = "Not available "
+                    else:
+                        oob_deci_flatten = np.array(self.data_info.rf_oob_decision_)
+                        if self.data_info.num_class == 2:
+                            oob_deci_flatten[r.bool_array] = np.median(oob_deci_flatten[r.bool_array])
+                            oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten)
+                            rf_original_oob_roc_auc = roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_)
+                        else:
+                            oob_deci_flatten[r.bool_array] = np.mean(oob_deci_flatten[r.bool_array], axis=0)
+                            oob_flatten_roc_auc = roc_auc_score(self.data_info.target, oob_deci_flatten, multi_class="ovr")
+                            rf_original_oob_roc_auc = roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_, multi_class="ovr")
 
                     else_rule_p = calc_probs(self.data_info.target[self.uncovered_bool & (~r.bool_array)],
                                              self.data_info.num_class)
@@ -274,11 +306,16 @@ class Ruleset:
                                         "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(
                         oob_flatten_roc_auc) + \
                                         "\n with RF out-of-sample original ROC-AUC being: " + str(
-                        roc_auc_score(self.data_info.target, self.data_info.rf_oob_decision_)) + \
+                        rf_original_oob_roc_auc) + \
                                         "\n with else-rule training prob: " + str(else_rule_p)
         if self.data_info.log_learning_process:
-            with open(self.data_info.log_folder_name + "\\rule" + str(len(self.rules)) +".txt", "w") as flog_ruleset:
-                flog_ruleset.write(log_nextbestrule)
+            system_name = platform.system()
+            if system_name == "Windows":
+                with open(self.data_info.log_folder_name + "\\rule" + str(len(self.rules)) +".txt", "w") as flog_ruleset:
+                    flog_ruleset.write(log_nextbestrule)
+            else:
+                with open(self.data_info.log_folder_name + "/rule" + str(len(self.rules)) +".txt", "w") as flog_ruleset:
+                    flog_ruleset.write(log_nextbestrule)
 
         return [rule_to_add, best_incl_normalized_gain]
 
