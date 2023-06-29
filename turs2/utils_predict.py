@@ -95,10 +95,14 @@ def predict_ruleset(ruleset, X_test, y_test):
         test_uncovered_bool = test_uncovered_bool & ~r_bool_array
     cover_matrix[:, -1] = test_uncovered_bool
 
+    # From chatGPT: "I use dtype=object to allow the elements of powers_of_2 and binary_vector to be Python integers which can handle arbitrary large values."
+    # That is, by using "object", the element of numpy array becomes Python Int, instead of numpy.int64;
     cover_matrix_int = cover_matrix.astype(int)
-    unique_id = np.zeros(len(X_test), dtype=int)
+    unique_id = np.zeros(len(X_test), dtype=object)
+    power_of_two = 2 ** np.arange(cover_matrix_int.shape[1], dtype=object)
     for kol in range(cover_matrix_int.shape[1]):
-        unique_id += 2 ** kol * cover_matrix_int[:, kol]
+        # unique_id += 2 ** kol * cover_matrix_int[:, kol]    # This may fail when 2 ** kol becomes very large
+        unique_id += power_of_two[kol] * cover_matrix_int[:, kol].astype(object)
 
     groups, ret_index = np.unique(unique_id, return_index=True)
     unique_id_dir = {}
