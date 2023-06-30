@@ -193,8 +193,11 @@ class Ruleset:
                     pass
                 else:
                     # if excl_res.excl_normalized_gain > 0:
+                    # current_excl_beam.update(excl_res,
+                    #                          excl_res.excl_normalized_gain)
+                    # TODO: this is a temporary solution for using absolute gain for excl_grow
                     current_excl_beam.update(excl_res,
-                                             excl_res.excl_normalized_gain)
+                                             excl_res.excl_normalized_gain / excl_res.coverage_excl)
 
             if len(current_excl_beam.rules) > 0 or len(current_incl_beam.rules) > 0:   # Can change to some other (early) stopping criteria;
                 previous_excl_beam = current_excl_beam
