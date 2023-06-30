@@ -1,4 +1,5 @@
 import math
+import platform
 
 import numpy as np
 from turs2.utils_calculating_cl import *
@@ -228,6 +229,8 @@ class Rule:
         best_excl_grow_info, best_incl_grow_info = None, None
         candidate_cuts = self.data_info.candidate_cuts
         excl_best_normalized_gain, incl_best_normalized_gain = -np.Inf, -np.Inf
+
+        invalid_cuts = {}
         for icol in range(self.ncol):
             if constraints is not None and "icols_to_skip" in constraints and \
                     icol in constraints["icols_to_skip"]:
@@ -242,11 +245,17 @@ class Rule:
                                           (candidate_cuts[icol] > np.min(self.features[:, icol]))
                 candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
             for i, cut in enumerate(candidate_cuts_icol):
-                check_split_validity = self.check_split_validity(icol, cut)
-                # if not check_split_validity:
-                #     continue
+                # check_split_validity = self.check_split_validity(icol, cut)  # TODO: this may also cause problems for excl_grow after many rules are already added to the ruleset
+                check_split_validity = self.check_split_validity_excl(icol, cut)
+                if not check_split_validity:
+                    if icol in invalid_cuts:
+                        invalid_cuts[icol].append(cut)
+                    else:
+                        invalid_cuts[icol] = [cut]
+                    continue
                 self.check_split_validity_res = check_split_validity
 
+                # skip (icol, cut) that leads to empty child.
                 if np.all(self.features[:, icol] < cut) or np.all(self.features[:, icol] >= cut):
                     continue
 
@@ -263,7 +272,29 @@ class Rule:
         if best_incl_grow_info is not None:
             incl_grow_res = self.make_rule_from_grow_info(best_incl_grow_info)
         else:
-            incl_grow_res = None
+            incl_best_normalized_gain = self.incl_normalized_gain
+            # print("re-running on rule: \n")
+            # print(get_readable_rule(self))
+
+            for icol in invalid_cuts.keys():
+                if constraints is not None and "icols_to_skip" in constraints and \
+                        icol in constraints["icols_to_skip"]:
+                    continue
+                for cut in invalid_cuts[icol]:
+                    if np.all(self.features[:, icol] < cut) or np.all(self.features[:, icol] >= cut):
+                        continue
+                    best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain \
+                        = self.search_for_this_cut(
+                        icol=icol, option=None, cut=cut, excl_best_normalized_gain=excl_best_normalized_gain,
+                        incl_best_normalized_gain=incl_best_normalized_gain,
+                        best_excl_grow_info=best_excl_grow_info, best_incl_grow_info=best_incl_grow_info)
+
+            if best_incl_grow_info is not None:
+                incl_grow_res = self.make_rule_from_grow_info(best_incl_grow_info)
+                # print("Obtaining, ")
+                # print(get_readable_rule(incl_grow_res))
+            else:
+                incl_grow_res = None
 
         return [excl_grow_res, incl_grow_res]
 
@@ -356,7 +387,7 @@ class Rule:
             self.calculate_incl_gain(incl_bi_array=incl_right_bi_array, excl_bi_array=excl_right_bi_array,
                                      icol=icol, cut_option=RIGHT_CUT)
 
-        if excl_left_normalized_gain > excl_best_normalized_gain and excl_left_normalized_gain >= excl_right_normalized_gain:
+        if excl_left_normalized_gain > excl_best_normalized_gain and excl_left_normalized_gain > excl_right_normalized_gain:
             best_excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
                                                   excl_left_normalized_gain, incl_left_normalized_gain)
             excl_best_normalized_gain = excl_left_normalized_gain
@@ -364,9 +395,19 @@ class Rule:
             best_excl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT,
                                                   excl_right_normalized_gain, incl_right_normalized_gain)
             excl_best_normalized_gain = excl_right_normalized_gain
+        elif excl_right_normalized_gain > excl_best_normalized_gain and excl_right_normalized_gain == excl_left_normalized_gain:
+            # go for the smaller part, which may intuitively (meaning that I don't have proof) leads to simpler model
+            if np.count_nonzero(excl_right_bi_array) > np.count_nonzero(excl_left_bi_array):
+                best_excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
+                                                      excl_left_normalized_gain, incl_left_normalized_gain)
+                excl_best_normalized_gain = excl_left_normalized_gain
+            else:
+                best_excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
+                                                      excl_left_normalized_gain, incl_left_normalized_gain)
+                excl_best_normalized_gain = excl_left_normalized_gain
         else:
             pass
-        if incl_left_normalized_gain > incl_best_normalized_gain and incl_left_normalized_gain >= incl_right_normalized_gain:
+        if incl_left_normalized_gain > incl_best_normalized_gain and incl_left_normalized_gain > incl_right_normalized_gain:
             best_incl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
                                                   excl_left_normalized_gain, incl_left_normalized_gain)
             incl_best_normalized_gain = incl_left_normalized_gain
@@ -374,6 +415,15 @@ class Rule:
             best_incl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT,
                                                   excl_right_normalized_gain, incl_right_normalized_gain)
             incl_best_normalized_gain = incl_right_normalized_gain
+        elif incl_right_normalized_gain > incl_best_normalized_gain and incl_right_normalized_gain == incl_left_normalized_gain:
+            if np.count_nonzero(incl_right_bi_array) > np.count_nonzero(incl_left_bi_array):
+                best_incl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
+                                                      excl_left_normalized_gain, incl_left_normalized_gain)
+                incl_best_normalized_gain = incl_left_normalized_gain
+            else:
+                best_incl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT,
+                                                      excl_right_normalized_gain, incl_right_normalized_gain)
+                incl_best_normalized_gain = incl_right_normalized_gain
         else:
             pass
         return [best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain]
@@ -418,7 +468,8 @@ class Rule:
         if np.count_nonzero(bi_array) == 0:
             normalized_gain = -np.Inf
         else:
-            normalized_gain = absolute_gain / np.count_nonzero(bi_array)
+            # normalized_gain = absolute_gain / np.count_nonzero(bi_array)
+            normalized_gain = absolute_gain # TODO: a temporary solution for using absolute gain for cut points search
 
         return [normalized_gain, cl_model, cl_data]
 
