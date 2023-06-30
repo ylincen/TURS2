@@ -6,7 +6,7 @@ from turs2.utils_calculating_cl import *
 from turs2.nml_regret import *
 from functools import partial
 from utils_readable import *
-
+from turs2.Beam import *
 
 def store_grow_info(excl_bi_array, incl_bi_array, icol, cut, cut_option, excl_normalized_gain, incl_normalized_gain):
     return {"excl_bi_array": excl_bi_array, "incl_bi_array": incl_bi_array, "icol": icol, "cut": cut,
@@ -225,12 +225,15 @@ class Rule:
 
         return validity_larger_than_zero
 
-    def grow_incl_and_excl(self, constraints=None):
+    def grow_incl_and_excl_return_beam(self, constraints=None):
         best_excl_grow_info, best_incl_grow_info = None, None
         candidate_cuts = self.data_info.candidate_cuts
         excl_best_normalized_gain, incl_best_normalized_gain = -np.Inf, -np.Inf
 
         invalid_cuts = {}
+        best_incl_grow_beam = Beam(width=self.data_info.beam_width, rule_length=np.nan)
+        best_excl_grow_beam = Beam(width=self.data_info.beam_width, rule_length=np.nan)
+
         for icol in range(self.ncol):
             if constraints is not None and "icols_to_skip" in constraints and \
                     icol in constraints["icols_to_skip"]:
@@ -265,6 +268,84 @@ class Rule:
                     incl_best_normalized_gain=incl_best_normalized_gain,
                     best_excl_grow_info=best_excl_grow_info, best_incl_grow_info=best_incl_grow_info)
 
+                best_incl_grow_beam.update(best_incl_grow_info, incl_best_normalized_gain)
+                best_excl_grow_beam.update(best_excl_grow_info, excl_best_normalized_gain)
+                excl_best_normalized_gain = best_excl_grow_beam.worst_gain
+                incl_best_normalized_gain = best_incl_grow_beam.worst_gain
+
+        # TODO: not clear when "best_excl_grow_info is not None" will be FALSE.
+        if best_excl_grow_info is not None:
+            excl_grow_res_beam = [self.make_rule_from_grow_info(excl_grow_info) for excl_grow_info in best_excl_grow_beam.rules]
+        else:
+            excl_grow_res_beam = None
+        if best_incl_grow_info is not None:
+            incl_grow_res_beam = [self.make_rule_from_grow_info(incl_grow_info) for incl_grow_info in best_incl_grow_beam.rules]
+        else:
+            incl_best_normalized_gain = self.incl_normalized_gain
+
+            for icol in invalid_cuts.keys():
+                if constraints is not None and "icols_to_skip" in constraints and \
+                        icol in constraints["icols_to_skip"]:
+                    continue
+                for cut in invalid_cuts[icol]:
+                    if np.all(self.features[:, icol] < cut) or np.all(self.features[:, icol] >= cut):
+                        continue
+                    best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain \
+                        = self.search_for_this_cut(
+                        icol=icol, option=None, cut=cut, excl_best_normalized_gain=excl_best_normalized_gain,
+                        incl_best_normalized_gain=incl_best_normalized_gain,
+                        best_excl_grow_info=best_excl_grow_info, best_incl_grow_info=best_incl_grow_info)
+
+            if best_incl_grow_info is not None:
+                incl_grow_res_beam = [self.make_rule_from_grow_info(incl_grow_info) for incl_grow_info in
+                                      best_incl_grow_beam.rules]
+            else:
+                incl_grow_res_beam = None
+
+        return [excl_grow_res_beam, incl_grow_res_beam]
+
+    def grow_incl_and_excl(self, constraints=None):
+        best_excl_grow_info, best_incl_grow_info = None, None
+        candidate_cuts = self.data_info.candidate_cuts
+        excl_best_normalized_gain, incl_best_normalized_gain = -np.Inf, -np.Inf
+
+        invalid_cuts = {}
+
+        for icol in range(self.ncol):
+            if constraints is not None and "icols_to_skip" in constraints and \
+                    icol in constraints["icols_to_skip"]:
+                continue
+
+            if self.rule_base is None:
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features_excl_overlap[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(self.features_excl_overlap[:, icol]))
+                candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+            else:
+                candidate_cuts_selector = (candidate_cuts[icol] < np.max(self.features[:, icol])) & \
+                                          (candidate_cuts[icol] > np.min(self.features[:, icol]))
+                candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
+            for i, cut in enumerate(candidate_cuts_icol):
+                # check_split_validity = self.check_split_validity(icol, cut)  # TODO: this may also cause problems for excl_grow after many rules are already added to the ruleset
+                check_split_validity = self.check_split_validity_excl(icol, cut)
+                if not check_split_validity:
+                    if icol in invalid_cuts:
+                        invalid_cuts[icol].append(cut)
+                    else:
+                        invalid_cuts[icol] = [cut]
+                    continue
+                self.check_split_validity_res = check_split_validity
+
+                # skip (icol, cut) that leads to empty child.
+                if np.all(self.features[:, icol] < cut) or np.all(self.features[:, icol] >= cut):
+                    continue
+
+                best_excl_grow_info, best_incl_grow_info, excl_best_normalized_gain, incl_best_normalized_gain \
+                    = self.search_for_this_cut(
+                    icol=icol, option=None, cut=cut, excl_best_normalized_gain=excl_best_normalized_gain,
+                    incl_best_normalized_gain=incl_best_normalized_gain,
+                    best_excl_grow_info=best_excl_grow_info, best_incl_grow_info=best_incl_grow_info)
+
+        # TODO: not clear when "best_excl_grow_info is not None" will be FALSE.
         if best_excl_grow_info is not None:
             excl_grow_res = self.make_rule_from_grow_info(best_excl_grow_info)
         else:
@@ -273,8 +354,6 @@ class Rule:
             incl_grow_res = self.make_rule_from_grow_info(best_incl_grow_info)
         else:
             incl_best_normalized_gain = self.incl_normalized_gain
-            # print("re-running on rule: \n")
-            # print(get_readable_rule(self))
 
             for icol in invalid_cuts.keys():
                 if constraints is not None and "icols_to_skip" in constraints and \
@@ -291,8 +370,6 @@ class Rule:
 
             if best_incl_grow_info is not None:
                 incl_grow_res = self.make_rule_from_grow_info(best_incl_grow_info)
-                # print("Obtaining, ")
-                # print(get_readable_rule(incl_grow_res))
             else:
                 incl_grow_res = None
 
