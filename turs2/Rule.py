@@ -474,14 +474,21 @@ class Rule:
             excl_best_normalized_gain = excl_right_normalized_gain
         elif excl_right_normalized_gain > excl_best_normalized_gain and excl_right_normalized_gain == excl_left_normalized_gain:
             # go for the smaller part, which may intuitively (meaning that I don't have proof) leads to simpler model
+            # Abandon above: instead, using max(prob) or entropy
             if np.count_nonzero(excl_right_bi_array) > np.count_nonzero(excl_left_bi_array):
+            # p_left_excl = calc_probs(self.target_excl_overlap[excl_left_bi_array], self.data_info.num_class)
+            # p_right_excl = calc_probs(self.target_excl_overlap[excl_right_bi_array], self.data_info.num_class)
+            # ent_left_excl = -sum(np.log2(p_left_excl[p_left_excl != 0]) * p_left_excl[p_left_excl != 0])
+            # ent_right_excl = -sum(np.log2(p_right_excl[p_right_excl != 0]) * p_right_excl[p_right_excl != 0])
+            # if ent_right_excl > ent_left_excl:  # choose the one with smaller entropy
                 best_excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
                                                       excl_left_normalized_gain, incl_left_normalized_gain)
                 excl_best_normalized_gain = excl_left_normalized_gain
             else:
-                best_excl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
-                                                      excl_left_normalized_gain, incl_left_normalized_gain)
-                excl_best_normalized_gain = excl_left_normalized_gain
+                # assert ent_right_excl != ent_left_excl
+                best_excl_grow_info = store_grow_info(excl_right_bi_array, incl_right_bi_array, icol, cut, RIGHT_CUT,
+                                                      excl_right_normalized_gain, incl_right_normalized_gain)
+                excl_best_normalized_gain = excl_right_normalized_gain
         else:
             pass
         if incl_left_normalized_gain > incl_best_normalized_gain and incl_left_normalized_gain > incl_right_normalized_gain:
@@ -493,7 +500,13 @@ class Rule:
                                                   excl_right_normalized_gain, incl_right_normalized_gain)
             incl_best_normalized_gain = incl_right_normalized_gain
         elif incl_right_normalized_gain > incl_best_normalized_gain and incl_right_normalized_gain == incl_left_normalized_gain:
+            # TODO: change the heuristic to break the tie here. We can do entropy or max_prob;
             if np.count_nonzero(incl_right_bi_array) > np.count_nonzero(incl_left_bi_array):
+            # p_left = calc_probs(self.target[incl_left_bi_array], self.data_info.num_class)
+            # p_right = calc_probs(self.target[incl_right_bi_array], self.data_info.num_class)
+            # ent_left = -sum(np.log2(p_left[p_left != 0]) * p_left[p_left != 0])
+            # ent_right = -sum(np.log2(p_right[p_right != 0]) * p_right[p_right != 0])
+            # if ent_right > ent_left:  # choose the one with smaller entropy
                 best_incl_grow_info = store_grow_info(excl_left_bi_array, incl_left_bi_array, icol, cut, LEFT_CUT,
                                                       excl_left_normalized_gain, incl_left_normalized_gain)
                 incl_best_normalized_gain = incl_left_normalized_gain
