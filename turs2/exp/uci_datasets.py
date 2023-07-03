@@ -2,7 +2,7 @@ import copy
 import sys
 # sys.path.extend(['/Users/yanglincen/projects/TURS'])
 sys.path.extend(['/home/yangl3/projects/TURS'])
-
+sys.path.extend(["/Users/yanglincen/projects/TURS/turs2"])
 import numpy as np
 import pandas as pd
 from collections import namedtuple
@@ -34,6 +34,8 @@ if len(sys.argv) > 1:
     data_given = sys.argv[1]
 else:
     data_given = None
+
+data_given = "iris"
 
 datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                "magic", "car", "tic-tac-toe", "wine"]
