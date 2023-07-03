@@ -1,7 +1,7 @@
 import copy
 import sys
-# sys.path.extend(['/Users/yanglincen/projects/TURS'])
-# sys.path.extend(["/Users/yanglincen/projects/TURS/turs2"])
+sys.path.extend(['/Users/yanglincen/projects/TURS'])
+sys.path.extend(["/Users/yanglincen/projects/TURS/turs2"])
 sys.path.extend(['/home/yangl3/projects/TURS'])
 sys.path.extend(['/home/yangl3/projects/TURS/turs2'])
 
@@ -36,8 +36,6 @@ if len(sys.argv) > 1:
     data_given = sys.argv[1]
 else:
     data_given = None
-
-data_given = "iris"
 
 datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                "magic", "car", "tic-tac-toe", "wine"]
@@ -206,11 +204,27 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
                    "Brier_train": Brier_train, "Brier_test": Brier_test,
                    "runtime": end_time - start_time}
         exp_res_alldata.append(exp_res)
+
     exp_res_df = pd.DataFrame(exp_res_alldata)
-    if data_given is None:
-        res_file_name = "./" + date_and_time + "_uci_datasets_res.csv"
+
+    if len(sys.argv) > 2:
+        exp_results_dir = sys.argv[2]
     else:
-        res_file_name = "./" + date_and_time + "_" + data_given + "_uci_datasets_res.csv"
+        exp_results_dir = "exp_res_UCIdatasets"
+
+    if not os.path.exists(exp_results_dir):
+        os.mkdir(exp_results_dir)
+    if data_given is None:
+        res_file_name = exp_results_dir + "/" + "uci_datasets_res.csv"
+    else:
+        res_file_name = exp_results_dir + "/" + data_given + "_uci_dataset_res.csv"
+
+    alg_config_file = exp_results_dir + "/alg_config.txt"
+    with open(alg_config_file, "w") as alg_config_f:
+        alg_config_f.write(str(data_info.alg_config))
+
     exp_res_df.to_csv(res_file_name, index=False)
+
+
 
 
