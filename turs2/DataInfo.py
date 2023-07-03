@@ -26,7 +26,7 @@ class DataInfo:
 
         if alg_config is None:
             alg_config = AlgConfig(
-                num_candidate_cuts=100, max_num_rules=500, max_grow_iter=50, num_class_as_given=None,
+                num_candidate_cuts=100, max_num_rules=500, max_grow_iter=500, num_class_as_given=None,
                 beam_width=beam_width,
                 log_learning_process=False, dataset_name=None, X_test=None, y_test=None, # X_test, y_test only for logging
                 rf_assist=False, rf_oob_decision_function=None,
