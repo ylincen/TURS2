@@ -190,7 +190,8 @@ class Ruleset:
                 current_incl_beam.update(incl_res,
                                          incl_res.incl_normalized_gain / incl_res.coverage_excl)
 
-                if rule in current_incl_beam.rules:
+                # if rule in current_incl_beam.rules:  # TODO: doesn't understand why I wrote this
+                if excl_res in current_incl_beam.rules:  # TODO: check whether this is correct;
                     pass
                 else:
                     # if excl_res.excl_normalized_gain > 0:
@@ -370,14 +371,20 @@ class Ruleset:
                 for incl_res in incl_res_beam:
                     current_incl_beam.update(incl_res, incl_res.incl_normalized_gain / incl_res.coverage_excl)
 
-                if rule in current_incl_beam.rules:
-                    pass
-                else:
-                    # if excl_res.excl_normalized_gain > 0:
-                    # current_excl_beam.update(excl_res,
-                    #                          excl_res.excl_normalized_gain)
-                    # TODO: this is a temporary solution for using absolute gain for excl_grow
-                    for excl_res in excl_res_beam:
+                # if rule in current_incl_beam.rules:
+                #     pass
+                # else:
+                #     # if excl_res.excl_normalized_gain > 0:
+                #     # current_excl_beam.update(excl_res,
+                #     #                          excl_res.excl_normalized_gain)
+                #     # TODO: this is a temporary solution for using absolute gain for excl_grow
+                #     for excl_res in excl_res_beam:
+                #         current_excl_beam.update(excl_res,
+                #                                  excl_res.excl_normalized_gain / excl_res.coverage_excl)
+                for excl_res in excl_res_beam:
+                    if excl_res in current_incl_beam.rules or excl_res in current_excl_beam.rules:
+                        pass
+                    else:
                         current_excl_beam.update(excl_res,
                                                  excl_res.excl_normalized_gain / excl_res.coverage_excl)
 
