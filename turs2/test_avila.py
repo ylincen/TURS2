@@ -1,8 +1,9 @@
 import copy
+import pickle
 import sys
 # sys.path.extend(['/Users/yanglincen/projects/TURS'])
 sys.path.extend(['/home/yangl3/projects/TURS'])
-
+from collections import namedtuple
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, OneHotEncoder
@@ -33,7 +34,7 @@ exp_res_alldata = []
 date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # FOR TESTING:
-data_given = "contracept"
+data_given = "avila"
 
 for data_name in datasets_without_header_row + datasets_with_header_row:
     if data_given is not None:
@@ -83,7 +84,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
     skip_this_data = False
     print("running: ", data_name)
     auc_all_data = []
-    for fold in range(5):
+    for fold in range(1):
         dtrain = copy.deepcopy(d.iloc[kfold_list[fold][0], :])
         dtest = copy.deepcopy(d.iloc[kfold_list[fold][1], :])
 
@@ -96,13 +97,23 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         rf.fit(X_train, y_train)
 
         start_time = time.time()
-        # data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=20, max_rule_length=10,
-        #                      feature_names=dtrain.columns[:-1], beam_width=5, log_learning_process=True,
-        #                      X_test=X_test, y_test=y_test)
-        data_info = DataInfo(X=X_train, y=y_train, beam_width=1)
-        # data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=500, max_rule_length=20,
-        #                      feature_names=dtrain.columns[:-1], beam_width=1, log_learning_process=True,
-        #                      rf_oob_decision_=rf.oob_decision_function_, X_test=X_test, y_test=y_test)
+        AlgConfig = namedtuple('AlgConfig', [
+            "beam_width",
+            "num_candidate_cuts", "max_num_rules", "max_grow_iter",
+            "num_class_as_given",
+            "dataset_name", "feature_names",
+            "rf_assist", "rf_oob_decision_function",
+            "log_learning_process", "X_test", "y_test",
+        ])
+        alg_config = AlgConfig(
+            num_candidate_cuts=100, max_num_rules=3, max_grow_iter=200, num_class_as_given=None,
+            beam_width=1,
+            log_learning_process=False, dataset_name=None, X_test=None, y_test=None,  # X_test, y_test only for logging
+            rf_assist=False, rf_oob_decision_function=None,
+            feature_names=["X" + str(i) for i in range(X.shape[1])]
+        )
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=1, alg_config=alg_config)
+
 
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)
@@ -181,10 +192,44 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
                    "runtime": end_time - start_time}
         exp_res_alldata.append(exp_res)
     exp_res_df = pd.DataFrame(exp_res_alldata)
-    if data_given is None:
-        res_file_name = "./" + date_and_time + "_uci_datasets_res.csv"
-    else:
-        res_file_name = "./" + date_and_time + "_" + data_given + "_uci_datasets_res.csv"
-    exp_res_df.to_csv(res_file_name, index=False)
 
+print(exp_res_df)
+
+# cov = []
+# prob = []
+# score = []
+# for incl_beam in incl_beam_list:
+#     for r in incl_beam.rules:
+#         cov.append(r.coverage)
+#         prob.append(max(r.prob))
+#         score.append(r.incl_normalized_gain / r.coverage_excl)
+
+# with open("./avila_ruleset.pickle", "wb") as f:
+#     pickle.dump({"ruleset": ruleset, "data_info": data_info, "exp_res": exp_res_df}, f)
+
+
+# print("==========================")
+# print("Run the algorithm again on the uncovered indices")
+# data_info = DataInfo(X=X_train[ruleset.uncovered_bool], y=y_train[ruleset.uncovered_bool], num_candidate_cuts=20, max_rule_length=20,
+#                      feature_names=dtrain.columns[:-1], beam_width=1, log_learning_process=True,
+#                      X_test=X_test, y_test=y_test, num_class_given=len(np.unique(y_train)))
+#
+# data_encoding = NMLencoding(data_info)
+# model_encoding = ModelEncodingDependingOnData(data_info)
+# ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
+# # try:
+# ruleset.fit(max_iter=1000, printing=True)
+#
+#
+# r = ruleset.rules[1]
+# r_list = []
+# prob_list = []
+# cov_list = []
+# while r.rule_base is not None:
+#     r_list.append(r)
+#     prob_list.append( max(r.prob) )
+#     cov_list.append( r.coverage )
+#     r = r.rule_base
+#
+# rr = r_list[-1]
 

@@ -10,6 +10,7 @@ class Beam:
         self.whichworst_gain = None
         self.width = width
 
+        # TODO: currently I don't think self.rule_length acutally plays a role; also I am not sure whether the comment below is concruent with what I did in the code;
         # rules with the same length should be put into the same Beam (ignoring redundant literals, i.e., X_1 > 1 and X_1 > 2 is a rule with length 2)
         self.rule_length = rule_length
 
