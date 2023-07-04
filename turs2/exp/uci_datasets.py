@@ -101,7 +101,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         X_test = dtest.iloc[:, :-1].to_numpy()
         y_test = dtest.iloc[:, -1].to_numpy()
 
-        rf = RandomForestClassifier(n_estimators=200, n_jobs=5, oob_score=True, min_samples_leaf=30)
+        rf = RandomForestClassifier(n_estimators=100, n_jobs=1, oob_score=True, min_samples_leaf=30)
         rf.fit(X_train, y_train)
 
         start_time = time.time()
@@ -113,7 +113,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
             "rf_assist", "rf_oob_decision_function",
             "log_learning_process", "X_test", "y_test",
         ])
-        beam_width = 1
+        beam_width = 5
         alg_config = AlgConfig(
             num_candidate_cuts=100, max_num_rules=500, max_grow_iter=500, num_class_as_given=None,
             beam_width=beam_width,
@@ -129,12 +129,14 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
 
         max_time_per_dataset = 3600 * 4  # 4 hours
 
+        # TODO: here may have problems
         try:
             signal.alarm(max_time_per_dataset)
             ruleset.fit(max_iter=data_info.alg_config.max_num_rules, printing=True)
         except TimeoutError as e:
             print(e)
-            print("Skipping to next dataset.")
+            print("Runtime exceed ", max_time_per_dataset, "; Stop the experiment on dataset: ", data_name, "!")
+            break
         finally:
             # Cancel the alarm
             signal.alarm(0)
@@ -150,12 +152,18 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
 
             logloss_train = log_loss(y_train, res_train[:, 1])
             logloss_test = log_loss(y_test, res[:, 1])
+
+            rf_roc_auc = roc_auc_score(y_test, rf.predict_proba(X_test)[:, 1])
+            rf_roc_auc_train = roc_auc_score(y_train, rf.predict_proba(X_train)[:, 1])
         else:
-            roc_auc = roc_auc_score(y_test, res, multi_class="ovr", )
+            roc_auc = roc_auc_score(y_test, res, multi_class="ovr")
             roc_auc_train = roc_auc_score(y_train, res_train, multi_class="ovr")
 
             logloss_train = log_loss(y_train, res_train)
             logloss_test = log_loss(y_test, res)
+
+            rf_roc_auc = roc_auc_score(y_test, rf.predict_proba(X_test), multi_class="ovr")
+            rf_roc_auc_train = roc_auc_score(y_train, rf.predict_proba(X_train), multi_class="ovr")
 
         # multi-class macro PR AUC, and (multi-class) Brier score
         Brier_train, Brier_test = 0, 0
@@ -202,7 +210,8 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
                    "train_test_prob_diff": train_test_prob_diff,
                    "pr_auc_train": pr_auc_train, "pr_auc_test": pr_auc_test,
                    "Brier_train": Brier_train, "Brier_test": Brier_test,
-                   "runtime": end_time - start_time}
+                   "runtime": end_time - start_time,
+                   "RF_roc_auc_train": rf_roc_auc_train, "RF_roc_auc_test": rf_roc_auc}
         exp_res_alldata.append(exp_res)
 
     exp_res_df = pd.DataFrame(exp_res_alldata)
