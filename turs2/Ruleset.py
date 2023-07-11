@@ -135,7 +135,7 @@ class Ruleset:
                     local_predict_res = get_rule_local_prediction_for_unseen_data(ruleset=self,
                                                                                   X_test=self.data_info.X_test,
                                                                                   y_test=self.data_info.y_test)
-                    log_info_ruleset += "Add rule: " + get_readable_rule(rule_to_add) + \
+                    log_info_ruleset += "Add rule: " + print_(rule_to_add) + \
                                         "\n Local information on test data: \n" + \
                                         "Probability: " + str(local_predict_res["rules_test_p"][iter]) + \
                                         "   Coverage: " + str(local_predict_res["rules_test_coverage"][iter]) + \
@@ -212,12 +212,13 @@ class Ruleset:
         log_nextbestrule = ""
         best_incl_normalized_gain = -np.inf
 
-        # if self.data_info.log_learning_process:
-        #     with open(self.data_info.log_folder_name + "\\rule" + str(len(self.rules)) +"_incl.pickle", "wb") as pick_rule:
-        #         pickle.dump(incl_beam_list, pick_rule)
-        #
-        #     with open(self.data_info.log_folder_name + "\\rule" + str(len(self.rules)) +"_excl.pickle", "wb") as pick_rule:
-        #         pickle.dump(excl_beam_list, pick_rule)
+        pickle_save_ruleset = False
+        if pickle_save_ruleset:
+            with open(self.data_info.log_folder_name + "\\rule" + str(len(self.rules)) +"_incl.pickle", "wb") as pick_rule:
+                pickle.dump(incl_beam_list, pick_rule)
+
+            with open(self.data_info.log_folder_name + "\\rule" + str(len(self.rules)) +"_excl.pickle", "wb") as pick_rule:
+                pickle.dump(excl_beam_list, pick_rule)
 
         for incl_beam in incl_beam_list:
             for r in incl_beam.rules:
@@ -249,7 +250,7 @@ class Ruleset:
 
                     rule_prob_diff_train_test_max = np.max(abs(rule_test_p - r.prob))
 
-                    log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
+                    log_nextbestrule += "\n\n************Checking rule: \n" + print_(r) + "\n" + \
                                         "with incl_normalized_gain: " + str(r.incl_normalized_gain) + " **/** " + str(incl_normalized_gain) + \
                                         "\n with probability/coverage on test_set: " + str([rule_test_p, rule_test_coverage]) + \
                                         "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(oob_flatten_roc_auc) + \
@@ -287,7 +288,7 @@ class Ruleset:
                     else_rule_p = calc_probs(self.data_info.target[self.uncovered_bool & (~r.bool_array)],
                                              self.data_info.num_class)
 
-                    log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
+                    log_nextbestrule += "\n\n************Checking rule: \n" + print_(r) + "\n" + \
                                         " with coverage_excl: " + str(len(r.indices_excl_overlap)) + \
                                         "with excl_normalized_gain: " + str(r.excl_normalized_gain) + \
                                         "\n with probability/coverage on test_set: " + str(
@@ -340,13 +341,13 @@ class Ruleset:
             rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
                         data_info=self.data_info, rule_base=None,
                         condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                        ruleset=self, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf, icols_in_order=[])
+                        ruleset=self, excl_mdl_gain=-np.Inf, incl_mdl_gain=-np.Inf, icols_in_order=[])
         else:
             rule = rule_given
         rule_to_add = rule
 
         excl_beam_list = [Beam(width=self.data_info.beam_width, rule_length=0)]
-        excl_beam_list[0].update(rule=rule, gain=rule.excl_normalized_gain)
+        excl_beam_list[0].update(rule=rule, gain=rule.excl_mdl_gain)
         incl_beam_list = []
 
         # TODO: store the cover of the rules as a bit string (like CLASSY's implementation) and then do diverse search.
@@ -360,35 +361,23 @@ class Ruleset:
 
             for rule in previous_incl_beam.rules + previous_excl_beam.rules:
                 excl_res_beam, incl_res_beam = rule.grow_incl_and_excl_return_beam(constraints=constraints)
-                if excl_res_beam is None or excl_res_beam is None:  # NOTE: will only return none when all data points have the same feature values in all dimensions
+                if len(excl_res_beam) == 0 and len(incl_res_beam) == 0:
                     continue
 
-                # if incl_res.incl_normalized_gain > 0:
-                # TODO: whether to constrain all excl_grow_res have positive normalized gain?
-                # current_incl_beam.update(incl_res,
-                #                          incl_res.incl_normalized_gain)
                 # TODO: this is a temporary solution for using absolute gain for incl_grow
+                # TODO: Remember to avoid the same rule to be added multiple times to the beam;
                 for incl_res in incl_res_beam:
-                    current_incl_beam.update(incl_res, incl_res.incl_normalized_gain / incl_res.coverage_excl)
+                    current_incl_beam.update(incl_res, incl_res.incl_mdl_gain / incl_res.coverage_excl)
 
-                # if rule in current_incl_beam.rules:
-                #     pass
-                # else:
-                #     # if excl_res.excl_normalized_gain > 0:
-                #     # current_excl_beam.update(excl_res,
-                #     #                          excl_res.excl_normalized_gain)
-                #     # TODO: this is a temporary solution for using absolute gain for excl_grow
-                #     for excl_res in excl_res_beam:
-                #         current_excl_beam.update(excl_res,
-                #                                  excl_res.excl_normalized_gain / excl_res.coverage_excl)
                 for excl_res in excl_res_beam:
                     if excl_res in current_incl_beam.rules or excl_res in current_excl_beam.rules:
                         pass
                     else:
+                        # TODO: this is a temporary solution for using absolute gain for excl_grow
                         current_excl_beam.update(excl_res,
-                                                 excl_res.excl_normalized_gain / excl_res.coverage_excl)
+                                                 excl_res.excl_mdl_gain / excl_res.coverage_excl)
 
-            if len(current_excl_beam.rules) > 0 or len(current_incl_beam.rules) > 0:   # Can change to some other (early) stopping criteria;
+            if len(current_excl_beam.rules) > 0 or len(current_incl_beam.rules) > 0:  # No (early) stopping criteria
                 previous_excl_beam = current_excl_beam
                 previous_incl_beam = current_incl_beam
                 excl_beam_list.append(current_excl_beam)
@@ -401,9 +390,11 @@ class Ruleset:
 
         for incl_beam in incl_beam_list:
             for r in incl_beam.rules:
-                # incl_normalized_gain = r.incl_normalized_gain
-                # TODO: a temporary solution for using absolute gain for choosing the cut point for incl_rule_grow
-                incl_normalized_gain = r.incl_normalized_gain / len(r.indices_excl_overlap)
+                incl_normalized_gain = r.incl_mdl_gain / len(r.indices_excl_overlap)
+                # incl_mdl_gain = self.data_encoding.get_cl_data_incl(ruleset=self, rule=r,
+                #                                                     excl_bi_array=np.ones(r.coverage_excl, dtype=bool),
+                #                                                     incl_bi_array=np.ones(r.coverage, dtype=bool))
+                # incl_normalized_gain = incl_mdl_gain / len(r.indices_excl_overlap)
 
                 if self.data_info.log_learning_process:
                     rule_test_p, rule_test_coverage = get_rule_local_prediction_for_unseen_data_this_rule_only(rule=r, X_test=self.data_info.X_test, y_test=self.data_info.y_test)
@@ -429,8 +420,8 @@ class Ruleset:
 
                     rule_prob_diff_train_test_max = np.max(abs(rule_test_p - r.prob))
 
-                    log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
-                                        "with incl_normalized_gain: " + str(r.incl_normalized_gain) + " **/** " + str(incl_normalized_gain) + \
+                    log_nextbestrule += "\n\n************Checking rule: \n" + print_(r) + "\n" + \
+                                        "with incl_gain: " + str(r.incl_mdl_gain) + \
                                         "\n with probability/coverage on test_set: " + str([rule_test_p, rule_test_coverage]) + \
                                         "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(oob_flatten_roc_auc) + \
                                         "\n with RF out-of-sample original ROC-AUC being: " + rf_original_oob_roc_auc + \
@@ -467,9 +458,10 @@ class Ruleset:
                     else_rule_p = calc_probs(self.data_info.target[self.uncovered_bool & (~r.bool_array)],
                                              self.data_info.num_class)
 
-                    log_nextbestrule += "\n\n************Checking rule: \n" + get_readable_rule(r) + "\n" + \
+                    log_nextbestrule += "\n\n************Checking rule: \n" + print_(r) + "\n" + \
                                         " with coverage_excl: " + str(len(r.indices_excl_overlap)) + \
-                                        "with excl_normalized_gain: " + str(r.excl_normalized_gain) + \
+                                        " with excl_gain: " + str(r.excl_mdl_gain) + \
+                                        " with cl_model: " + str(r.cl_model) + \
                                         "\n with probability/coverage on test_set: " + str(
                         [rule_test_p, rule_test_coverage]) + \
                                         "\n with RF out-of-sample ROC-AUC when 'squeezing' this rule: " + str(
