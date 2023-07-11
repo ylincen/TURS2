@@ -74,21 +74,13 @@ class ModelEncodingDependingOnData:
         for index, col in enumerate(col_orders):
             up_bound, low_bound = np.max(self.data_info.features[bool_, col]), np.min(self.data_info.features[bool_, col])
             num_cuts = np.count_nonzero((self.data_info.candidate_cuts[col] >= low_bound) &
-                                        (self.data_info.candidate_cuts[col] <= up_bound))
+                                        (self.data_info.candidate_cuts[col] <= up_bound))  # only an approximation here.
             if condition_count[col] == 1:
-                # try:
-                #     assert num_cuts > 0
-                # except AssertionError:
-                #     print("debug1")
                 if num_cuts == 0:
                     l_cuts += 0
                 else:
                     l_cuts += np.log2(num_cuts)
             else:
-                # try:
-                #     assert num_cuts >= 2
-                # except AssertionError:
-                #     print("debug")
                 if num_cuts >= 2:
                     l_cuts += np.log2(num_cuts) + np.log2(num_cuts - 1) - np.log2(2)
                 else:
@@ -125,7 +117,6 @@ class ModelEncodingDependingOnData:
 
         # when the rule is still being grown by adding condition using icol, we need to update the condition_count;
         if icol is not None and cut_option is not None:
-            # if rule.condition_matrix[cut_option, icol] is np.nan:  # HERE why it is 0??
             if np.isnan(rule.condition_matrix[cut_option, icol]):
                 condition_count[icol] += 1
                 condition_matrix[0, icol] = np.inf  # TODO: Note that this is just a place holder, to make this position not equal to np.nan; Need to make this more readable later.
@@ -137,11 +128,13 @@ class ModelEncodingDependingOnData:
         # cl_model_rule_after_growing = self.rule_cl_model(condition_count)
         cl_model_rule_after_growing = self.rule_cl_model_dep(condition_matrix, icols_in_order)
 
-        l_num_rules = universal_code_integers(len(ruleset.rules) + 1)
-
-        # Remove some redundancy by the fact that the order of rules does not matter
-        cl_redundancy_rule_orders = math.lgamma(len(ruleset.rules) + 2) / np.log(2)
-        # cl_redundancy_rule_orders = 0
+        if icol is None and cut_option is None:
+            l_num_rules = universal_code_integers(len(ruleset.rules))
+            # Remove some redundancy by the fact that the order of rules does not matter
+            cl_redundancy_rule_orders = math.lgamma(len(ruleset.rules) + 1) / np.log(2)
+        else:
+            l_num_rules = universal_code_integers(len(ruleset.rules) + 1)
+            cl_redundancy_rule_orders = math.lgamma(len(ruleset.rules) + 2) / np.log(2)
 
         return l_num_rules + cl_model_rule_after_growing - cl_redundancy_rule_orders + ruleset.allrules_cl_model
 
