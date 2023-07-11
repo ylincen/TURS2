@@ -57,6 +57,14 @@ class GrowInfoBeam():
 
         self.coverage_list = []
 
+    def update_check_multiple(self, grow_info_list, gain_list):
+        if isinstance(grow_info_list, list):
+            assert isinstance(gain_list, list)
+            for grow_info, gain in zip(grow_info_list, gain_list):
+                self.update(info=grow_info, gain=gain)
+        else:
+            self.update(grow_info_list, gain_list)
+
     def update(self, info, gain):
         info_coverage = np.count_nonzero(info["incl_bi_array"])
 
