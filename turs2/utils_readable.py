@@ -1,6 +1,6 @@
 import numpy as np
 
-def get_readable_rule(rule):
+def print_(rule):
     feature_names = rule.ruleset.data_info.feature_names
     readable = ""
     which_variables = np.where(rule.condition_count != 0)[0]
@@ -31,7 +31,7 @@ def get_readable_rule(rule):
 def get_readable_rules(ruleset):
     readables = []
     for rule in ruleset.rules:
-        readable = get_readable_rule(rule)
+        readable = print_(rule)
         readables.append(readable)
         print(readable)
     readable = "If none of above,\nProbability of READMISSION or NOT (in order): " + str(ruleset.else_rule_p[::-1]) + "\nNumber of patients who do not satisfy any above rule: " + str(ruleset.else_rule_coverage)
