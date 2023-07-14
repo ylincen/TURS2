@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Beam:
-    def __init__(self, width, rule_length):
+    def __init__(self, width):
         self.rules = []
         self.gains = []
 
@@ -11,9 +11,6 @@ class Beam:
         self.width = width
 
         self.coverage_list = []
-        # TODO: currently I don't think self.rule_length acutally plays a role; also I am not sure whether the comment below is concruent with what I did in the code;
-        # rules with the same length should be put into the same Beam (ignoring redundant literals, i.e., X_1 > 1 and X_1 > 2 is a rule with length 2)
-        # self.rule_length = rule_length
 
     def update(self, rule, gain):
         if rule in self.rules:
@@ -94,5 +91,3 @@ class GrowInfoBeam():
 
                     self.coverage_list.pop(self.whichworst_gain)
                     self.coverage_list.append(info_coverage)
-
-
