@@ -12,7 +12,7 @@ class ModelEncodingDependingOnData:
         self.data_info = data_info
         if given_ncol is None:
             self.data_ncol_for_encoding = data_info.ncol
-            self.cache_cl_model(data_info.ncol, data_info.max_rule_length, data_info.candidate_cuts)
+            self.cache_cl_model(data_info.ncol, data_info.max_grow_iter, data_info.candidate_cuts)
         else:
             self.data_ncol_for_encoding = given_ncol
             self.cache_cl_model(given_ncol, data_info.max_rule_length, data_info.candidate_cuts)

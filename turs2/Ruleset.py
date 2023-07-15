@@ -355,7 +355,7 @@ class Ruleset:
         previous_excl_beam = excl_beam_list[0]
         previous_incl_beam = Beam(width=self.data_info.beam_width)
 
-        for i in range(self.data_info.max_rule_length):
+        for i in range(self.data_info.max_grow_iter):
             current_incl_beam = Beam(width=self.data_info.beam_width)
             current_excl_beam = Beam(width=self.data_info.beam_width)
 
