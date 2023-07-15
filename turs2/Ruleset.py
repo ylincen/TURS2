@@ -346,18 +346,18 @@ class Ruleset:
             rule = rule_given
         rule_to_add = rule
 
-        excl_beam_list = [Beam(width=self.data_info.beam_width, rule_length=0)]
+        excl_beam_list = [Beam(width=self.data_info.beam_width)]
         excl_beam_list[0].update(rule=rule, gain=rule.excl_mdl_gain)
         incl_beam_list = []
 
         # TODO: store the cover of the rules as a bit string (like CLASSY's implementation) and then do diverse search.
         # now we start the real search
         previous_excl_beam = excl_beam_list[0]
-        previous_incl_beam = Beam(width=self.data_info.beam_width, rule_length=0)
+        previous_incl_beam = Beam(width=self.data_info.beam_width)
 
         for i in range(self.data_info.max_rule_length):
-            current_incl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 1)
-            current_excl_beam = Beam(width=self.data_info.beam_width, rule_length=i + 1)
+            current_incl_beam = Beam(width=self.data_info.beam_width)
+            current_excl_beam = Beam(width=self.data_info.beam_width)
 
             for rule in previous_incl_beam.rules + previous_excl_beam.rules:
                 excl_res_beam, incl_res_beam = rule.grow_incl_and_excl_return_beam(constraints=constraints)
