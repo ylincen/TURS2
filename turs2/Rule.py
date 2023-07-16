@@ -469,18 +469,6 @@ class Rule:
                     icols_in_order=new_icols_in_order)
         return rule
 
-    # def make_rule_from_grow_info_rulelist(self, grow_info):
-    #     indices_excl_overlap = self.indices_excl_overlap[grow_info["excl_bi_array"]]
-    #     indices = indices_excl_overlap
-    #
-    #     condition_matrix = np.array(self.condition_matrix)
-    #     condition_matrix[grow_info["cut_option"], grow_info["icol"]] = grow_info["cut"]
-    #     rule = Rule(indices=indices, indices_excl_overlap=indices_excl_overlap, data_info=self.data_info,
-    #                 rule_base=self, condition_matrix=condition_matrix, ruleset=self.ruleset,
-    #                 excl_normalized_gain=grow_info["excl_normalized_gain"],
-    #                 incl_normalized_gain=grow_info["excl_normalized_gain"])
-    #     return rule
-
     def calculate_excl_gain(self, bi_array, icol, cut_option):
         data_encoding, model_encoding = self.ruleset.data_encoding, self.ruleset.model_encoding
 
