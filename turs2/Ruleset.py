@@ -15,7 +15,7 @@ from turs2.utils_predict import *
 
 
 def make_rule_from_grow_info(grow_info):
-    rule = grow_info["rule_"]
+    rule = grow_info["_rule"]
     indices = rule.indices[grow_info["incl_bi_array"]]
     indices_excl_overlap = rule.indices_excl_overlap[grow_info["excl_bi_array"]]
 
@@ -39,7 +39,7 @@ def extract_rules_from_beams(beams):
     for beam in beams:
         for info in beam.infos:
             if info["coverage_incl"] in coverage_list:
-                index_equal = np.where(info["coverage_incl"], coverage_list)
+                index_equal = coverage_list.index(info["coverage_incl"])
                 if np.all(rules[index_equal].indices == info["_rule"].indices[info["incl_bi_array"]]):
                     continue
 
@@ -393,7 +393,11 @@ class Ruleset:
             for rule in rules_for_next_iter:
                 rule.grow(grow_info_beam=incl_beam, grow_info_beam_excl=excl_beam)
 
-            if np.max(incl_beam.gains) < previous_best_gain and np.max(excl_beam.gains) < previous_best_excl_gain:
+            if len(incl_beam.gains) == 0 and len(excl_beam.gains) == 0:
+                break
+
+            if (len(incl_beam.gains) > 0 and np.max(incl_beam.gains) < previous_best_gain) or \
+                    (len(excl_beam.gains) > 0 and np.max(excl_beam.gains) < previous_best_excl_gain):
                 counter_worse_best_gain += 1
             else:
                 counter_worse_best_gain = 0
@@ -401,11 +405,12 @@ class Ruleset:
             previous_best_gain, previous_best_excl_gain = np.max(incl_beam.gains), np.max(excl_beam.gains)
 
             if counter_worse_best_gain > k_consecutively:
-                which_best_ = np.argmin([r.incl_gain_per_excl_coverage for r in rules_candidates])
-                return rules_candidates[which_best_]
+                break
             else:
                 rules_for_next_iter = extract_rules_from_beams([excl_beam, incl_beam])
                 rules_candidates.extend(rules_for_next_iter)
+        which_best_ = np.argmax([r.incl_gain_per_excl_coverage for r in rules_candidates])
+        return rules_candidates[which_best_]
 
     # def find_next_rule_beamsearch(self, rule_given=None, constraints=None):
     #     if rule_given is None:
