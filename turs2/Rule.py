@@ -11,7 +11,7 @@ from turs2.Beam import *
 from turs2.RuleGrowConstraint import *
 
 def store_grow_info(excl_bi_array, incl_bi_array, icol, cut, cut_option, excl_mdl_gain, incl_mdl_gain,
-                    coverage_excl, coverage_incl, normalized_gain_excl, normalized_gain_incl):
+                    coverage_excl, coverage_incl, normalized_gain_excl, normalized_gain_incl, _rule):
     # return {"excl_bi_array": excl_bi_array, "incl_bi_array": incl_bi_array,
     #         "icol": icol, "cut": cut, "cut_option": cut_option,
     #         "excl_mdl_gain": excl_mdl_gain,
@@ -200,6 +200,7 @@ class Rule:
                         coverage_excl=excl_left_coverage, coverage_incl=incl_left_coverage,
                         normalized_gain_excl=left_info_theo_scores["excl_absolute_gain"] / excl_left_coverage,
                         normalized_gain_incl=left_info_theo_scores["absolute_gain"] / excl_left_coverage,
+                        _rule = self
                     )
                     grow_info_beam.update(left_grow_info, left_grow_info["normalized_gain_incl"])
                     grow_info_beam_excl.update(left_grow_info, left_grow_info["normalized_gain_excl"])
@@ -213,6 +214,7 @@ class Rule:
                         coverage_excl=excl_right_coverage, coverage_incl=incl_right_coverage,
                         normalized_gain_excl=right_info_theo_scores["excl_absolute_gain"] / excl_right_coverage,
                         normalized_gain_incl=right_info_theo_scores["absolute_gain"] / excl_right_coverage,
+                        _rule=self
                     )
                     grow_info_beam.update(right_grow_info, right_grow_info["normalized_gain_incl"])
                     grow_info_beam_excl.update(right_grow_info, right_grow_info["normalized_gain_excl"])
@@ -521,6 +523,7 @@ class Rule:
     #     return [best_excl_grow_info, best_incl_grow_info, new_best_excl_mdl_gain, new_best_incl_mdl_gain, return_II]
 
     def make_rule_from_grow_info(self, grow_info):
+        sys.exit("disable this function")
         indices = self.indices[grow_info["incl_bi_array"]]
         indices_excl_overlap = self.indices_excl_overlap[grow_info["excl_bi_array"]]
 
