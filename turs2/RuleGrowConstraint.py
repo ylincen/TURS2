@@ -68,13 +68,12 @@ def check_split_validity_excl(rule, icol, cut):
 
     return validity_larger_than_zero
 
-def grow_cover_reduce_contraint(rule, data_info, _coverage, _coverage_excl, alpha):
-    N = data_info.nrow
+def grow_cover_reduce_contraint(rule, nrow_data, nrow_data_excl, _coverage, _coverage_excl, alpha):
     dynamic_rate = (rule.coverage - _coverage) / rule.coverage
     dynamic_rate_excl = (rule.coverage_excl - _coverage_excl) / rule.coverage_excl
 
-    static_rate = (rule.coverage - _coverage) / N
-    static_rate_excl = (rule.coverage_excl - _coverage_excl) / N
+    static_rate = (rule.coverage - _coverage) / nrow_data
+    static_rate_excl = (rule.coverage_excl - _coverage_excl) / nrow_data_excl
 
     _return = {"dynamic_ok": dynamic_rate <= alpha, "dynamic_excl_ok": dynamic_rate_excl <= alpha,
                "static_ok": static_rate <= alpha, "static_excl_ok": static_rate_excl <= alpha}

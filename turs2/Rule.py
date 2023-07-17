@@ -181,10 +181,10 @@ class Rule:
                     excl_right_bi_array)
 
                 left_cov_check = grow_cover_reduce_contraint(
-                    rule=self, data_info=self.data_info,
+                    rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
                     _coverage=incl_left_coverage, _coverage_excl=excl_left_coverage, alpha=cov_alpha)
                 right_cov_check = grow_cover_reduce_contraint(
-                    rule=self, data_info=self.data_info,
+                    rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
                     _coverage=incl_right_coverage, _coverage_excl=excl_right_coverage, alpha=cov_alpha)
 
                 if excl_left_coverage == 0 or excl_right_coverage == 0:
