@@ -163,7 +163,7 @@ class Rule:
             candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
             for i, cut in enumerate(candidate_cuts_icol):
                 check_split_validity = validity_check(rule=self, icol=icol, cut=cut)
-                if check_split_validity is False:
+                if ~check_split_validity:
                     if icol in invalid_cuts:
                         invalid_cuts[icol].append(cut)
                     else:
@@ -196,9 +196,9 @@ class Rule:
                     left_grow_info = store_grow_info(
                         excl_bi_array=excl_left_bi_array, incl_bi_array=left_bi_array, icol=icol,
                         cut=cut, cut_option=LEFT_CUT, incl_mdl_gain=left_info_theo_scores["absolute_gain"],
-                        excl_mdl_gain=left_info_theo_scores["excl_absolute_gain"],
+                        excl_mdl_gain=left_info_theo_scores["absolute_gain_excl"],
                         coverage_excl=excl_left_coverage, coverage_incl=incl_left_coverage,
-                        normalized_gain_excl=left_info_theo_scores["excl_absolute_gain"] / excl_left_coverage,
+                        normalized_gain_excl=left_info_theo_scores["absolute_gain_excl"] / excl_left_coverage,
                         normalized_gain_incl=left_info_theo_scores["absolute_gain"] / excl_left_coverage,
                         _rule = self
                     )
@@ -210,9 +210,9 @@ class Rule:
                     right_grow_info = store_grow_info(
                         excl_bi_array=excl_right_bi_array, incl_bi_array=right_bi_array, icol=icol,
                         cut=cut, cut_option=RIGHT_CUT, incl_mdl_gain=right_info_theo_scores["absolute_gain"],
-                        excl_mdl_gain=right_info_theo_scores["excl_absolute_gain"],
+                        excl_mdl_gain=right_info_theo_scores["absolute_gain_excl"],
                         coverage_excl=excl_right_coverage, coverage_incl=incl_right_coverage,
-                        normalized_gain_excl=right_info_theo_scores["excl_absolute_gain"] / excl_right_coverage,
+                        normalized_gain_excl=right_info_theo_scores["absolute_gain_excl"] / excl_right_coverage,
                         normalized_gain_incl=right_info_theo_scores["absolute_gain"] / excl_right_coverage,
                         _rule=self
                     )

@@ -7,14 +7,15 @@ from utils_calculating_cl import *
 
 def validity_check(rule, icol, cut):
     if rule.data_info.alg_config.validity_check == "no_check":
-        check_split_validity = True
+        res = True
     elif rule.data_info.alg_config.validity_check == "excl_check":
-        check_split_validity = rule.check_split_validity_excl(icol, cut)
+        res = check_split_validity_excl(rule, icol, cut)
     elif rule.data_info.alg_config.validity_check == "incl_check":
-        check_split_validity = rule.check_split_validity(icol, cut)
+        res = check_split_validity(rule, icol, cut)
     else:
         sys.exit("Error: the if-else statement should not end up here")
-    return check_split_validity
+    return res
+
 def check_split_validity(rule, icol, cut):
     indices_left, indices_right = rule.indices[rule.features[:, icol] < cut], rule.indices[rule.features[:, icol] >= cut]
 
