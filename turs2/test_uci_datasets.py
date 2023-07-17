@@ -1,10 +1,16 @@
-import copy
 import sys
-# sys.path.extend(['/Users/yanglincen/projects/TURS'])
+
+# for mac local
+sys.path.extend(['/Users/yanglincen/projects/TURS'])
+sys.path.extend(['/Users/yanglincen/projects/TURS/turs2'])
+# for DSlab server:
 sys.path.extend(['/home/yangl3/projects/TURS'])
+sys.path.extend(['/home/yangl3/projects/TURS/turs2'])
 
 import numpy as np
 import pandas as pd
+import copy
+
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, OneHotEncoder
 from sklearn.metrics import roc_auc_score, precision_recall_curve, f1_score, auc, log_loss
 from sklearn.model_selection import StratifiedKFold
@@ -31,9 +37,6 @@ datasets_with_header_row = ["avila", "anuran", "diabetes"]
 
 exp_res_alldata = []
 date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-# FOR TESTING:
-data_given = "contracept"
 
 for data_name in datasets_without_header_row + datasets_with_header_row:
     if data_given is not None:
@@ -99,7 +102,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         # data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=20, max_rule_length=10,
         #                      feature_names=dtrain.columns[:-1], beam_width=5, log_learning_process=True,
         #                      X_test=X_test, y_test=y_test)
-        data_info = DataInfo(X=X_train, y=y_train, beam_width=1)
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=20)
         # data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=500, max_rule_length=20,
         #                      feature_names=dtrain.columns[:-1], beam_width=1, log_learning_process=True,
         #                      rf_oob_decision_=rf.oob_decision_function_, X_test=X_test, y_test=y_test)
