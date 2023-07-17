@@ -12,6 +12,10 @@ def validity_check(rule, icol, cut):
         res = check_split_validity_excl(rule, icol, cut)
     elif rule.data_info.alg_config.validity_check == "incl_check":
         res = check_split_validity(rule, icol, cut)
+    elif rule.data_info.alg_config.validity_check == "either":
+        res1 = check_split_validity(rule, icol, cut)
+        res2 = check_split_validity_excl(rule, icol, cut)
+        res = res1 | res2
     else:
         sys.exit("Error: the if-else statement should not end up here")
     return res

@@ -26,7 +26,7 @@ class DataInfo:
                 feature_names=["X" + str(i) for i in range(X.shape[1])],
                 beamsearch_positive_gain_only=False, beamsearch_normalized_gain_must_increase_comparing_rulebase=False,
                 beamsearch_stopping_when_best_normalized_gain_decrease=False,
-                validity_check="incl_check", rerun_on_invalid=False, rerun_positive_control=False
+                validity_check="either", rerun_on_invalid=False, rerun_positive_control=False
             )
         else:
             self.alg_config = alg_config
