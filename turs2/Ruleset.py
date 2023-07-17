@@ -372,6 +372,12 @@ class Ruleset:
     #             "reg_excluding_all_rules_in_ruleset": reg_excluding_all_rules_in_ruleset,
     #             "rule_cl_model": rule_cl_model}
 
+    @staticmethod
+    def calculate_stop_condition_element(incl_beam, excl_beam, previous_best_gain, previous_best_excl_gain):
+        condition1 = len(incl_beam.gains) > 0 and np.max(incl_beam.gains) < previous_best_gain
+        condition2 = len(excl_beam.gains) > 0 and np.max(excl_beam.gains) < previous_best_excl_gain
+        return condition1 or condition2
+
     def search_next_rule(self, k_consecutively, rule_given=None, constraints=None):
         if rule_given is None:
             rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
@@ -380,7 +386,6 @@ class Ruleset:
                         ruleset=self, excl_mdl_gain=-np.Inf, incl_mdl_gain=-np.Inf, icols_in_order=[])
         else:
             rule = rule_given
-        rule_to_add = rule
 
         rules_for_next_iter = [rule]
         rules_candidates = [rule]
@@ -396,9 +401,9 @@ class Ruleset:
             if len(incl_beam.gains) == 0 and len(excl_beam.gains) == 0:
                 break
 
-            if (len(incl_beam.gains) > 0 and np.max(incl_beam.gains) < previous_best_gain) or \
-                    (len(excl_beam.gains) > 0 and np.max(excl_beam.gains) < previous_best_excl_gain):
-                counter_worse_best_gain += 1
+            stop_condition_element = self.calculate_stop_condition_element(incl_beam, excl_beam, previous_best_gain, previous_best_excl_gain)
+            if stop_condition_element:
+                counter_worse_best_gain = counter_worse_best_gain + 1 if stop_condition_element else 0
             else:
                 counter_worse_best_gain = 0
 
@@ -409,6 +414,7 @@ class Ruleset:
             else:
                 rules_for_next_iter = extract_rules_from_beams([excl_beam, incl_beam])
                 rules_candidates.extend(rules_for_next_iter)
+
         which_best_ = np.argmax([r.incl_gain_per_excl_coverage for r in rules_candidates])
         return rules_candidates[which_best_]
 

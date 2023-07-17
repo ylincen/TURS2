@@ -10,6 +10,8 @@ from turs2.utils_readable import *
 from turs2.Beam import *
 from turs2.RuleGrowConstraint import *
 
+COV_ALPHA = 0.9
+
 def store_grow_info(excl_bi_array, incl_bi_array, icol, cut, cut_option, excl_mdl_gain, incl_mdl_gain,
                     coverage_excl, coverage_incl, normalized_gain_excl, normalized_gain_incl, _rule):
     # return {"excl_bi_array": excl_bi_array, "incl_bi_array": incl_bi_array,
@@ -154,8 +156,27 @@ class Rule:
             candidate_cuts_icol = candidate_cuts[icol][candidate_cuts_selector]
         return candidate_cuts_icol
 
+    def update_grow_beam(self, bi_array, excl_bi_array, icol, cut, cut_option, incl_coverage, excl_coverage,
+                         grow_info_beam, grow_info_beam_excl, for_rerun_on_invalid):
+        info_theo_scores = self.calculate_mdl_gain(bi_array=bi_array, excl_bi_array=excl_bi_array,
+                                                   icol=icol, cut_option=cut_option)
+        if for_rerun_on_invalid and info_theo_scores["absolute_gain"] < self.incl_mdl_gain:
+            return None
+        else:
+            grow_info = store_grow_info(
+                excl_bi_array=excl_bi_array, incl_bi_array=bi_array, icol=icol,
+                cut=cut, cut_option=cut_option, incl_mdl_gain=info_theo_scores["absolute_gain"],
+                excl_mdl_gain=info_theo_scores["absolute_gain_excl"],
+                coverage_excl=excl_coverage, coverage_incl=incl_coverage,
+                normalized_gain_excl=info_theo_scores["absolute_gain_excl"] / excl_coverage,
+                normalized_gain_incl=info_theo_scores["absolute_gain"] / excl_coverage,
+                _rule=self
+            )
+            grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"])
+            grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"])
+
     def grow(self, grow_info_beam, grow_info_beam_excl):
-        cov_alpha = 0.9  # a paramter for "patient" grow: upper bound for coverage reduction
+        cov_alpha = COV_ALPHA  # a paramter for "patient" grow: upper bound for coverage reduction
 
         candidate_cuts = self.data_info.candidate_cuts
         invalid_cuts = {}
@@ -192,33 +213,55 @@ class Rule:
                     continue
 
                 if left_cov_check["static_excl_ok"]:
-                    left_info_theo_scores = self.calculate_mdl_gain(bi_array=left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol, cut_option=LEFT_CUT)
-                    left_grow_info = store_grow_info(
-                        excl_bi_array=excl_left_bi_array, incl_bi_array=left_bi_array, icol=icol,
-                        cut=cut, cut_option=LEFT_CUT, incl_mdl_gain=left_info_theo_scores["absolute_gain"],
-                        excl_mdl_gain=left_info_theo_scores["absolute_gain_excl"],
-                        coverage_excl=excl_left_coverage, coverage_incl=incl_left_coverage,
-                        normalized_gain_excl=left_info_theo_scores["absolute_gain_excl"] / excl_left_coverage,
-                        normalized_gain_incl=left_info_theo_scores["absolute_gain"] / excl_left_coverage,
-                        _rule = self
-                    )
-                    grow_info_beam.update(left_grow_info, left_grow_info["normalized_gain_incl"])
-                    grow_info_beam_excl.update(left_grow_info, left_grow_info["normalized_gain_excl"])
+                    self.update_grow_beam(bi_array=left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol,
+                                          cut=cut, cut_option=LEFT_CUT,
+                                          incl_coverage=incl_left_coverage, excl_coverage=excl_left_coverage,
+                                          grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
+                                          for_rerun_on_invalid=False)
 
                 if right_cov_check["static_excl_ok"]:
-                    right_info_theo_scores = self.calculate_mdl_gain(bi_array=right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol, cut_option=RIGHT_CUT)
-                    right_grow_info = store_grow_info(
-                        excl_bi_array=excl_right_bi_array, incl_bi_array=right_bi_array, icol=icol,
-                        cut=cut, cut_option=RIGHT_CUT, incl_mdl_gain=right_info_theo_scores["absolute_gain"],
-                        excl_mdl_gain=right_info_theo_scores["absolute_gain_excl"],
-                        coverage_excl=excl_right_coverage, coverage_incl=incl_right_coverage,
-                        normalized_gain_excl=right_info_theo_scores["absolute_gain_excl"] / excl_right_coverage,
-                        normalized_gain_incl=right_info_theo_scores["absolute_gain"] / excl_right_coverage,
-                        _rule=self
-                    )
-                    grow_info_beam.update(right_grow_info, right_grow_info["normalized_gain_incl"])
-                    grow_info_beam_excl.update(right_grow_info, right_grow_info["normalized_gain_excl"])
+                    self.update_grow_beam(bi_array=right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
+                                          cut=cut, cut_option=RIGHT_CUT,
+                                          incl_coverage=incl_right_coverage, excl_coverage=excl_right_coverage,
+                                          grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
+                                          for_rerun_on_invalid=False)
 
+    def grow_on_invalid_cuts(self, grow_info_beam, grow_info_beam_excl, invalid_cuts):
+        cov_alpha = COV_ALPHA  # a paramter for "patient" grow: upper bound for coverage reduction
+        for icol, cut in invalid_cuts.items():
+            excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
+            excl_right_bi_array = ~excl_left_bi_array
+            left_bi_array = (self.features[:, icol] < cut)
+            right_bi_array = ~left_bi_array
+
+            incl_left_coverage, incl_right_coverage = np.count_nonzero(left_bi_array), np.count_nonzero(
+                right_bi_array)
+            excl_left_coverage, excl_right_coverage = np.count_nonzero(excl_left_bi_array), np.count_nonzero(
+                excl_right_bi_array)
+
+            left_cov_check = grow_cover_reduce_contraint(
+                rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
+                _coverage=incl_left_coverage, _coverage_excl=excl_left_coverage, alpha=cov_alpha)
+            right_cov_check = grow_cover_reduce_contraint(
+                rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
+                _coverage=incl_right_coverage, _coverage_excl=excl_right_coverage, alpha=cov_alpha)
+
+            if excl_left_coverage == 0 or excl_right_coverage == 0:
+                continue
+
+            if left_cov_check["static_excl_ok"]:
+                self.update_grow_beam(bi_array=left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol,
+                                      cut=cut, cut_option=LEFT_CUT,
+                                      incl_coverage=incl_left_coverage, excl_coverage=excl_left_coverage,
+                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
+                                      for_rerun_on_invalid=True)
+
+            if right_cov_check["static_excl_ok"]:
+                self.update_grow_beam(bi_array=right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
+                                      cut=cut, cut_option=RIGHT_CUT,
+                                      incl_coverage=incl_right_coverage, excl_coverage=excl_right_coverage,
+                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
+                                      for_rerun_on_invalid=True)
 
     def grow_incl_and_excl_return_beam(self, constraints=None):
         candidate_cuts = self.data_info.candidate_cuts
