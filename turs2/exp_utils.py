@@ -122,34 +122,30 @@ def insignificance_overlap(ruleset, mg, X_test, y_test, num_permutation):
 
     def calculate_full_model_loglikelihood(intersection_cover, remaining_cover, y_):
         # y_ can be y_test or y_permu;
-        p_intersection = calc_probs(y_[intersection_cover], ruleset.data_info.num_class)
-        p_intersection = p_intersection[p_intersection != 0]
-        coverage = np.count_nonzero(intersection_cover)
+        def part_log_likelihood_(cover):
+            p_cover = calc_probs(y_[cover], ruleset.data_info.num_class)
+            p_cover = p_cover[p_cover != 0]
+            coverage = np.count_nonzero(cover)
+            return np.sum(np.log(p_cover) * p_cover * coverage)
 
-        p_remaining = calc_probs(y_[remaining_cover], ruleset.data_info.num_class)
-        p_remaining = p_remaining[p_remaining != 0]
-        coverage_remaining = np.count_nonzero(remaining_cover)
-        return np.sum(np.log(p_intersection) * p_intersection * coverage) + \
-            np.sum(np.log(p_remaining) * p_remaining * coverage_remaining)
+        return part_log_likelihood_(intersection_cover) + part_log_likelihood_(remaining_cover)
 
-    def calculate_permutation_pvalue(num_permutation, rule_cover, intersection_cover):
+    def calculate_permutation_pvalue(num_permutation, union_cover, intersection_cover):
         np.random.seed(1)
         counter = 0
         for iter in range(num_permutation):
-            y_permu_local = np.random.permutation(y_test[rule_cover])
             y_permu = np.array(y_test)
-            y_permu[rule_cover] = y_permu_local
+            y_permu[union_cover] = np.random.permutation(y_test[union_cover])
 
-            remaining_cover = rule_cover & (~intersection_cover)
+            remaining_cover = union_cover & (~intersection_cover)
             permu_full_model_loglikelihood = \
                 calculate_full_model_loglikelihood(intersection_cover=intersection_cover,
                                                    remaining_cover=remaining_cover, y_=y_permu)
             permu_stat = -2 * (reduced_model_loglikelihood - permu_full_model_loglikelihood)
-            if permu_stat >= stat:
+            if permu_stat >= stat:  # if stat is very "extreme", it's unlikely permu_stat will be even larger.
                 counter += 1
         return counter / num_permutation
 
-    # p_values_mg = []
     intersection_cover = np.ones(len(y_test), dtype=bool)
     union_cover = np.zeros(len(y_test), dtype=bool)
     for index_rule in mg.rules_involvde:
@@ -158,15 +154,6 @@ def insignificance_overlap(ruleset, mg, X_test, y_test, num_permutation):
 
     if np.count_nonzero(intersection_cover) == 0:
         return [np.nan]
-
-    # for index_rule in mg.rules_involvde:
-    #     remaining_bi_array = rules_test_bool_array[index_rule] & (~intersection_cover)
-    #     full_model_loglikelihood = calculate_full_model_loglikelihood(intersection_cover, remaining_bi_array, y_test)
-    #     reduced_model_loglikelihood = calculate_reduced_model_loglikelihood(index_rule)
-    #
-    #     stat = -2 * (reduced_model_loglikelihood - full_model_loglikelihood)
-    #     p_value = calculate_permutation_pvalue(num_permutation=num_permutation, rule_cover=rules_test_bool_array[index_rule], intersection_cover=intersection_cover)
-    #     p_values_mg.append(p_value)
 
     full_model_loglikelihood = \
         calculate_full_model_loglikelihood(intersection_cover=intersection_cover,
@@ -177,7 +164,7 @@ def insignificance_overlap(ruleset, mg, X_test, y_test, num_permutation):
     reduced_model_loglikelihood = sum(np.log(union_p) * union_p * np.count_nonzero(union_cover))
     stat = -2 * (reduced_model_loglikelihood - full_model_loglikelihood)
     p_value = calculate_permutation_pvalue(num_permutation=num_permutation,
-                                           rule_cover=union_cover,
+                                           union_cover=union_cover,
                                            intersection_cover=intersection_cover)
 
     return [p_value]
