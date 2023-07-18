@@ -34,6 +34,7 @@ def get_rule_local_prediction_for_unseen_data(ruleset, X_test, y_test):
     if type(y_test) != np.ndarray:
         y_test = y_test.to_numpy().flatten()
     rules_test_p = []
+    rules_test_p_NotThisRule = []
     rules_test_coverage = []
 
     allrules_cover = np.zeros(len(X_test), dtype=bool)
@@ -54,16 +55,26 @@ def get_rule_local_prediction_for_unseen_data(ruleset, X_test, y_test):
         rule_cover_test.append(rule_cover)
         # only for comparison with the estimated probability from the training set, not for evaluating the model!!!
         rule_test_p = calc_probs(y_test[rule_cover], ruleset.data_info.num_class)
+        testdata_not_this_rule_p = calc_probs(y_test[~rule_cover], ruleset.data_info.num_class)
+
         rules_test_p.append(rule_test_p)
+        rules_test_p_NotThisRule.append(testdata_not_this_rule_p)
         rules_test_coverage.append(np.count_nonzero(rule_cover))
 
         allrules_cover = np.bitwise_or(allrules_cover, rule_cover)
     else_rule_cover = ~allrules_cover
     else_rule_coverage = np.count_nonzero(else_rule_cover)
     else_rule_p = calc_probs(y_test[else_rule_cover], ruleset.data_info.num_class)
+
+    rules_test_p_NotThisRule_including_elserule = rules_test_p_NotThisRule + \
+                                                  [calc_probs(y_test[~else_rule_cover], ruleset.data_info.num_class)]
+    rules_cover_test_including_elserule = rule_cover_test + [else_rule_cover]
+
     return {"rules_test_p": rules_test_p, "rules_test_coverage": rules_test_coverage,
             "else_rule_p": else_rule_p, "else_rule_coverage": else_rule_coverage,
-            "allrules_cover": allrules_cover, "rule_cover_test": rule_cover_test}
+            "allrules_cover": allrules_cover, "rule_cover_test": rule_cover_test,
+            "rules_test_p_NotThisRule_including_elserule": rules_test_p_NotThisRule_including_elserule,
+            "rules_cover_test_including_elserule": rules_cover_test_including_elserule}
 
 
 def predict_ruleset(ruleset, X_test, y_test):
