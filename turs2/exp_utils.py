@@ -2,6 +2,9 @@
 # Specifically, 1) explainability, 2) Truly Unordered Verfitication; 3) Significance of rules; 4) Insignificance of overlaps
 
 import numpy as np
+from utils_predict import *
+
+from scipy.stats import chi2
 
 def cover_matrix(ruleset, X):
     cover_matrix = np.zeros((len(X), len(ruleset.rules) + 1), dtype=bool)
@@ -56,6 +59,67 @@ def calculate_overlap_percentage(ruleset, X):
     cover_mat = cover_matrix(ruleset, X)
     num_rules_each_data = np.sum(cover_mat, axis=1) # sum each row
     return np.mean(num_rules_each_data > 1)
+
+def significance_rules(ruleset, X_test, y_test, num_permutations):
+    p_values_chisquare = []
+    p_values_permutations = []
+
+    rules_local_prediction = get_rule_local_prediction_for_unseen_data(ruleset, X_test, y_test)
+    rules_prob_test_data = rules_local_prediction["rules_test_p"] + rules_local_prediction["else_rule_p"]
+    rules_test_p_NotThisRule_including_elserule = rules_local_prediction["rules_test_p_NotThisRule_including_elserule"]
+    rules_test_bool_array = rules_local_prediction["rules_cover_test_including_elserule"]
+
+    def calculate_reduced_model_loglikelihood():
+        p_default_testdata = calc_probs(y_test, ruleset.data_info.num_class)
+        p_default_testdata = p_default_testdata[p_default_testdata != 0]
+        reduced_model_loglikelihood = np.sum(np.log(p_default_testdata) * p_default_testdata * len(y_test))
+        return reduced_model_loglikelihood
+
+    def calculated_chi2_pvalue(stat):
+        return 1 - chi2(1).cdf(stat)
+
+    def calculate_full_model_loglikelihood():
+        p_rule = rules_prob_test_data[ir]
+        p_notThisRule = rules_test_p_NotThisRule_including_elserule[ir]
+        full_model_loglikelihood = np.sum(np.log(p_rule[y_test[rules_test_bool_array[ir]]])) + \
+                                   np.sum(np.log(p_notThisRule[y_test[~rules_test_bool_array[ir]]]))
+        return full_model_loglikelihood
+
+    def calculated_permutation_pvalue(reduced_model_loglikelihood):
+        np.random.seed(1)
+        permu_counter = 0
+        for iter in range(num_permutations):
+            y_permutation = np.random.permutation(y_test)
+            p_permu = calc_probs(y_permutation[rules_test_bool_array[ir]], ruleset.data_info.num_class)
+            p_permu_NotThisRule = calc_probs(y_permutation[~rules_test_bool_array[ir]], ruleset.data_info.num_class)
+            permu_full_model_loglikelihood = \
+                np.sum(np.log(p_permu[y_permutation[rules_test_bool_array[ir]]])) + \
+                np.sum(np.log(p_permu_NotThisRule[y_permutation[~rules_test_bool_array[ir]]]))
+            permu_test_stat = -2 * (reduced_model_loglikelihood - permu_full_model_loglikelihood)
+            permu_counter += (test_stat <= permu_test_stat)
+        return permu_counter / num_permutations
+
+    for ir, rule in enumerate(ruleset.rules):
+        # NOTE: use np.log(..) instead of np.log2(..) here;
+        reduced_model_loglikelihood = calculate_reduced_model_loglikelihood()
+        full_model_loglikelihood = calculate_full_model_loglikelihood()
+        test_stat = -2 * (reduced_model_loglikelihood - full_model_loglikelihood)
+
+        p_values_chisquare.append(calculated_chi2_pvalue(test_stat))
+        p_values_permutations.append(calculated_permutation_pvalue(reduced_model_loglikelihood))
+
+    return [p_values_chisquare, p_values_permutations]
+
+
+
+
+
+
+
+
+
+
+
 
 
 
