@@ -65,7 +65,7 @@ def significance_rules(ruleset, X_test, y_test, num_permutations):
     p_values_permutations = []
 
     rules_local_prediction = get_rule_local_prediction_for_unseen_data(ruleset, X_test, y_test)
-    rules_prob_test_data = rules_local_prediction["rules_test_p"] + rules_local_prediction["else_rule_p"]
+    rules_prob_test_data = rules_local_prediction["rules_test_p"]
     rules_test_p_NotThisRule_including_elserule = rules_local_prediction["rules_test_p_NotThisRule_including_elserule"]
     rules_test_bool_array = rules_local_prediction["rules_cover_test_including_elserule"]
 
@@ -110,28 +110,74 @@ def significance_rules(ruleset, X_test, y_test, num_permutations):
 
     return [p_values_chisquare, p_values_permutations]
 
+def insignificance_overlap(ruleset, mg, X_test, y_test, num_permutation):
+    rules_local_prediction = get_rule_local_prediction_for_unseen_data(ruleset, X_test, y_test)
+    rules_test_bool_array = rules_local_prediction["rules_cover_test_including_elserule"]
+    rules_prob_test_data = rules_local_prediction["rules_test_p"]
+    def calculate_reduced_model_loglikelihood(rule_index):
+        # note that "reduced" means the NULL hypothesis;
+        p_rule = rules_prob_test_data[rule_index]
+        coverage = np.count_nonzero(rules_test_bool_array[rule_index])
+        return np.sum(np.log(p_rule) * p_rule * coverage)
 
+    def calculate_full_model_loglikelihood(intersection_cover, remaining_cover, y_):
+        p_intersection = calc_probs(y_[intersection_cover], ruleset.data_info.num_class)
+        p_intersection = p_intersection[p_intersection != 0]
+        coverage = np.count_nonzero(intersection_cover)
 
+        p_remaining = calc_probs(y_[remaining_cover], ruleset.data_info.num_class)
+        p_remaining = p_remaining[p_remaining != 0]
+        coverage_remaining = np.count_nonzero(remaining_cover)
+        return np.sum(np.log(p_intersection) * p_intersection * coverage) + \
+            np.sum(np.log(p_remaining) * p_remaining * coverage_remaining)
 
+    def calculate_permutation_pvalue(num_permutation, rule_cover, intersection_cover):
+        np.random.seed(1)
+        counter = 0
+        for iter in range(num_permutation):
+            y_permu_local = np.random.permutation(y_test[rule_cover])
+            y_permu = np.array(y_test)
+            y_permu[rule_cover] = y_permu_local
 
+            remaining_cover = rule_cover & (~intersection_cover)
+            permu_full_model_loglikelihood = \
+                calculate_full_model_loglikelihood(intersection_cover=intersection_cover,
+                                                   remaining_cover=remaining_cover, y_=y_permu)
+            permu_stat = -2 * (reduced_model_loglikelihood - permu_full_model_loglikelihood)
+            if permu_stat >= stat:
+                counter += 1
+        return counter / num_permutation
 
+    p_values_mg = []
+    intersection_cover = np.ones(len(y_test), dtype=bool)
+    for index_rule in mg.rules_involvde:
+        intersection_cover = intersection_cover & rules_test_bool_array[index_rule]
 
+    if np.count_nonzero(intersection_cover) == 0:
+        return [np.nan]
 
+    for index_rule in mg.rules_involvde:
+        remaining_bi_array = rules_test_bool_array[index_rule] & (~intersection_cover)
+        full_model_loglikelihood = calculate_full_model_loglikelihood(intersection_cover, remaining_bi_array, y_test)
+        reduced_model_loglikelihood = calculate_reduced_model_loglikelihood(index_rule)
 
+        stat = -2 * (reduced_model_loglikelihood - full_model_loglikelihood)
+        p_value = calculate_permutation_pvalue(num_permutation=num_permutation, rule_cover=rules_test_bool_array[index_rule], intersection_cover=intersection_cover)
+        p_values_mg.append(p_value)
 
+    return p_values_mg
 
+def insignificance_overlap_all(ruleset, X_test, y_test, num_permutation):
+    p_values_all = {}
+    p_values_all_flatten = []
+    for i_mg, mg in enumerate(ruleset.modelling_groups):
+        if len(mg.rules_involvde) > 1:
+            p_values = insignificance_overlap(ruleset, mg, X_test, y_test, num_permutation)
+            p_values_all[i_mg] = p_values
+            p_values_all_flatten.extend(p_values)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    p_values_all_flatten = np.array(p_values_all_flatten)
+    p_values_all_flatten = p_values_all_flatten[~np.isnan(p_values_all_flatten)]
+    insig_perc = np.mean(p_values_all_flatten > 0.05)
+    return {"p_values_all":p_values_all, "insignificance_percentage": insig_perc}
 
