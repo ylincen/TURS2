@@ -40,7 +40,21 @@ def explainability_analysis(ruleset, X):
 
 def predict_random_picking_for_overlaps(ruleset, X):
     cover_mat = cover_matrix(ruleset, X)
-    rules_probs = [r.prob for r in ruleset.rules]
+    rules_probs = [r.prob for r in ruleset.rules] + [ruleset.else_rule_p]
+
+    pred_probs = []
+    for _ in cover_mat:
+        rules_indices_ = np.where(_)[0]
+        random_selected_ = np.random.randint(0, len(rules_indices_), size=1)[0]
+        rule_index_selected = rules_indices_[random_selected_]
+
+        pred_probs.append(rules_probs[rule_index_selected])
+
+    return np.array(pred_probs, dtype=float)
+
+
+
+
 
 
 
