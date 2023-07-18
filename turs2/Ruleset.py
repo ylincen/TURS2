@@ -403,7 +403,7 @@ class Ruleset:
 
             stop_condition_element = self.calculate_stop_condition_element(incl_beam, excl_beam, previous_best_gain, previous_best_excl_gain)
             if stop_condition_element:
-                counter_worse_best_gain = counter_worse_best_gain + 1 if stop_condition_element else 0
+                counter_worse_best_gain = counter_worse_best_gain + 1
             else:
                 counter_worse_best_gain = 0
 
