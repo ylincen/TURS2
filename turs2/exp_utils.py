@@ -52,6 +52,14 @@ def predict_random_picking_for_overlaps(ruleset, X):
 
     return np.array(pred_probs, dtype=float)
 
+def calculate_overlap_percentage(ruleset, X):
+    cover_mat = cover_matrix(ruleset, X)
+    num_rules_each_data = np.sum(cover_mat, axis=1) # sum each row
+    return np.mean(num_rules_each_data > 1)
+
+
+
+
 
 
 
