@@ -185,6 +185,6 @@ def insignificance_overlap_all(ruleset, X_test, y_test, num_permutation):
     if len(p_values_all_flatten) > 0:
         insig_perc = np.mean(p_values_all_flatten > 0.05)
     else:
-        insig_perc = np.nan # meaning that no overlaps exist for testing data. 
+        insig_perc = np.nan # meaning that no overlaps exist for testing data.
     return {"p_values_all":p_values_all, "insignificance_percentage": insig_perc}
 
