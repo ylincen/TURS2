@@ -221,7 +221,7 @@ def run_(data_name, fold_given=None):
         y_test = dtest.iloc[:, -1].to_numpy()
 
         start_time = time.time()
-        data_info = DataInfo(X=X_train, y=y_train, beam_width=5)
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=20)
 
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)
