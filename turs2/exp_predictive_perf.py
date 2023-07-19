@@ -31,8 +31,6 @@ from turs2.exp_utils import *
 
 np.seterr(all='raise')
 
-data_given = "waveform"
-
 datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                "magic", "car", "tic-tac-toe", "wine"]
 datasets_with_header_row = ["avila", "anuran", "diabetes"]
@@ -198,47 +196,45 @@ def calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold
                "random_picking_logloss":random_picking_logloss}
     return exp_res
 
-def run_():
-    for data_name in datasets_without_header_row + datasets_with_header_row:
-        if data_given is not None:
-            if data_name != data_given:
-                continue
-        d = _read_data(data_name)
-        d = preprocess_data(d)
+def run_(data_name, fold_given=None):
+    d = _read_data(data_name)
+    d = preprocess_data(d)
 
-        X = d.iloc[:, :d.shape[1] - 1].to_numpy()
-        y = d.iloc[:, d.shape[1] - 1].to_numpy()
+    X = d.iloc[:, :d.shape[1] - 1].to_numpy()
+    y = d.iloc[:, d.shape[1] - 1].to_numpy()
 
-        kf = StratifiedKFold(n_splits=5, shuffle=True,
-                             random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
-        kfold = kf.split(X=X, y=y)
-        kfold_list = list(kfold)
+    kf = StratifiedKFold(n_splits=5, shuffle=True,
+                         random_state=2)  # can also use sklearn.model_selection.StratifiedKFold
+    kfold = kf.split(X=X, y=y)
+    kfold_list = list(kfold)
 
-        print("running: ", data_name)
-        for fold in range(1):
-            dtrain = copy.deepcopy(d.iloc[kfold_list[fold][0], :])
-            dtest = copy.deepcopy(d.iloc[kfold_list[fold][1], :])
+    print("running: ", data_name)
+    for fold in range(5):
+        if fold_given is not None and fold != fold_given:
+            continue
+        dtrain = copy.deepcopy(d.iloc[kfold_list[fold][0], :])
+        dtest = copy.deepcopy(d.iloc[kfold_list[fold][1], :])
 
-            X_train = dtrain.iloc[:, :dtrain.shape[1]-1].to_numpy()
-            y_train = dtrain.iloc[:, dtrain.shape[1]-1].to_numpy()
-            X_test = dtest.iloc[:, :-1].to_numpy()
-            y_test = dtest.iloc[:, -1].to_numpy()
+        X_train = dtrain.iloc[:, :dtrain.shape[1]-1].to_numpy()
+        y_train = dtrain.iloc[:, dtrain.shape[1]-1].to_numpy()
+        X_test = dtest.iloc[:, :-1].to_numpy()
+        y_test = dtest.iloc[:, -1].to_numpy()
 
-            start_time = time.time()
-            data_info = DataInfo(X=X_train, y=y_train, beam_width=5)
+        start_time = time.time()
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=5)
 
-            data_encoding = NMLencoding(data_info)
-            model_encoding = ModelEncodingDependingOnData(data_info)
-            ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
-            ruleset.fit(max_iter=1000, printing=True)
-            end_time = time.time()
+        data_encoding = NMLencoding(data_info)
+        model_encoding = ModelEncodingDependingOnData(data_info)
+        ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
+        ruleset.fit(max_iter=1000, printing=True)
+        end_time = time.time()
 
-            ## ROC_AUC and log-loss
-            exp_res = calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold, start_time, end_time)
-            exp_res_alldata.append(exp_res)
-        exp_res_df = pd.DataFrame(exp_res_alldata)
-    if data_given is None:
-        res_file_name = "./" + date_and_time + "_uci_datasets_res.csv"
+        ## ROC_AUC and log-loss
+        exp_res = calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold, start_time, end_time)
+        exp_res_alldata.append(exp_res)
+    exp_res_df = pd.DataFrame(exp_res_alldata)
+    if fold_given is None:
+        res_file_name = "./" + date_and_time + "_" + data_name + "_uci_datasets_res.csv"
     else:
-        res_file_name = "./" + date_and_time + "_" + data_given + "_uci_datasets_res.csv"
+        res_file_name = "./" + date_and_time + "_" + data_name + "_fold" + str(fold_given) + "_uci_datasets_res.csv"
     exp_res_df.to_csv(res_file_name, index=False)
