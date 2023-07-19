@@ -3,7 +3,7 @@ from collections import namedtuple
 import platform
 import pandas as pd
 import numpy as np
-from constant import *
+from turs2.constant import *
 from math import log
 from scipy.special import gammaln, comb
 from turs2.utils_modelencoding import *
