@@ -114,7 +114,7 @@ def calculate_brier_and_prauc(ruleset, y_train, y_test, y_pred_prob, y_pred_prob
         pr_test = precision_recall_curve(positive_mask_test, y_pred_prob[:, yy])
         pr_auc_train += auc(pr_train[1], pr_train[0])
         pr_auc_test += auc(pr_test[1], pr_test[0])
-    return [pr_auc_test, pr_auc_train, Brier_test, Brier_train]
+    return [pr_auc_test/len(y_unique), pr_auc_train/len(y_unique), Brier_test, Brier_train]
 
 def calculate_train_test_prob_diff(ruleset, X_test, y_test):
     # weighted average of train_test prob. est. difference for each rule,
@@ -233,10 +233,13 @@ def run_(data_name, fold_given=None):
         exp_res = calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold, start_time, end_time)
         exp_res_alldata.append(exp_res)
     exp_res_df = pd.DataFrame(exp_res_alldata)
+
+    folder_name = "exp_uci_" + date_and_time[:8]
+    os.makedirs(folder_name, exist_ok=True)
     if fold_given is None:
-        res_file_name = "./" + date_and_time + "_" + data_name + "_uci_datasets_res.csv"
+        res_file_name = "./" + folder_name + "/" + date_and_time + "_" + data_name + "_uci_datasets_res.csv"
     else:
-        res_file_name = "./" + date_and_time + "_" + data_name + "_fold" + str(fold_given) + "_uci_datasets_res.csv"
+        res_file_name = "./" + folder_name + "/" + date_and_time + "_" + data_name + "_fold" + str(fold_given) + "_uci_datasets_res.csv"
     exp_res_df.to_csv(res_file_name, index=False)
 
 
