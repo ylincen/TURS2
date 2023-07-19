@@ -238,3 +238,10 @@ def run_(data_name, fold_given=None):
     else:
         res_file_name = "./" + date_and_time + "_" + data_name + "_fold" + str(fold_given) + "_uci_datasets_res.csv"
     exp_res_df.to_csv(res_file_name, index=False)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 3:
+        run_(data_name=sys.argv[1], fold_given=sys.argv[2])
+    else:
+        run_(data_name=sys.argv[1], fold_given=None)
