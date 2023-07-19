@@ -62,9 +62,7 @@ for fold in range(1):
     y_pred_prob = rf.predict_proba(X_test)
     oob_dec = rf.oob_decision_function_
 
-    data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=100, max_rule_length=20,
-                         feature_names=dtrain.columns[:-1], beam_width=10,
-                         X_test=X_test, y_test=y_test, log_learning_process=True, rf_oob_decision_=None)
+    data_info = DataInfo(X=X_train, y=y_train, beam_width=20)
     # ruleset = Ruleset(data_info=data_info)
     data_encoding = NMLencoding(data_info)
     model_encoding = ModelEncodingDependingOnData(data_info)

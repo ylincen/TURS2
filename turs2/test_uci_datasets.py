@@ -31,6 +31,11 @@ if len(sys.argv) > 1:
 else:
     data_given = None
 
+# data_given = "tic-tac-toe"
+# data_given = "contracept"
+# data_given = "diabetes"
+data_given = "waveform"
+
 datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                "magic", "car", "tic-tac-toe", "wine"]
 datasets_with_header_row = ["avila", "anuran", "diabetes"]
@@ -56,7 +61,6 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
     le = LabelEncoder()
     d.iloc[:, -1] = le.fit_transform(d.iloc[:, -1])
 
-    # le_feature = OneHotEncoder(sparse=False, dtype=int, min_frequency=5, drop="if_binary")
     le_feature = OneHotEncoder(sparse=False, dtype=int, drop="if_binary")
 
     for icol in range(d.shape[1] - 1):
@@ -99,23 +103,12 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         rf.fit(X_train, y_train)
 
         start_time = time.time()
-        # data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=20, max_rule_length=10,
-        #                      feature_names=dtrain.columns[:-1], beam_width=5, log_learning_process=True,
-        #                      X_test=X_test, y_test=y_test)
-        data_info = DataInfo(X=X_train, y=y_train, beam_width=20)
-        # data_info = DataInfo(X=X_train, y=y_train, num_candidate_cuts=500, max_rule_length=20,
-        #                      feature_names=dtrain.columns[:-1], beam_width=1, log_learning_process=True,
-        #                      rf_oob_decision_=rf.oob_decision_function_, X_test=X_test, y_test=y_test)
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=5)
 
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)
         ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
-        # try:
         ruleset.fit(max_iter=1000, printing=True)
-        # except Exception:
-            # print("Error in ", data_name, " with fold number ", fold)
-
-        # collect the experiment results
 
         ## ROC_AUC and log-loss
         res = predict_ruleset(ruleset, X_test, y_test)
@@ -190,4 +183,4 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         res_file_name = "./" + date_and_time + "_" + data_given + "_uci_datasets_res.csv"
     exp_res_df.to_csv(res_file_name, index=False)
 
-
+print("ROC AUC mean: ", np.mean(exp_res_df["roc_auc_test"]))
