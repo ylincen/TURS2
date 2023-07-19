@@ -81,7 +81,7 @@ def calculate_roc_auc_and_logloss(ruleset, y_test, y_pred_prob, y_train, y_pred_
         logloss_train = log_loss(y_train, y_pred_prob_train[:, 1])
         logloss_test = log_loss(y_test, y_pred_prob[:, 1])
     else:
-        roc_auc = roc_auc_score(y_test, y_pred_prob, multi_class="ovr", )
+        roc_auc = roc_auc_score(y_test, y_pred_prob, multi_class="ovr")
         roc_auc_train = roc_auc_score(y_train, y_pred_prob_train, multi_class="ovr")
 
         logloss_train = log_loss(y_train, y_pred_prob_train)
@@ -177,7 +177,7 @@ def calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold
     overlap_percentage = calculate_overlap_percentage(ruleset, X_test)
 
     random_picking_roc_auc, random_picking_pr_auc, random_picking_brier_score, random_picking_logloss = \
-        calculate_random_picking_pred_performance(ruleset=ruleset, X=X_train, y=y_test, num_repetition=10)
+        calculate_random_picking_pred_performance(ruleset=ruleset, X=X_test, y=y_test, num_repetition=10)
 
     exp_res = {"roc_auc_test": roc_auc, "roc_auc_train": roc_auc_train,
                "data_name": data_name, "fold_index": fold, "nrow": X_train.shape[0], "ncol": X_train.shape[1],
@@ -187,7 +187,7 @@ def calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold
                "Brier_train": Brier_train, "Brier_test": Brier_test,
                "logloss_train": logloss_train, "logloss_test": logloss_test,
                "runtime": end_time - start_time,
-               "rules_p_value_permutations_significance_perc": np.mean(rules_p_value_permutations < 0.05),
+               "rules_p_value_permutations_significance_perc": np.mean(np.array(rules_p_value_permutations) < 0.05),
                "rules_p_value_permutations": rules_p_value_permutations,
                "overlap_significances_perc": 1 - insig_res_overlaps["insignificance_percentage"],
                "avg_num_literals_for_each_datapoint": avg_num_literals_for_each_datapoint,
@@ -208,10 +208,10 @@ def run_(data_name, fold_given=None):
     kfold = kf.split(X=X, y=y)
     kfold_list = list(kfold)
 
-    print("running: ", data_name)
     for fold in range(5):
         if fold_given is not None and fold != fold_given:
             continue
+        print("running: ", data_name, "; fold: ", fold)
         dtrain = copy.deepcopy(d.iloc[kfold_list[fold][0], :])
         dtest = copy.deepcopy(d.iloc[kfold_list[fold][1], :])
 
@@ -242,6 +242,6 @@ def run_(data_name, fold_given=None):
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:
-        run_(data_name=sys.argv[1], fold_given=sys.argv[2])
+        run_(data_name=sys.argv[1], fold_given=int(sys.argv[2]))
     else:
         run_(data_name=sys.argv[1], fold_given=None)
