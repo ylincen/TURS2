@@ -31,14 +31,10 @@ from turs2.exp_utils import *
 
 np.seterr(all='raise')
 
-datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
-                               "magic", "car", "tic-tac-toe", "wine"]
-datasets_with_header_row = ["avila", "anuran", "diabetes"]
-
 exp_res_alldata = []
 date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-def _read_data(data_name):
+def _read_data(data_name, datasets_without_header_row, datasets_with_header_row):
     data_path = "../datasets/" + data_name + ".csv"
     if data_name in datasets_without_header_row:
         d = pd.read_csv(data_path, header=None)
@@ -197,7 +193,11 @@ def calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold
     return exp_res
 
 def run_(data_name, fold_given=None):
-    d = _read_data(data_name)
+    datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
+                                   "magic", "car", "tic-tac-toe", "wine"]
+    datasets_with_header_row = ["avila", "anuran", "diabetes"]
+    d = _read_data(data_name, datasets_without_header_row=datasets_without_header_row,
+                   datasets_with_header_row=datasets_with_header_row)
     d = preprocess_data(d)
 
     X = d.iloc[:, :d.shape[1] - 1].to_numpy()
