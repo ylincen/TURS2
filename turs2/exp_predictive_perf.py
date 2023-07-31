@@ -13,7 +13,7 @@ import copy
 import time
 import cProfile
 from datetime import datetime
-from line_profiler import LineProfiler
+# from line_profiler import LineProfiler
 import cProfile, pstats
 
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, OneHotEncoder
@@ -97,6 +97,10 @@ def calculate_brier_and_prauc(ruleset, y_train, y_test, y_pred_prob, y_pred_prob
     Brier_train, Brier_test = 0, 0
     pr_auc_train, pr_auc_test = 0, 0
     y_unique = np.arange(ruleset.data_info.num_class)  # we made sure that y_unique is always in the form of [0,1,2,..]
+
+    if len(y_unique) == 2:
+        y_unique = np.array([1], dtype=int)
+
     for yy in y_unique:
         positive_mask_train = (y_train == yy)
         positive_mask_test = (y_test == yy)
@@ -108,6 +112,7 @@ def calculate_brier_and_prauc(ruleset, y_train, y_test, y_pred_prob, y_pred_prob
 
         pr_train = precision_recall_curve(positive_mask_train, y_pred_prob_train[:, yy])
         pr_test = precision_recall_curve(positive_mask_test, y_pred_prob[:, yy])
+
         pr_auc_train += auc(pr_train[1], pr_train[0])
         pr_auc_test += auc(pr_test[1], pr_test[0])
     return [pr_auc_test/len(y_unique), pr_auc_train/len(y_unique), Brier_test, Brier_train]
