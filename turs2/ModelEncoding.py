@@ -15,7 +15,7 @@ class ModelEncodingDependingOnData:
             self.cache_cl_model(data_info.ncol, data_info.max_grow_iter, data_info.candidate_cuts)
         else:
             self.data_ncol_for_encoding = given_ncol
-            self.cache_cl_model(given_ncol, data_info.max_rule_length, data_info.candidate_cuts)
+            self.cache_cl_model(given_ncol, data_info.max_grow_iter, data_info.candidate_cuts)
 
 
     def cache_cl_model(self, data_ncol, max_rule_length, candidate_cuts):
