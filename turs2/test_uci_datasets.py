@@ -4,8 +4,8 @@ import sys
 sys.path.extend(['/Users/yanglincen/projects/TURS'])
 sys.path.extend(['/Users/yanglincen/projects/TURS/turs2'])
 # for DSlab server:
-sys.path.extend(['/home/yangl3/projects/TURS'])
-sys.path.extend(['/home/yangl3/projects/TURS/turs2'])
+sys.path.extend(['/home/yangl3/projects/turs'])
+sys.path.extend(['/home/yangl3/projects/turs/turs2'])
 
 import numpy as np
 import pandas as pd
