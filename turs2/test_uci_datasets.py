@@ -26,11 +26,13 @@ from datetime import datetime
 
 np.seterr(all='raise')
 
-if len(sys.argv) > 1:
-    data_given = sys.argv[1]
-else:
-    data_given = None
-
+# if len(sys.argv) > 1:
+#     data_given = sys.argv[1]
+# else:
+#     data_given = None
+#
+# if len(sys.argv) > 1:
+#     COV_ALPHA = float(sys.argv[1])
 # data_given = "tic-tac-toe"
 # data_given = "contracept"
 # data_given = "diabetes"
@@ -107,7 +109,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
             num_candidate_cuts=100, max_num_rules=500, max_grow_iter=200, num_class_as_given=None,
             beam_width=1,
             log_learning_process=False,
-            dataset_name=None, X_test=None, y_test=None,  # X_test, y_test only for logging
+            dataset_name=None, X_test=None, y_test=None,
             rf_assist=False, rf_oob_decision_function=None,
             feature_names=["X" + str(i) for i in range(X.shape[1])],
             beamsearch_positive_gain_only=False, beamsearch_normalized_gain_must_increase_comparing_rulebase=False,
@@ -195,3 +197,4 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
     # exp_res_df.to_csv(res_file_name, index=False)
 
 print("ROC AUC mean: ", np.mean(exp_res_df["roc_auc_test"]))
+print(exp_res)

@@ -10,7 +10,7 @@ from turs2.utils_readable import *
 from turs2.Beam import *
 from turs2.RuleGrowConstraint import *
 
-COV_ALPHA = 0.9
+from turs2.constant import *
 
 def store_grow_info(excl_bi_array, incl_bi_array, icol, cut, cut_option, excl_mdl_gain, incl_mdl_gain,
                     coverage_excl, coverage_incl, normalized_gain_excl, normalized_gain_incl, _rule):

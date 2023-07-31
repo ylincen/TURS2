@@ -19,3 +19,6 @@ USER_NEXT_SUBGROUP = 1
 # for mode
 CLASSIFICATION = 0
 SUBDISCOVERY = 1
+
+# for rule growth's coverage reduction constraint
+COV_ALPHA = 0.2
