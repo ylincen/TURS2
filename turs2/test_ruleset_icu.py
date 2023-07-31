@@ -58,8 +58,7 @@ rf.fit(X, y.to_numpy().ravel())
 print("===================Rule Learning======================")
 
 beamwidth = 1
-data_info = DataInfo(X=X, y=y, num_candidate_cuts=100, max_rule_length=10, feature_names=X.columns, beam_width=1,
-                     X_test=X_test, y_test=y_test, dataset_name="ICU", rf_oob_decision_=rf.oob_decision_function_[:,1])
+data_info = DataInfo(X=X, y=y, beam_width=5)
 
 data_encoding = NMLencoding(data_info)
 model_encoding = ModelEncodingDependingOnData(data_info, given_ncol=ncol_original)
@@ -157,3 +156,4 @@ if analyze_res2:
         res.append(res1)
     with pd.option_context('display.max_colwidth', None):
         print(pd.DataFrame(res))
+
