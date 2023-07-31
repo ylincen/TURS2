@@ -133,15 +133,17 @@ class Ruleset:
 
         log_info_ruleset = ""
         for iter in range(max_iter):
-            log_info_ruleset += "  Iteration: "+ str(iter) + "\n" \
-                                "  ruleset total cl: " + str(self.total_cl) + "\n" \
-                                "  cl data: " + str(self.cl_data) + "\n" \
-                                "  cl model: "+ str(self.cl_model) + "\n" \
-                                "  self.allrules_regret: " + str(self.data_encoding.allrules_regret) + "\n" \
-                                "  self.allrules_cl_data: " + str(self.allrules_cl_data) + "\n\n"
+            # log_info_ruleset += "  Iteration: "+ str(iter) + "\n" \
+            #                     "  ruleset total cl: " + str(self.total_cl) + "\n" \
+            #                     "  cl data: " + str(self.cl_data) + "\n" \
+            #                     "  cl model: "+ str(self.cl_model) + "\n" \
+            #                     "  self.allrules_regret: " + str(self.data_encoding.allrules_regret) + "\n" \
+            #                     "  self.allrules_cl_data: " + str(self.allrules_cl_data) + "\n\n"
             if printing:
                 print("iteration ", iter)
             rule_to_add = self.search_next_rule(k_consecutively=5)
+            if printing:
+                print(print_(rule_to_add))
 
             # if self.data_info.rf_oob_decision_ is not None:
             #     rf_oob = np.array(self.data_info.rf_oob_decision_)
@@ -407,7 +409,13 @@ class Ruleset:
             else:
                 counter_worse_best_gain = 0
 
-            previous_best_gain, previous_best_excl_gain = np.max(incl_beam.gains), np.max(excl_beam.gains)
+            if len(incl_beam.gains) > 0:
+                previous_best_gain = np.max(incl_beam.gains)
+            if len(excl_beam.gains) > 0:
+                previous_best_excl_gain = np.max(excl_beam.gains)
+
+            if len(incl_beam.gains) == 0 and len(excl_beam.gains) == 0:
+                break
 
             if counter_worse_best_gain > k_consecutively:
                 break
