@@ -99,11 +99,22 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         X_test = dtest.iloc[:, :-1].to_numpy()
         y_test = dtest.iloc[:, -1].to_numpy()
 
-        rf = RandomForestClassifier(n_estimators=200, n_jobs=5, oob_score=True, min_samples_leaf=30)
-        rf.fit(X_train, y_train)
+        # rf = RandomForestClassifier(n_estimators=200, n_jobs=5, oob_score=True, min_samples_leaf=30)
+        # rf.fit(X_train, y_train)
 
         start_time = time.time()
-        data_info = DataInfo(X=X_train, y=y_train, beam_width=1)
+        alg_config = AlgConfig(
+            num_candidate_cuts=100, max_num_rules=500, max_grow_iter=200, num_class_as_given=None,
+            beam_width=1,
+            log_learning_process=False,
+            dataset_name=None, X_test=None, y_test=None,  # X_test, y_test only for logging
+            rf_assist=False, rf_oob_decision_function=None,
+            feature_names=["X" + str(i) for i in range(X.shape[1])],
+            beamsearch_positive_gain_only=False, beamsearch_normalized_gain_must_increase_comparing_rulebase=False,
+            beamsearch_stopping_when_best_normalized_gain_decrease=False,
+            validity_check="either", rerun_on_invalid=False, rerun_positive_control=False
+        )
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=1, alg_config=alg_config)
 
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)

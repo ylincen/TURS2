@@ -170,17 +170,23 @@ class Ruleset:
             if add_to_ruleset:
                 self.add_rule(rule_to_add)
                 if self.data_info.log_learning_process:
-                    local_predict_res = get_rule_local_prediction_for_unseen_data(ruleset=self,
-                                                                                  X_test=self.data_info.X_test,
-                                                                                  y_test=self.data_info.y_test)
-                    log_info_ruleset += "Add rule: " + print_(rule_to_add) + \
-                                        "\n Local information on test data: \n" + \
-                                        "Probability: " + str(local_predict_res["rules_test_p"][iter]) + \
-                                        "   Coverage: " + str(local_predict_res["rules_test_coverage"][iter]) + \
-                                        "   \n Else rule probability and coverage: " + \
-                                        str([local_predict_res["else_rule_p"],
-                                             local_predict_res["else_rule_coverage"]]) + \
-                                        "\n\n"
+                    # local_predict_res = get_rule_local_prediction_for_unseen_data(ruleset=self,
+                    #                                                               X_test=self.data_info.X_test,
+                    #                                                               y_test=self.data_info.y_test)
+                    # log_info_ruleset += "Add rule: " + print_(rule_to_add) + \
+                    #                     "\n Local information on test data: \n" + \
+                    #                     "Probability: " + str(local_predict_res["rules_test_p"][iter]) + \
+                    #                     "   Coverage: " + str(local_predict_res["rules_test_coverage"][iter]) + \
+                    #                     "   \n Else rule probability and coverage: " + \
+                    #                     str([local_predict_res["else_rule_p"],
+                    #                          local_predict_res["else_rule_coverage"]]) + \
+                    #                     "\n\n"
+                    log_info_ruleset += "Add rule: " + print_(rule_to_add) + "\n\n"
+                    log_info_ruleset += "with grow process: "
+                    r = rule_to_add.rule_base
+                    while r is not None:
+                        log_info_ruleset += print_(r) + "\n"
+                        r = r.rule_base
             else:
                 break
         if self.data_info.log_learning_process:
