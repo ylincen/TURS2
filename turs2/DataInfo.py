@@ -15,8 +15,9 @@ import os
 
 
 class DataInfo:
-    def __init__(self, X, y, beam_width, alg_config=None, log_object=None):
+    def __init__(self, X, y, beam_width=None, alg_config=None, log_object=None):
         if alg_config is None:
+            assert beam_width is not None
             self.alg_config = AlgConfig(
                 num_candidate_cuts=100, max_num_rules=500, max_grow_iter=200, num_class_as_given=None,
                 beam_width=beam_width,
