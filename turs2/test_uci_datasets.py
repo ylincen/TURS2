@@ -34,7 +34,7 @@ else:
 # data_given = "tic-tac-toe"
 # data_given = "contracept"
 # data_given = "diabetes"
-data_given = "waveform"
+data_given = "avila"
 
 datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                "magic", "car", "tic-tac-toe", "wine"]
@@ -90,7 +90,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
     skip_this_data = False
     print("running: ", data_name)
     auc_all_data = []
-    for fold in range(5):
+    for fold in range(1):
         dtrain = copy.deepcopy(d.iloc[kfold_list[fold][0], :])
         dtest = copy.deepcopy(d.iloc[kfold_list[fold][1], :])
 
@@ -103,7 +103,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         rf.fit(X_train, y_train)
 
         start_time = time.time()
-        data_info = DataInfo(X=X_train, y=y_train, beam_width=5)
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=1)
 
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)
@@ -181,6 +181,6 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         res_file_name = "./" + date_and_time + "_uci_datasets_res.csv"
     else:
         res_file_name = "./" + date_and_time + "_" + data_given + "_uci_datasets_res.csv"
-    exp_res_df.to_csv(res_file_name, index=False)
+    # exp_res_df.to_csv(res_file_name, index=False)
 
 print("ROC AUC mean: ", np.mean(exp_res_df["roc_auc_test"]))
