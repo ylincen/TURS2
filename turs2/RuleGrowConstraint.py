@@ -6,19 +6,20 @@ from utils_calculating_cl import *
 
 
 def validity_check(rule, icol, cut):
+    res_excl = True
+    res_incl = True
     if rule.data_info.alg_config.validity_check == "no_check":
-        res = True
+        pass
     elif rule.data_info.alg_config.validity_check == "excl_check":
-        res = check_split_validity_excl(rule, icol, cut)
+        res_excl = check_split_validity_excl(rule, icol, cut)
     elif rule.data_info.alg_config.validity_check == "incl_check":
-        res = check_split_validity(rule, icol, cut)
+        res_incl = check_split_validity(rule, icol, cut)
     elif rule.data_info.alg_config.validity_check == "either":
-        res1 = check_split_validity(rule, icol, cut)
-        res2 = check_split_validity_excl(rule, icol, cut)
-        res = res1 | res2
+        res_excl = check_split_validity(rule, icol, cut)
+        res_incl = check_split_validity_excl(rule, icol, cut)
     else:
         sys.exit("Error: the if-else statement should not end up here")
-    return res
+    return {"res_excl": res_excl, "res_incl": res_incl}
 
 def check_split_validity(rule, icol, cut):
     indices_left, indices_right = rule.indices[rule.features[:, icol] < cut], rule.indices[rule.features[:, icol] >= cut]
@@ -37,7 +38,9 @@ def check_split_validity(rule, icol, cut):
     cl_model_extra += rule.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars + 1] - \
                       rule.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars]
 
-    validity = nll_rule + regret(rule.coverage, 2) - nll_left - nll_right - regret(len(indices_left), 2) - regret(len(indices_right), 2) - cl_model_extra
+    validity = nll_rule + regret(rule.coverage, rule.data_info.num_class) - nll_left - nll_right - \
+               regret(len(indices_left), rule.data_info.num_class) - \
+               regret(len(indices_right), rule.data_info.num_class) - cl_model_extra
 
     validity_larger_than_zero = (validity > 0)
 
@@ -61,8 +64,8 @@ def check_split_validity_excl(rule, icol, cut):
     cl_model_extra += rule.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars + 1] - \
                       rule.ruleset.model_encoding.cached_cl_model["l_number_of_variables"][num_vars]
 
-    validity = nll_rule + regret(rule.coverage_excl, 2) - nll_left - nll_right - regret(len(indices_left_excl), 2) - \
-               regret(len(indices_right_excl), 2) - cl_model_extra
+    validity = nll_rule + regret(rule.coverage_excl, rule.data_info.num_class) - nll_left - nll_right - regret(len(indices_left_excl), rule.data_info.num_class) - \
+               regret(len(indices_right_excl), rule.data_info.num_class) - cl_model_extra
 
     validity_larger_than_zero = (validity > 0)
 
