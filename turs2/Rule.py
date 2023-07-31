@@ -157,7 +157,7 @@ class Rule:
         return candidate_cuts_icol
 
     def update_grow_beam(self, bi_array, excl_bi_array, icol, cut, cut_option, incl_coverage, excl_coverage,
-                         grow_info_beam, grow_info_beam_excl):
+                         grow_info_beam, grow_info_beam_excl, check_split_validity):
         info_theo_scores = self.calculate_mdl_gain(bi_array=bi_array, excl_bi_array=excl_bi_array,
                                                    icol=icol, cut_option=cut_option)
         grow_info = store_grow_info(
@@ -169,23 +169,26 @@ class Rule:
             normalized_gain_incl=info_theo_scores["absolute_gain"] / excl_coverage,
             _rule=self
         )
-        grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"])
-        grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"])
+        if check_split_validity["res_incl"]:
+            grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"])
+        if check_split_validity["res_excl"]:
+            grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"])
 
     def grow(self, grow_info_beam, grow_info_beam_excl):
         cov_alpha = COV_ALPHA  # a paramter for "patient" grow: upper bound for coverage reduction
 
         candidate_cuts = self.data_info.candidate_cuts
-        invalid_cuts = {}
+        # invalid_cuts = {}
         for icol in range(self.ncol):
             candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
             for i, cut in enumerate(candidate_cuts_icol):
                 check_split_validity = validity_check(rule=self, icol=icol, cut=cut)
-                if ~check_split_validity:
-                    if icol in invalid_cuts:
-                        invalid_cuts[icol].append(cut)
-                    else:
-                        invalid_cuts[icol] = [cut]
+                # if ~check_split_validity:
+                if check_split_validity["res_excl"] is False and check_split_validity["res_incl"] is False:
+                    # if icol in invalid_cuts:
+                    #     invalid_cuts[icol].append(cut)
+                    # else:
+                    #     invalid_cuts[icol] = [cut]
                     continue
 
                 excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
@@ -209,19 +212,21 @@ class Rule:
                     # TODO: check; should not happen given "self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)"
                     continue
 
-                if left_cov_check["static_excl_ok"]:
+                # if left_cov_check["static_excl_ok"]:
+                if left_cov_check["dynamic_excl_ok"]:
                     self.update_grow_beam(bi_array=left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol,
                                           cut=cut, cut_option=LEFT_CUT,
                                           incl_coverage=incl_left_coverage, excl_coverage=excl_left_coverage,
                                           grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
-                                          )
+                                          check_split_validity=check_split_validity)
 
-                if right_cov_check["static_excl_ok"]:
+                # if right_cov_check["static_excl_ok"]:
+                if right_cov_check["dynamic_excl_ok"]:
                     self.update_grow_beam(bi_array=right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
                                           cut=cut, cut_option=RIGHT_CUT,
                                           incl_coverage=incl_right_coverage, excl_coverage=excl_right_coverage,
                                           grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
-                                          )
+                                          check_split_validity=check_split_validity)
 
     def grow_incl_and_excl_return_beam(self, constraints=None):
         candidate_cuts = self.data_info.candidate_cuts
