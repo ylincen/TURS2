@@ -21,4 +21,4 @@ CLASSIFICATION = 0
 SUBDISCOVERY = 1
 
 # for rule growth's coverage reduction constraint
-COV_ALPHA = 0.2
+COV_ALPHA = 0.9
