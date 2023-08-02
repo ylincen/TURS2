@@ -64,15 +64,19 @@ class GrowInfoBeam():
 
     def update(self, info, gain):
         info_coverage = np.count_nonzero(info["incl_bi_array"])
-
+        skip_flag = False
         if info_coverage in self.coverage_list:
             which_equal = self.coverage_list.index(info_coverage)
-            if self.gains[which_equal] < gain:
-                self.infos[which_equal] = info
-                self.gains[which_equal] = gain
-                self.worst_gain = np.min(self.gains)
-                self.whichworst_gain = np.argmin(self.gains)
-        else:
+            # if self.gains[which_equal] < gain:
+            #     self.infos[which_equal] = info
+            #     self.gains[which_equal] = gain
+            #     self.worst_gain = np.min(self.gains)
+            #     self.whichworst_gain = np.argmin(self.gains)
+            bi_array_in_list = self.infos[which_equal]["incl_bi_array"]
+            bi_array_input = info["incl_bi_array"]
+            if np.array_equal(bi_array_in_list, bi_array_input):
+                skip_flag = True
+        if skip_flag is False:
             if len(self.infos) < self.width:
                 self.infos.append(info)
                 self.gains.append(gain)
