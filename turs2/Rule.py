@@ -183,7 +183,7 @@ class Rule:
             candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
             for i, cut in enumerate(candidate_cuts_icol):
                 validity_ = validity_check(rule=self, icol=icol, cut=cut)
-                if validity_["res_excl"] is False and validity_["res_incl"] is False:
+                if validity_["res_excl"] == False and validity_["res_incl"] == False:
                     continue
 
                 excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
