@@ -24,9 +24,9 @@ def print_(rule):
 
     # readable += "\nProbability of NOT-READMISSION or READMISSION (in order): " + str(rule.prob) + "\nNumber of patients who satisfy this rule: " + str(rule.coverage) + "\n"
     if len(rule.prob) > 5:
-        readable += "\nMax Prob: " + str(max(rule.prob)) + "; Number of patients who satisfy this rule: " + str(rule.coverage) + "\n"
+        readable += "\nMax Prob: " + str(max(rule.prob)) + "; Coverage: " + str(rule.coverage) + "\n"
     else:
-        readable += "\nProbability: " + str(rule.prob) + "; Number of patients who satisfy this rule: " + str(rule.coverage) + "\n"
+        readable += "\nProbability: " + str(rule.prob) + "; Coverage: " + str(rule.coverage) + "\n"
 
     return(readable)
 
@@ -37,6 +37,6 @@ def get_readable_rules(ruleset):
         readable = print_(rule)
         readables.append(readable)
         print(readable)
-    readable = "If none of above,\nProbability of READMISSION or NOT (in order): " + str(ruleset.else_rule_p[::-1]) + "\nNumber of patients who do not satisfy any above rule: " + str(ruleset.else_rule_coverage)
+    readable = "If none of above,\nProbability: " + str(ruleset.else_rule_p[::-1]) + "\nCoverage: " + str(ruleset.else_rule_coverage)
     print(readable)
     readables.append(readable)
