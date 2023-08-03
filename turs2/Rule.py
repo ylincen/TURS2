@@ -14,13 +14,8 @@ from turs2.constant import *
 
 def store_grow_info(excl_bi_array, incl_bi_array, icol, cut, cut_option, excl_mdl_gain, incl_mdl_gain,
                     coverage_excl, coverage_incl, normalized_gain_excl, normalized_gain_incl, _rule):
-    # return {"excl_bi_array": excl_bi_array, "incl_bi_array": incl_bi_array,
-    #         "icol": icol, "cut": cut, "cut_option": cut_option,
-    #         "excl_mdl_gain": excl_mdl_gain,
-    #         "incl_mdl_gain": incl_mdl_gain,
-    #         "coverage_incl": coverage_incl, "coverage_excl": coverage_excl,
-    #         "normalized_gain_excl": normalized_gain_excl,
-    #         "normalized_gain_incl": normalized_gain_incl}
+    excl_coverage = np.count_nonzero(excl_bi_array)
+    incl_coverage = np.count_nonzero(incl_bi_array)
     return locals()
 
 def store_grow_info_rulelist(excl_bi_array, icol, cut, cut_option, excl_normalized_gain):
@@ -157,7 +152,7 @@ class Rule:
         return candidate_cuts_icol
 
     def update_grow_beam(self, bi_array, excl_bi_array, icol, cut, cut_option, incl_coverage, excl_coverage,
-                         grow_info_beam, grow_info_beam_excl, validity_):
+                         grow_info_beam, grow_info_beam_excl):
         info_theo_scores = self.calculate_mdl_gain(bi_array=bi_array, excl_bi_array=excl_bi_array,
                                                    icol=icol, cut_option=cut_option)
         grow_info = store_grow_info(
@@ -169,22 +164,18 @@ class Rule:
             normalized_gain_incl=info_theo_scores["absolute_gain"] / excl_coverage,
             _rule=self
         )
-        if validity_["res_incl"]:
-            grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"])
-        if validity_["res_excl"]:
-            grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"])
+
+        grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"])
+        grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"])
 
     def grow(self, grow_info_beam, grow_info_beam_excl):
-        cov_alpha = COV_ALPHA  # a paramter for "patient" grow: upper bound for coverage reduction
-
         candidate_cuts = self.data_info.candidate_cuts
-        # invalid_cuts = {}
         for icol in range(self.ncol):
             candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
             for i, cut in enumerate(candidate_cuts_icol):
-                validity_ = validity_check(rule=self, icol=icol, cut=cut)
-                if validity_["res_excl"] == False and validity_["res_incl"] == False:
-                    continue
+                # validity_ = validity_check(rule=self, icol=icol, cut=cut)
+                # if validity_["res_excl"] == False and validity_["res_incl"] == False:
+                #     continue
 
                 excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
                 excl_right_bi_array = ~excl_left_bi_array
@@ -196,30 +187,25 @@ class Rule:
                 excl_left_coverage, excl_right_coverage = np.count_nonzero(excl_left_bi_array), np.count_nonzero(
                     excl_right_bi_array)
 
-                left_cov_check = grow_cover_reduce_contraint(
-                    rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
-                    _coverage=incl_left_coverage, _coverage_excl=excl_left_coverage, alpha=cov_alpha)
-                right_cov_check = grow_cover_reduce_contraint(
-                    rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
-                    _coverage=incl_right_coverage, _coverage_excl=excl_right_coverage, alpha=cov_alpha)
+                # left_cov_check = grow_cover_reduce_contraint(
+                #     rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
+                #     _coverage=incl_left_coverage, _coverage_excl=excl_left_coverage, alpha=cov_alpha)
+                # right_cov_check = grow_cover_reduce_contraint(
+                #     rule=self, nrow_data=self.data_info.nrow, nrow_data_excl=self.ruleset.else_rule_coverage,
+                #     _coverage=incl_right_coverage, _coverage_excl=excl_right_coverage, alpha=cov_alpha)
 
                 if excl_left_coverage == 0 or excl_right_coverage == 0:
-                    # TODO: check; should not happen given "self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)"
                     continue
 
-                if left_cov_check["dynamic_excl_ok"]:
-                    self.update_grow_beam(bi_array=left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol,
-                                          cut=cut, cut_option=LEFT_CUT,
-                                          incl_coverage=incl_left_coverage, excl_coverage=excl_left_coverage,
-                                          grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
-                                          validity_=validity_)
+                self.update_grow_beam(bi_array=left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol,
+                                      cut=cut, cut_option=LEFT_CUT,
+                                      incl_coverage=incl_left_coverage, excl_coverage=excl_left_coverage,
+                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl)
 
-                if right_cov_check["dynamic_excl_ok"]:
-                    self.update_grow_beam(bi_array=right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
-                                          cut=cut, cut_option=RIGHT_CUT,
-                                          incl_coverage=incl_right_coverage, excl_coverage=excl_right_coverage,
-                                          grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
-                                          validity_=validity_)
+                self.update_grow_beam(bi_array=right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
+                                      cut=cut, cut_option=RIGHT_CUT,
+                                      incl_coverage=incl_right_coverage, excl_coverage=excl_right_coverage,
+                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl)
 
     def grow_incl_and_excl_return_beam(self, constraints=None):
         candidate_cuts = self.data_info.candidate_cuts

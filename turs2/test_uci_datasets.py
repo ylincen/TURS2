@@ -107,7 +107,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
         start_time = time.time()
         alg_config = AlgConfig(
             num_candidate_cuts=100, max_num_rules=500, max_grow_iter=200, num_class_as_given=None,
-            beam_width=1,
+            beam_width=5,
             log_learning_process=False,
             dataset_name=None, X_test=None, y_test=None,
             rf_assist=False, rf_oob_decision_function=None,

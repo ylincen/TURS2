@@ -133,54 +133,17 @@ class Ruleset:
 
         log_info_ruleset = ""
         for iter in range(max_iter):
-            # log_info_ruleset += "  Iteration: "+ str(iter) + "\n" \
-            #                     "  ruleset total cl: " + str(self.total_cl) + "\n" \
-            #                     "  cl data: " + str(self.cl_data) + "\n" \
-            #                     "  cl model: "+ str(self.cl_model) + "\n" \
-            #                     "  self.allrules_regret: " + str(self.data_encoding.allrules_regret) + "\n" \
-            #                     "  self.allrules_cl_data: " + str(self.allrules_cl_data) + "\n\n"
             if printing:
                 print("iteration ", iter)
             rule_to_add = self.search_next_rule(k_consecutively=5)
             if printing:
                 print(print_(rule_to_add))
 
-            # if self.data_info.rf_oob_decision_ is not None:
-            #     rf_oob = np.array(self.data_info.rf_oob_decision_)
-            #
-            #     if self.data_info.num_class == 2:
-            #         rf_oob[self.uncovered_indices] = np.median(self.data_info.rf_oob_decision_[self.uncovered_indices])
-            #         rf_oob[rule_to_add.bool_array] = np.median(self.data_info.rf_oob_decision_[rule_to_add.bool_array])
-            #         auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob)
-            #         auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob)
-            #     else:
-            #         rf_oob[self.uncovered_indices] = np.mean(self.data_info.rf_oob_decision_[self.uncovered_indices], axis=0)
-            #         rf_oob[rule_to_add.bool_array] = np.mean(self.data_info.rf_oob_decision_[rule_to_add.bool_array], axis=0)
-            #
-            #         auc_flatten_else_rule = roc_auc_score(self.data_info.target, rf_oob, multi_class="ovr")
-            #         auc_flatten_else_rule_and_rule_to_add = roc_auc_score(self.data_info.target, rf_oob, multi_class="ovr")
-            #
-            #     # TODO: choose which one to use
-            #     add_to_ruleset = (auc_flatten_else_rule_and_rule_to_add > auc_flatten_else_rule) or (incl_normalized_gain > 0)
-            #     # add_to_ruleset = (incl_normalized_gain > 0)
-            # else:
-            #     add_to_ruleset = (incl_normalized_gain > 0)
             add_to_ruleset = rule_to_add.incl_gain_per_excl_coverage > 0
 
             if add_to_ruleset:
                 self.add_rule(rule_to_add)
                 if self.data_info.log_learning_process:
-                    # local_predict_res = get_rule_local_prediction_for_unseen_data(ruleset=self,
-                    #                                                               X_test=self.data_info.X_test,
-                    #                                                               y_test=self.data_info.y_test)
-                    # log_info_ruleset += "Add rule: " + print_(rule_to_add) + \
-                    #                     "\n Local information on test data: \n" + \
-                    #                     "Probability: " + str(local_predict_res["rules_test_p"][iter]) + \
-                    #                     "   Coverage: " + str(local_predict_res["rules_test_coverage"][iter]) + \
-                    #                     "   \n Else rule probability and coverage: " + \
-                    #                     str([local_predict_res["else_rule_p"],
-                    #                          local_predict_res["else_rule_coverage"]]) + \
-                    #                     "\n\n"
                     log_info_ruleset += "Add rule: " + print_(rule_to_add) + "\n\n"
                     log_info_ruleset += "with grow process: "
                     r = rule_to_add.rule_base
@@ -386,6 +349,37 @@ class Ruleset:
         condition2 = len(excl_beam.gains) > 0 and np.max(excl_beam.gains) < previous_best_excl_gain
         return condition1 or condition2
 
+    def combine_beams(self, incl_beam_list, excl_beam_list):
+        infos_incl, infos_excl = [], []
+        coverages_incl, coverages_excl = [], []
+
+        # for incl
+        for incl_beam in incl_beam_list:
+            infos_incl.extend(incl_beam.infos)
+            coverages_incl.extend([info["coverage_incl"] for info in incl_beam.infos])
+        argsorted_coverages_incl = np.argsort(coverages_incl)
+        groups_coverages_incl = np.array_split([infos_incl[i] for i in argsorted_coverages_incl], self.data_info.beam_width)
+
+        final_info_incl = []
+        for group in groups_coverages_incl:
+            if len(group) == 0:
+                continue
+            final_info_incl.append(group[np.argmax([info["normalized_gain_incl"] for info in group])])
+
+        # for excl
+        for excl_beam in excl_beam_list:
+            infos_excl.extend(excl_beam.infos)
+            coverages_excl.extend([info["coverage_excl"] for info in excl_beam.infos])
+        argsorted_coverages_excl = np.argsort(coverages_excl)
+        groups_coverages_excl = np.array_split([infos_excl[i] for i in argsorted_coverages_excl], self.data_info.beam_width)
+        final_info_excl = []
+        for group in groups_coverages_excl:
+            if len(group) == 0:
+                continue
+            final_info_excl.append(group[np.argmax([info["normalized_gain_excl"] for info in group])])
+        return final_info_incl, final_info_excl
+
+
     def search_next_rule(self, k_consecutively, rule_given=None, constraints=None):
         if rule_given is None:
             rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
@@ -401,32 +395,41 @@ class Ruleset:
         previous_best_gain, previous_best_excl_gain = -np.Inf, -np.Inf
         counter_worse_best_gain = 0
         for i in range(self.data_info.max_grow_iter):
-            excl_beam = GrowInfoBeam(width=self.data_info.beam_width)
-            incl_beam = GrowInfoBeam(width=self.data_info.beam_width)
+            excl_beam_list, incl_beam_list = [], []
             for rule in rules_for_next_iter:
+                excl_beam = GrowInfoBeam(width=self.data_info.beam_width)
+                incl_beam = GrowInfoBeam(width=self.data_info.beam_width)
                 rule.grow(grow_info_beam=incl_beam, grow_info_beam_excl=excl_beam)
+                excl_beam_list.append(excl_beam)
+                incl_beam_list.append(incl_beam)
 
-            if len(incl_beam.gains) == 0 and len(excl_beam.gains) == 0:
+            final_info_incl, final_info_excl = self.combine_beams(incl_beam_list, excl_beam_list)
+            final_incl_beam = GrowInfoBeam(width=self.data_info.beam_width)
+            final_excl_beam = GrowInfoBeam(width=self.data_info.beam_width)
+            for info in final_info_incl:
+                final_incl_beam.update(info, info["normalized_gain_incl"])
+            for info in final_info_excl:
+                final_excl_beam.update(info, info["normalized_gain_excl"])
+
+
+            if len(final_incl_beam.gains) == 0 and len(final_excl_beam.gains) == 0:
                 break
 
-            stop_condition_element = self.calculate_stop_condition_element(incl_beam, excl_beam, previous_best_gain, previous_best_excl_gain)
+            stop_condition_element = self.calculate_stop_condition_element(final_incl_beam, final_excl_beam, previous_best_gain, previous_best_excl_gain)
             if stop_condition_element:
                 counter_worse_best_gain = counter_worse_best_gain + 1
             else:
                 counter_worse_best_gain = 0
 
-            if len(incl_beam.gains) > 0:
-                previous_best_gain = np.max(incl_beam.gains)
-            if len(excl_beam.gains) > 0:
-                previous_best_excl_gain = np.max(excl_beam.gains)
-
-            if len(incl_beam.gains) == 0 and len(excl_beam.gains) == 0:
-                break
+            if len(final_incl_beam.gains) > 0:
+                previous_best_gain = np.max(final_incl_beam.gains)
+            if len(final_excl_beam.gains) > 0:
+                previous_best_excl_gain = np.max(final_excl_beam.gains)
 
             if counter_worse_best_gain > k_consecutively:
                 break
             else:
-                rules_for_next_iter = extract_rules_from_beams([excl_beam, incl_beam])
+                rules_for_next_iter = extract_rules_from_beams([final_excl_beam, final_incl_beam])
                 rules_candidates.extend(rules_for_next_iter)
 
         which_best_ = np.argmax([r.incl_gain_per_excl_coverage for r in rules_candidates])
