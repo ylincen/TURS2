@@ -355,8 +355,8 @@ class Ruleset:
 
         # for incl
         for incl_beam in incl_beam_list:
-            infos_incl.extend(incl_beam.infos)
-            coverages_incl.extend([info["coverage_incl"] for info in incl_beam.infos])
+            infos_incl.extend([info for info in incl_beam.infos.values() if info is not None])
+            coverages_incl.extend([info["coverage_incl"] for info in incl_beam.infos.values() if info is not None])
         argsorted_coverages_incl = np.argsort(coverages_incl)
         groups_coverages_incl = np.array_split([infos_incl[i] for i in argsorted_coverages_incl], self.data_info.beam_width)
 
@@ -368,8 +368,8 @@ class Ruleset:
 
         # for excl
         for excl_beam in excl_beam_list:
-            infos_excl.extend(excl_beam.infos)
-            coverages_excl.extend([info["coverage_excl"] for info in excl_beam.infos])
+            infos_excl.extend([info for info in excl_beam.infos.values() if info is not None])
+            coverages_excl.extend([info["coverage_excl"] for info in excl_beam.infos.values() if info is not None])
         argsorted_coverages_excl = np.argsort(coverages_excl)
         groups_coverages_excl = np.array_split([infos_excl[i] for i in argsorted_coverages_excl], self.data_info.beam_width)
         final_info_excl = []
@@ -397,8 +397,8 @@ class Ruleset:
         for i in range(self.data_info.max_grow_iter):
             excl_beam_list, incl_beam_list = [], []
             for rule in rules_for_next_iter:
-                excl_beam = GrowInfoBeam(width=self.data_info.beam_width)
-                incl_beam = GrowInfoBeam(width=self.data_info.beam_width)
+                excl_beam = DiverseCovBeam(width=self.data_info.beam_width)
+                incl_beam = DiverseCovBeam(width=self.data_info.beam_width)
                 rule.grow(grow_info_beam=incl_beam, grow_info_beam_excl=excl_beam)
                 excl_beam_list.append(excl_beam)
                 incl_beam_list.append(incl_beam)

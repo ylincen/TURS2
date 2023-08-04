@@ -165,8 +165,10 @@ class Rule:
             _rule=self
         )
 
-        grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"])
-        grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"])
+        excl_cov_percent = grow_info["coverage_excl"] / self.coverage_excl
+        incl_cov_percent = grow_info["coverage_incl"] / self.coverage
+        grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"], incl_cov_percent)
+        grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"], excl_cov_percent)
 
     def grow(self, grow_info_beam, grow_info_beam_excl):
         candidate_cuts = self.data_info.candidate_cuts
@@ -207,66 +209,66 @@ class Rule:
                                       incl_coverage=incl_right_coverage, excl_coverage=excl_right_coverage,
                                       grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl)
 
-    def grow_incl_and_excl_return_beam(self, constraints=None):
-        candidate_cuts = self.data_info.candidate_cuts
-
-        if self.data_info.alg_config.beamsearch_positive_gain_only:
-            best_incl_mdl_gain, best_excl_mdl_gain = 0, 0
-        else:
-            best_incl_mdl_gain, best_excl_mdl_gain = -np.Inf, -np.Inf
-
-        invalid_cuts = {}
-        best_incl_grow_beam = GrowInfoBeam(width=self.data_info.beam_width)
-        best_excl_grow_beam = GrowInfoBeam(width=self.data_info.beam_width)
-
-        for icol in range(self.ncol):
-            if constraints is not None and "icols_to_skip" in constraints and \
-                    icol in constraints["icols_to_skip"]:
-                continue
-
-            candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
-            for i, cut in enumerate(candidate_cuts_icol):
-                check_split_validity = validity_check(icol, cut)
-
-                if not check_split_validity:
-                    if icol in invalid_cuts:
-                        invalid_cuts[icol].append(cut)
-                    else:
-                        invalid_cuts[icol] = [cut]
-                    continue
-
-                if np.all(self.features[:, icol] < cut) or np.all(self.features[:, icol] >= cut):
-                    continue
-
-                best_excl_grow_info, best_incl_grow_info, best_excl_mdl_gain, best_incl_mdl_gain, return_II \
-                    = self.search_for_this_cut(icol=icol, option=None, cut=cut,
-                                               best_excl_mdl_gain=best_excl_mdl_gain,
-                                               best_incl_mdl_gain=best_incl_mdl_gain)
-
-                if best_excl_grow_info is not None:
-                    best_excl_grow_beam.update_check_multiple(best_excl_grow_info, best_excl_mdl_gain)
-                    best_excl_mdl_gain = best_excl_grow_beam.worst_gain
-
-                    # if self.data_info.alg_config.beamsearch_normalized_gain_must_increase_comparing_rulebase and \
-                    #         best_excl_mdl_gain/best_excl_grow_info["coverage_excl"] < self.excl_mdl_gain / self.coverage_excl:
-                    #     pass
-
-                if best_incl_grow_info is not None:
-                    best_incl_grow_beam.update_check_multiple(best_incl_grow_info, best_incl_mdl_gain)
-                    best_incl_mdl_gain = best_incl_grow_beam.worst_gain
-                    # if self.data_info.alg_config.beamsearch_normalized_gain_must_increase_comparing_rulebase and \
-                    #         best_incl_mdl_gain/best_incl_grow_info["coverage_excl"] < self.incl_mdl_gain / self.coverage_excl:
-                    #     pass
-
-        excl_grow_res_beam = [self.make_rule_from_grow_info(excl_grow_info) for excl_grow_info in best_excl_grow_beam.infos]
-
-        if len(best_incl_grow_beam.infos) > 0:
-            incl_grow_res_beam = [self.make_rule_from_grow_info(incl_grow_info) for incl_grow_info in best_incl_grow_beam.infos]
-        elif self.data_info.alg_config.rerun_on_invalid:
-            incl_grow_res_beam = self.rerun_on_invalid(invalid_cuts, constraints, best_incl_grow_beam)
-        else:
-            incl_grow_res_beam = []
-        return [excl_grow_res_beam, incl_grow_res_beam]
+    # def grow_incl_and_excl_return_beam(self, constraints=None):
+    #     candidate_cuts = self.data_info.candidate_cuts
+    #
+    #     if self.data_info.alg_config.beamsearch_positive_gain_only:
+    #         best_incl_mdl_gain, best_excl_mdl_gain = 0, 0
+    #     else:
+    #         best_incl_mdl_gain, best_excl_mdl_gain = -np.Inf, -np.Inf
+    #
+    #     invalid_cuts = {}
+    #     best_incl_grow_beam = GrowInfoBeam(width=self.data_info.beam_width)
+    #     best_excl_grow_beam = GrowInfoBeam(width=self.data_info.beam_width)
+    #
+    #     for icol in range(self.ncol):
+    #         if constraints is not None and "icols_to_skip" in constraints and \
+    #                 icol in constraints["icols_to_skip"]:
+    #             continue
+    #
+    #         candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
+    #         for i, cut in enumerate(candidate_cuts_icol):
+    #             check_split_validity = validity_check(self, icol, cut)
+    #
+    #             if not check_split_validity:
+    #                 if icol in invalid_cuts:
+    #                     invalid_cuts[icol].append(cut)
+    #                 else:
+    #                     invalid_cuts[icol] = [cut]
+    #                 continue
+    #
+    #             if np.all(self.features[:, icol] < cut) or np.all(self.features[:, icol] >= cut):
+    #                 continue
+    #
+    #             best_excl_grow_info, best_incl_grow_info, best_excl_mdl_gain, best_incl_mdl_gain, return_II \
+    #                 = self.search_for_this_cut(icol=icol, option=None, cut=cut,
+    #                                            best_excl_mdl_gain=best_excl_mdl_gain,
+    #                                            best_incl_mdl_gain=best_incl_mdl_gain)
+    #
+    #             if best_excl_grow_info is not None:
+    #                 best_excl_grow_beam.update_check_multiple(best_excl_grow_info, best_excl_mdl_gain)
+    #                 best_excl_mdl_gain = best_excl_grow_beam.worst_gain
+    #
+    #                 # if self.data_info.alg_config.beamsearch_normalized_gain_must_increase_comparing_rulebase and \
+    #                 #         best_excl_mdl_gain/best_excl_grow_info["coverage_excl"] < self.excl_mdl_gain / self.coverage_excl:
+    #                 #     pass
+    #
+    #             if best_incl_grow_info is not None:
+    #                 best_incl_grow_beam.update_check_multiple(best_incl_grow_info, best_incl_mdl_gain)
+    #                 best_incl_mdl_gain = best_incl_grow_beam.worst_gain
+    #                 # if self.data_info.alg_config.beamsearch_normalized_gain_must_increase_comparing_rulebase and \
+    #                 #         best_incl_mdl_gain/best_incl_grow_info["coverage_excl"] < self.incl_mdl_gain / self.coverage_excl:
+    #                 #     pass
+    #
+    #     excl_grow_res_beam = [self.make_rule_from_grow_info(excl_grow_info) for excl_grow_info in best_excl_grow_beam.infos]
+    #
+    #     if len(best_incl_grow_beam.infos) > 0:
+    #         incl_grow_res_beam = [self.make_rule_from_grow_info(incl_grow_info) for incl_grow_info in best_incl_grow_beam.infos]
+    #     elif self.data_info.alg_config.rerun_on_invalid:
+    #         incl_grow_res_beam = self.rerun_on_invalid(invalid_cuts, constraints, best_incl_grow_beam)
+    #     else:
+    #         incl_grow_res_beam = []
+    #     return [excl_grow_res_beam, incl_grow_res_beam]
 
     def rerun_on_invalid(self, invalid_cuts, constraints, best_incl_grow_beam):
         assert self.data_info.alg_config.validity_check != "no_check"
