@@ -152,7 +152,7 @@ class Rule:
         return candidate_cuts_icol
 
     def update_grow_beam(self, bi_array, excl_bi_array, icol, cut, cut_option, incl_coverage, excl_coverage,
-                         grow_info_beam, grow_info_beam_excl):
+                         grow_info_beam, grow_info_beam_excl, _validity):
         info_theo_scores = self.calculate_mdl_gain(bi_array=bi_array, excl_bi_array=excl_bi_array,
                                                    icol=icol, cut_option=cut_option)
         grow_info = store_grow_info(
@@ -167,17 +167,21 @@ class Rule:
 
         excl_cov_percent = grow_info["coverage_excl"] / self.coverage_excl
         incl_cov_percent = grow_info["coverage_incl"] / self.coverage
-        grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"], incl_cov_percent)
-        grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"], excl_cov_percent)
+        # if _validity["res_excl"] and grow_info["normalized_gain_excl"] > self.excl_gain_per_excl_coverage:
+        if _validity["res_excl"]:
+            grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"], excl_cov_percent)
+        # if _validity["res_incl"] and grow_info["normalized_gain_incl"] > self.incl_gain_per_excl_coverage:
+        if _validity["res_incl"]:
+            grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"], incl_cov_percent)
 
     def grow(self, grow_info_beam, grow_info_beam_excl):
         candidate_cuts = self.data_info.candidate_cuts
         for icol in range(self.ncol):
             candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
             for i, cut in enumerate(candidate_cuts_icol):
-                # validity_ = validity_check(rule=self, icol=icol, cut=cut)
-                # if validity_["res_excl"] == False and validity_["res_incl"] == False:
-                #     continue
+                _validity = validity_check(rule=self, icol=icol, cut=cut)
+                if _validity["res_excl"] == False and _validity["res_incl"] == False:
+                    continue
 
                 excl_left_bi_array = (self.features_excl_overlap[:, icol] < cut)
                 excl_right_bi_array = ~excl_left_bi_array
@@ -202,12 +206,14 @@ class Rule:
                 self.update_grow_beam(bi_array=left_bi_array, excl_bi_array=excl_left_bi_array, icol=icol,
                                       cut=cut, cut_option=LEFT_CUT,
                                       incl_coverage=incl_left_coverage, excl_coverage=excl_left_coverage,
-                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl)
+                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
+                                      _validity=_validity)
 
                 self.update_grow_beam(bi_array=right_bi_array, excl_bi_array=excl_right_bi_array, icol=icol,
                                       cut=cut, cut_option=RIGHT_CUT,
                                       incl_coverage=incl_right_coverage, excl_coverage=excl_right_coverage,
-                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl)
+                                      grow_info_beam=grow_info_beam, grow_info_beam_excl=grow_info_beam_excl,
+                                      _validity=_validity)
 
     # def grow_incl_and_excl_return_beam(self, constraints=None):
     #     candidate_cuts = self.data_info.candidate_cuts
