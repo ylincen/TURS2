@@ -36,7 +36,7 @@ np.seterr(all='raise')
 # data_given = "tic-tac-toe"
 # data_given = "contracept"
 # data_given = "diabetes"
-data_given = "avila"
+data_given = "anuran"
 
 datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                "magic", "car", "tic-tac-toe", "wine"]
@@ -106,8 +106,8 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
 
         start_time = time.time()
         alg_config = AlgConfig(
-            num_candidate_cuts=100, max_num_rules=500, max_grow_iter=200, num_class_as_given=None,
-            beam_width=5,
+            num_candidate_cuts=20, max_num_rules=500, max_grow_iter=500, num_class_as_given=None,
+            beam_width=10,
             log_learning_process=False,
             dataset_name=None, X_test=None, y_test=None,
             rf_assist=False, rf_oob_decision_function=None,

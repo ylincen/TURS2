@@ -226,7 +226,18 @@ def run_(data_name, fold_given=None):
         y_test = dtest.iloc[:, -1].to_numpy()
 
         start_time = time.time()
-        data_info = DataInfo(X=X_train, y=y_train, beam_width=5)
+        alg_config = AlgConfig(
+            num_candidate_cuts=20, max_num_rules=500, max_grow_iter=500, num_class_as_given=None,
+            beam_width=10,
+            log_learning_process=False,
+            dataset_name=None, X_test=None, y_test=None,
+            rf_assist=False, rf_oob_decision_function=None,
+            feature_names=["X" + str(i) for i in range(X.shape[1])],
+            beamsearch_positive_gain_only=False, beamsearch_normalized_gain_must_increase_comparing_rulebase=False,
+            beamsearch_stopping_when_best_normalized_gain_decrease=False,
+            validity_check="either", rerun_on_invalid=False, rerun_positive_control=False
+        )
+        data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config)
 
         data_encoding = NMLencoding(data_info)
         model_encoding = ModelEncodingDependingOnData(data_info)

@@ -133,6 +133,8 @@ class Ruleset:
 
         log_info_ruleset = ""
         for iter in range(max_iter):
+            if iter == 1:
+                print("check")
             if printing:
                 print("iteration ", iter)
             rule_to_add = self.search_next_rule(k_consecutively=5)
@@ -347,7 +349,8 @@ class Ruleset:
     def calculate_stop_condition_element(incl_beam, excl_beam, previous_best_gain, previous_best_excl_gain):
         condition1 = len(incl_beam.gains) > 0 and np.max(incl_beam.gains) < previous_best_gain
         condition2 = len(excl_beam.gains) > 0 and np.max(excl_beam.gains) < previous_best_excl_gain
-        return condition1 or condition2
+        condition3 = len(excl_beam.gains) > 0 and len(incl_beam.gains) > 0 and np.max(incl_beam.gains) < 0 and np.max(excl_beam.gains) < 0
+        return (condition1 and condition2) or condition3
 
     def combine_beams(self, incl_beam_list, excl_beam_list):
         infos_incl, infos_excl = [], []
@@ -433,6 +436,7 @@ class Ruleset:
                 rules_candidates.extend(rules_for_next_iter)
 
         which_best_ = np.argmax([r.incl_gain_per_excl_coverage for r in rules_candidates])
+        print("number of iterations: ", i)
         return rules_candidates[which_best_]
 
     # def find_next_rule_beamsearch(self, rule_given=None, constraints=None):
