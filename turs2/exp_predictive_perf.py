@@ -34,7 +34,7 @@ np.seterr(all='raise')
 exp_res_alldata = []
 date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-def _read_data(data_name, datasets_without_header_row, datasets_with_header_row):
+def read_data(data_name, datasets_without_header_row, datasets_with_header_row):
     data_path = "../datasets/" + data_name + ".csv"
     if data_name in datasets_without_header_row:
         d = pd.read_csv(data_path, header=None)
