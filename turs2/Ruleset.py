@@ -133,8 +133,6 @@ class Ruleset:
 
         log_info_ruleset = ""
         for iter in range(max_iter):
-            if iter == 1:
-                print("check")
             if printing:
                 print("iteration ", iter)
             rule_to_add = self.search_next_rule(k_consecutively=5)
@@ -436,7 +434,7 @@ class Ruleset:
                 rules_candidates.extend(rules_for_next_iter)
 
         which_best_ = np.argmax([r.incl_gain_per_excl_coverage for r in rules_candidates])
-        print("number of iterations: ", i)
+        # print("number of iterations: ", i)
         return rules_candidates[which_best_]
 
     # def find_next_rule_beamsearch(self, rule_given=None, constraints=None):
