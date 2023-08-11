@@ -201,7 +201,7 @@ def run_(data_name, fold_given=None):
     datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                    "magic", "car", "tic-tac-toe", "wine"]
     datasets_with_header_row = ["avila", "anuran", "diabetes"]
-    d = _read_data(data_name, datasets_without_header_row=datasets_without_header_row,
+    d = read_data(data_name, datasets_without_header_row=datasets_without_header_row,
                    datasets_with_header_row=datasets_with_header_row)
     d = preprocess_data(d)
 
