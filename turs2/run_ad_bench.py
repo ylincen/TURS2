@@ -67,8 +67,6 @@ num_class = len(np.unique(y))
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=2)
 
 for fold, (train_index, test_index) in enumerate(skf.split(X, y)):
-    if fold != 0:
-        continue
     X_train, y_train = X[train_index], y[train_index]
     X_test, y_test = X[test_index], y[test_index]
 

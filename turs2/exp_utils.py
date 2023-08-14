@@ -39,7 +39,10 @@ def explainability_analysis(ruleset, X):
         literal_length_mat[cover_mat_NoElseRule[:, irule], irule] = rule_lengths_[irule]
 
     num_literals_each_data = np.sum(literal_length_mat, axis=1) # sum each row
-    return np.mean(num_literals_each_data[num_literals_each_data != 0])  # exclude data points covered by else-rule;
+    if all(num_literals_each_data == 0):
+        return 0.0
+    else:
+        return np.mean(num_literals_each_data[num_literals_each_data != 0])  # exclude data points covered by else-rule;
 
 def predict_random_picking_for_overlaps(ruleset, X, seed):
     np.random.seed(seed)
