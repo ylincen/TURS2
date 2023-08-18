@@ -1,0 +1,82 @@
+\section{Experiments}
+\input{data_info_table.tex} 
+\subsection{Setup}
+\textbf{Datasets.} We conduct an extensive experiments with 31 datasets, summarized in Table~\ref{table:data_info}. Our multi-class datasets are from the UCI repository, while the binary-class datasets are from both the UCI repository and the ADBench Github repository \citep{han2022adbench}. The latter is a benchmark toolbox for anomaly detection (including imbalanced classification), hence we include it to have both balanced and imbalanced binary datasets.
+
+\noindent
+\textbf{Competitors.} We compare against a wide ranges of methods: 1) unordered CN2, the one-versus-rest rule sets method without implicit order among rules; 2) DRS, a representative multi-class rule set method which aims for minimizing the size of overlaps; 3) IDS, the multi-class rule set method optimizing a linear combination of scores, which characterize the quality of rules in seven perspectives, 4) RIPPER, the widely used one-versus-rest method with orders among class labels, 5) CLASSY, the probabilistic rule list methods using MDL-based model selection; 6) CART, the well-known decision tree method, with post-pruning by a validation dataset separated from the training set; 7) C4.5 decision tree, with post-pruning by the MDL principle; 8) BRS, the bayesian rule sets method (only for binary dataset). 
+
+Specifically, we use CN2 from Orange3 toolbox, IDS from a third-party implementation with proved scalability \citep{filip2019pyids}, RIPPER and C4.5 from Weka and its R wrapper, CART from Python's Scikit-Learn package, DRS, BRS, CLASSY from the original authors. Competitors algorithms' configurations are set to be the same as the default as in the paper and/or in original authors' implementations. We make the code public for reproducibility, including the code for competitor algorithms\footnote{\url{...}}.
+
+
+\noindent{\textbf{Algorithm configurations.}} We set the beam width as 10, and the number of candidate cut points for numeric features as 20. \todo[inline]{More discussions here later.}
+
+\input{table_roc_auc}
+
+\begin{figure}[ht]
+\includegraphics[width=\textwidth]{boxplot_roc_auc}	
+\caption{For each algorithm, we calculate for every individual dataset the difference between its ROC-AUC score and the best ROC-AUC scores. The differences to the best ROC-AUC scores for each algorithm is illustrated by a box-plot.} \label{fig:diff_to_best_auc}
+\end{figure}
+
+\subsection{Classification performance}
+To investigate the classification performance for TURS, we report  in Table~\ref{table:roc_auc} the ROC-AUC scores on the test sets, averaged over five-fold cross-validations. For multi-class classification, we report the ``macro" one-versus-rest AUC scores, as ``macro" AUC treats all class labels equally and hence can characterize how well the classifiers predict for the minority classes. 
+
+Note that BRS~\citep{wang2017bayesian} can only be applied to binary datasets. Further, we fail to obtain the results of DRS on three datasets because the implementation of DRS does not support the large number of columns (it simply gives an error). We also fail to obtain the results of IDS on several datasets as they exceed the predetermined time limit: 10 hours for one single fold of one dataset. 
+
+We have shown that TURS is very competitive in comparison to its competitors in the following aspects. First, TURS performs the best in 11 out of the total 31 datasets, and performs the best in 6 out of 11 multi-class datasets. We denote the best ROC-AUC for each dataset in bold. 
+
+Second, we report the difference between TURS's ROC-AUC scores and the best ROC-AUC scores for each individual dataset, in the bracket in the table. We also repeat this process for all competitor algorithms, obtaining their ``gaps-to-best" scores. We further demonstrate these gaps-to-best scores in Figure~\ref{fig:diff_to_best_auc}. The box-plots demonstrate that TURS is very stable for all 31 datasets we have tested: in comparison to its competitors, the gaps-to-best scores are much smaller. 
+
+Third, among all rule sets methods (CN2, DRS, IDS, TURS), TURS show substantially superior performance against DRS and IDS. As DRS and IDS both aim to reduce the sizes of overlaps, our results indicate that minimizing the sizes of overlaps may impose a too restricted constraint and hence lead to sub-optimal classification performance. On the other hand, CN2 is competitive in terms of obtaining the best AUCs, especially for binary datasets, as shown in Table~\ref{table:roc_auc}. However,  as shown in Figure~\ref{fig:diff_to_best_auc}, CN2 has in general larger gaps to the best AUCs than TURS does. Further, more comparisons illustrating TURS superiorities over CN2 will be in the following paragraphs. 
+
+\input{table_rp_roc_auc}
+\begin{figure}[ht] \centering
+\includegraphics[width=0.75\textwidth]{boxplot_random_pick}	
+\caption{ROC-AUC minus ROC-AUC with ``random picking", for TURS and CN2. } \label{fig:diff_rp}
+\end{figure}
+\subsection{`Random picking' for overlaps}
+Recall that we estimate the class probabilities for overlaps by considering the ``union" of the cover of all involved rules. Thus, the next question we study empirically is whether our formalization of rule sets as probabilistic models can indeed lead to overlaps only formed by rules with similar probabilistic estimations. 
+
+Therefore, we compare the (probabilistic) predictions of our TURS models against the probabilistic predictions by what we call ``random picking" for overlaps: when an unseen instance is covered by multiple rules, we randomly pick one individual rule, and use its estimated class probabilities (estimated from training set) as the probabilistic prediction for this instance. 
+
+Intuitively, if the overlaps are formed only by rules with similar probabilistic output, we expect the probabilistic prediction performance by TURS and by TURS with random-picking (TURS-RP) to be very close. We first report the ROC-AUC of TURS and TURS-RP in Table~\ref{table:roc_auc_rp}, together with the percentage of instances covered by more than one rules (\%~overlaps), which we also benchmark against CN2. We observe that the ROC-AUC for TURS and TURS-RP is almost the same, while the ROC-AUC for CN2 and CN2 with random picking (CN2-RP) can differ substantially in general, as also summarized in Figure~\ref{fig:diff_rp}.
+\begin{figure}[ht] \centering 
+	\includegraphics[width=\textwidth]{logloss_randompicking}
+	\caption{Log-loss of TURS, with and without the ``random picking", averaged over the stratified five-fold cross-validations. } \label{fig:logloss_rp}
+\end{figure}
+
+Further, we show in Figure~\ref{fig:logloss_rp} the log-loss of TURS and TURS-RP, to investigate the effect of the ``random picking" on the predictive class probabilities. We observe that, except for a few exceptions, the difference between the two log-losses for all datasets are minimal. Specifically, the few exceptions can be explained by 1) small sample sizes, including glass (sample size 214), and vehicle (sample size 846), and 2) very large percentage of instances covered by multiple rules, including drybeans (34\%), pendigits(40\%). 
+
+We can hence conclude that, while CN2 relies heavily on its conflict resolving schemes for overlaps, TURS produces overlaps only formed by decision rules with very similar probability estimates. This indicates our decision rules can be viewed as \emph{truly unordered in the sense that, when an instance is covered by multiple rules, it has very little effect on which rule is picked to predict its class probabilities.} In other words, overlaps in our model provides a multi-perspectives descriptions to the corresponding instances; in contrast, all existing methods treat overlaps as ``nuisances". 
+
+\subsection{Local probabilistic prediction}
+While decision rules are widely accepted as intrinsically explainable models, rules with probability estimates that generalize well can serve as good explanations. Thus, we next examine the difference between individual rules' probability estimates on the train and test sets, with five-fold stratified cross-validations. 
+\input{table_traintestdiff}
+\begin{figure}[ht]\centering
+\includegraphics[width=\textwidth]{train_test_diff_rulesets}
+\includegraphics[width=\textwidth]{train_test_diff_treeandlist}
+\caption{Train test diff}
+\end{figure}
+
+\subsection{Overlaps' insignificance}
+\begin{figure}
+	\includegraphics[width=\textwidth]{overlap_sig}
+\end{figure}
+\subsection{Model complexity}
+\input{table_model_complexity2}
+\begin{figure}
+	\includegraphics[width=\textwidth]{heatmap_model_complexity}
+	\caption{Heatmap for model complexity.}	
+\end{figure}
+
+\subsection{Ablation study: local compression gain}
+
+\subsection{Ablation study: diverse coverage beam search}
+
+\subsection{Runtime analysis}
+
+
+
+
+
+
