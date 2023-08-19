@@ -1,5 +1,5 @@
-\section{Experiments}
 \input{data_info_table.tex} 
+\section{Experiments}
 \subsection{Setup}
 \textbf{Datasets.} We conduct an extensive experiments with 31 datasets, summarized in Table~\ref{table:data_info}. Our multi-class datasets are from the UCI repository, while the binary-class datasets are from both the UCI repository and the ADBench Github repository \citep{han2022adbench}. The latter is a benchmark toolbox for anomaly detection (including imbalanced classification), hence we include it to have both balanced and imbalanced binary datasets.
 
@@ -45,23 +45,37 @@ Intuitively, if the overlaps are formed only by rules with similar probabilistic
 	\caption{Log-loss of TURS, with and without the ``random picking", averaged over the stratified five-fold cross-validations. } \label{fig:logloss_rp}
 \end{figure}
 
-Further, we show in Figure~\ref{fig:logloss_rp} the log-loss of TURS and TURS-RP, to investigate the effect of the ``random picking" on the predictive class probabilities. We observe that, except for a few exceptions, the difference between the two log-losses for all datasets are minimal. Specifically, the few exceptions can be explained by 1) small sample sizes, including glass (sample size 214), and vehicle (sample size 846), and 2) very large percentage of instances covered by multiple rules, including drybeans (34\%), pendigits(40\%). 
+Further, we show in Figure~\ref{fig:logloss_rp} the log-loss of TURS and TURS-RP, to investigate the effect of the ``random picking" on the predictive class probabilities. We observe that, except for a few exceptions, the difference between the two log-losses for all datasets are minimal. Specifically, the few exceptions can be explained by 1) small sample sizes, including the dataset ``glass" (sample size 214), and ``vehicle" (sample size 846); 2) very large percentage of instances covered by multiple rules and including the dataset ``drybeans"~(34\%) and ``pendigits"~(40\%). 
 
 We can hence conclude that, while CN2 relies heavily on its conflict resolving schemes for overlaps, TURS produces overlaps only formed by decision rules with very similar probability estimates. This indicates our decision rules can be viewed as \emph{truly unordered in the sense that, when an instance is covered by multiple rules, it has very little effect on which rule is picked to predict its class probabilities.} In other words, overlaps in our model provides a multi-perspectives descriptions to the corresponding instances; in contrast, all existing methods treat overlaps as ``nuisances". 
 
-\subsection{Local probabilistic prediction}
-While decision rules are widely accepted as intrinsically explainable models, rules with probability estimates that generalize well can serve as good explanations. Thus, we next examine the difference between individual rules' probability estimates on the train and test sets, with five-fold stratified cross-validations. 
-\input{table_traintestdiff}
 \begin{figure}[ht]\centering
 \includegraphics[width=\textwidth]{train_test_diff_rulesets}
 \includegraphics[width=\textwidth]{train_test_diff_treeandlist}
-\caption{Train test diff}
+\caption{The weighted average of the differences between the class probability estimates of every individual rule for training and test sets, in which the weights the coverage of each rule (for the training set). The figures report the average on five-fold stratified cross-validations: the above figure shows the comparison against rule sets competitor methods, while the below one against decision list and tree methods.}
+\label{fig:train_test_diff}
 \end{figure}
+\subsection{Local probabilistic prediction}
+While decision rules are widely accepted as intrinsically explainable models, rules with probability estimates that generalize well can serve as good explanations. Thus, we next examine the difference between individual rules' probability estimates on the train and test sets, with five-fold stratified cross-validations. 
 
-\subsection{Overlaps' insignificance}
-\begin{figure}
-	\includegraphics[width=\textwidth]{overlap_sig}
-\end{figure}
+Specifically, given a ruleset induced from a specific dataset, we look at each individual rule's probability estimates, estimated from the training and test set respectively, by the maximum likelihood estimator (MLE). We next take the average of the class probabilities (both for binary and multi-class targets). Finally, we report the weighted average for all rules, weighted by the coverage of each rule (on the training set). 
+
+Formally, given a ruleset with $K$ rules: $M = \{S_1, ..., S_K\}$, denote the probability estimates of all rules by $(\mathbf{p}_1, ..., \mathbf{p}_K)$ and $(\mathbf{q}_1, ..., \mathbf{q}_K)$, respectively estimated from the training and test set. We measure how well the individual rules generalize by
+\begin{equation} \label{eq:train_test_diff}
+	g = \frac{1}{K}\sum_{j} |S_i| (\bar{\mathbf{p}_i} - \bar{\mathbf{q}_i}),
+\end{equation}
+in which $\bar{\mathbf{p}_i}$ and $\bar{\mathbf{q}_i}$ denote the mean of elements of the estimated class probability vectors. Note that each individual rule is treated separately in calculating the $g$-score above, and hence the overlaps do not play a role here. 
+
+We calculate this score for all algorithms and all datasets, averaged over five-fold cross-validations, and demonstrate the results in Figure~\ref{fig:train_test_diff}. As a result, we observe that TURS (the bold purple curve) mostly lies at the lowest level, and is much more stable than all competitor algorithms. We also report the exact numbers for the score calculated by Equation~\ref{eq:train_test_diff} in Table~\ref{table:train_test_diff}.
+
+Thus, we conclude that data-driven rules induced by TURS serve better as explanations for the predictions of the tree- and rule-based models, in terms of the quality of its probability estimates. 
+
+\input{table_traintestdiff}
+
+%\subsection{Overlaps' insignificance}
+%\begin{figure}
+%	\includegraphics[width=\textwidth]{overlap_sig}
+%\end{figure}
 \subsection{Model complexity}
 \input{table_model_complexity2}
 \begin{figure}
