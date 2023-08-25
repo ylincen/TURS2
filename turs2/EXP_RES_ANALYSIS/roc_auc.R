@@ -28,8 +28,9 @@ require(data.table)
 # system("scp -r rivium:/home/yangl3/projects/turs_supplementary/competitors/drs/exp_uci_20230811/*.csv ./drs_uci/")
 
 ## IDS
-# system("scp -r rivium:/home/yangl3/projects/turs_supplementary/competitors/ids/pyIDS/exp_uci_20230815/*.csv ./ids_uci/")
-
+# system("scp -r rivium:/home/yangl3/projects/turs_supplementary/competitors/ids/pyIDS/exp_uci_20230821/*.csv ./ids_uci/")
+# system("scp -r rivium:/home/yangl3/projects/turs_supplementary/competitors/ids/pyIDS/exp_uci_20230822/*.csv ./ids_uci/")
+# system("scp -r rivium:/home/yangl3/projects/turs_supplementary/competitors/ids/pyIDS/exp_uci_20230823/*.csv ./ids_uci/")
 folders = c("turs_uci", "cn2_uci", "cart_uci", "brs_uci", "classy_uci", "drs_uci", "ids_uci")
 
 d = data.frame()
@@ -109,16 +110,19 @@ auc_res = dt[order(data_name),.(test_auc=mean(roc_auc_test, na.rm=T),
                                 test_rd_auc=mean(random_picking_roc_auc), 
                                 train_auc=mean(roc_auc_train)),by=.(data_name, alg)]
 auc_res_wide = dcast(auc_res, data_name ~ alg, value.var="test_auc")
-auc_res_wide[, (names(auc_res_wide)[-1]) := lapply(.SD, round, 4), .SDcols = -1]
+auc_res_wide[, (names(auc_res_wide)[-1]) := lapply(.SD, round, 3), .SDcols = -1]
 auc_res_wide = auc_res_wide[!is.na(auc_res_wide$turs) ]
 
 for(i in 1:nrow(auc_res_wide)){
   if(auc_res_wide$data_name[i] == "14_glass.npz"){
-    auc_res_wide$data_name[i] = "14_glassanomaly.npz"
+    auc_res_wide$data_name[i] = "14_glass-2.npz"
   }
   
   if(auc_res_wide$data_name[i] == "41_Waveform.npz"){
-    auc_res_wide$data_name[i] = "41_waveform2.npz"
+    auc_res_wide$data_name[i] = "41_waveform-2.npz"
+  }
+  if(auc_res_wide$data_name[i] == "28_pendigits.npz"){
+    auc_res_wide$data_name[i] = "28_pendigits-2.npz"
   }
   split_name = strsplit(auc_res_wide$data_name[i], split="_")[[1]]
   if(length(split_name) > 1){
@@ -149,11 +153,37 @@ gaps_to_best = melt(gaps_to_best, id.vars = colnames(gaps_to_best)[1],
      value.name = "roc_auc", variable.name = "algorithm",
      measure.vars = colnames(gaps_to_best)[2:length(gaps_to_best)])
 ggplot(gaps_to_best) + geom_boxplot(aes(x=algorithm, y=roc_auc)) + 
-  labs(x="Algorithm", y="Diff to the best ROC-AUC") 
+  labs(x="", y="Diff to the best ROC-AUC") 
+ggsave("~/projects/TURS/turs2/paper_jmlr/boxplot_roc_auc.png",
+       device = "png", width=20, height=7, units="cm", dpi=300)
 
-ggplot(gaps_to_best) + geom_point(aes(x=algorithm, y=roc_auc)) +
-  labs(x="Algorithms", y="Diff to the best ROC-AUC") 
+auc_res_wide_char = apply(auc_res_wide, 2, as.character)
+for(i in 1:nrow(auc_res_wide)){
+  which_max_ = which(auc_res_wide[i, -1] == max(auc_res_wide[i, -1], na.rm = T))
+  for(j in which_max_){
+    auc_res_wide_char[i,j+1] = paste("textbf{", auc_res_wide_char[i,j+1],
+                                   "}",sep = "")
+  }
+}
 
 
+auc_res_wide_char = data.frame(auc_res_wide_char)
+gaps_to_best = data.frame(auc_res_wide)
+for(i in 1:nrow(gaps_to_best)){
+  gaps_to_best[i, 2:ncol(gaps_to_best)] = 
+    gaps_to_best[i, 2:ncol(gaps_to_best)] - best_each_data[i]  
+}
 
+for(i in 1:nrow(auc_res_wide_char)){
+  if(gaps_to_best$turs[i] != 0){
+    auc_res_wide_char$turs[i] = 
+      paste(auc_res_wide_char$turs[i], " tiny{(", round(gaps_to_best$turs[i], 3), ")}",
+            sep="")
+  }
+}
 
+print(xtable(auc_res_wide_char), include.rownames = F)
+
+auc_res_wide_char_for_run_time = auc_res_wide_char[, c("data_name", "brs", "cn2", "drs", "ids", "turs")]
+auc_res_wide_char_for_run_time = auc_res_wide_char_for_run_time[auc_res_wide_char_for_run_time$data_name %in% c("backdoor", "magic", "avila", "drybeans", "pendigits", "waveform"),]
+print(xtable(auc_res_wide_char_for_run_time), include.rownames = F)
