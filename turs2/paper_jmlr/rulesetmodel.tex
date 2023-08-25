@@ -1,0 +1,134 @@
+\section{Rule Sets as Probabilistic Models}\label{section:rulesetModel}
+
+We first formalize individual rules as \emph{local} probabilistic models, and then define rule sets as \emph{global} probabilistic models. The key challenge lies in how to define $P(Y=y|X=x)$ for an instance $(x,y)$ that is covered by multiple rules. 
+% We start with introducing notation and defining classification rules from a probabilistic perspective, and discuss the two competing factors that determine rule quality: \emph{approximation accuracy} and \emph{coverage}. We next describe how we can treat any rule set as a probabilistic model for a dataset, in particular when rules are potentially overlapping. This includes parameter estimation and predicting a probability distribution over class labels for any data point. 
+
+\subsection{Probabilistic Rules}
+Denote the input random variables by $X = (X_1, \ldots, X_d)$, where each $X_i$ is a one-dimensional random variable representing one dimension of $X$, and denote the categorical target variable by $Y\in\mathscr{Y}$. Further, denote the dataset from which the rule set can be induced as $D = \{(x_i, y_i)\}_{i \in [n]}$, or $(x^n, y^n)$ for short. Each $(x_i,y_i)$ is an instance. Then, a probabilistic rule $S$ is written as
+\begin{equation}
+(X_1 \in R_1 \land X_2 \in R_2 \land \ldots) \rightarrow P_S(Y),
+\end{equation}
+where each $X_i \in R_i$ is called a \emph{literal} of the \emph{condition} of the rule. Specifically, each $R_i$ is an interval (for a quantitative variable) or a set of categorical levels (for a categorical variable). 
+
+A probabilistic rule of this form describes a subset $S$ of the full sample space of $X$, such that for any $x \in S$, the conditional distribution $P(Y | X=x)$ is approximated by the probability distribution of $Y$ conditioned on the event $\{X \in S\}$, denoted as $P(Y | X \in S)$. Since in classification $Y$ is a discrete variable, we can parametrize $P(Y|X\in S)$ by a parameter vector $\vec{\beta}$, in which the $j$th element $\beta_j$ represents $P(Y=j|X\in S)$, for all $j \in \mathscr{Y}$. We therefore denote $P(Y | X \in S)$ as $P_{S, \vec{\beta}}(Y)$, or $P_S(Y)$ for short. To estimate $\vec{\beta}$ from data, we adopt the maximum likelihood estimator, denoted as $P_{S, \hat{\vec{\beta}}}(Y)$, or $\hat{P}_S(Y)$ for short.
+% For multi-class classification, $Y$ always takes value in a finite set of integers. Hence $P(Y|X\in S)$ always follows a categorical distribution, which can be parameterized as $P_{S, \beta}(Y)$, where $\beta$ is simplex that represents the probability of $Y$ equal to each class. 
+
+Further, if an instance $(x,y)$ satisfies the condition of rule $S$, we say that $(x,y)$ is \emph{covered} by $S$. Reversely, the \emph{cover} of $S$ denotes the instances it covers. When clear from the context, we use $S$ to both represent the rule itself and/or its cover, and define the number of covered instances $|S|$ as its \emph{coverage}. 
+
+% In practice, $P_S(Y)$ can be estimated from data by the maximum likelihood estimator, with all instances covered by $S$. Formally, if $Y$ takes values in $\{1, 2, \ldots, K\}$ (in short $[K]$), 
+% \begin{equation}
+% \hat{P}_S(Y = k) = \frac{|\{(x,y): x \in S, y = k\}|}{|S|}, k \in [K]   
+% \end{equation}
+% As we only consider classification tasks, i.e., $Y$ is categorical, we assume that for any $X \in S$, $P(Y|X)$ can be approximated by a single multinomial distribution. 
+
+% Thus, a probabilistic rule is a local multinomial model that covers a subset $S$ of the full sample space, with the multinomial parameters to be estimated from data $(x^n, y^n)$. Formally, we denote the multinomial model associated with rule $S$ as a family of multinomial distributions $P_{X\in S, \theta_S}(Y)$ indexed by $\theta_S$, or in short $P_S(Y)$. Note that 1) if a data point $(x,y)$ satisfies $x \in S$, we say that $(x,y)$ or $x$ is \emph{covered} by rule $S$; and 2) we use $S$ to both represent a rule and its corresponding subset of the sample space. 
+
+% Intuitively, it is clear that for a rule to be of good `quality', the conditional probability distribution $P(Y|X=x)$ should not vary drastically for the different data points it covers, i.e., it should be similar for all $x \in S$. On the other hand, however, a probabilistic rule needs to cover sufficiently many data points to be able to reliably estimate $P_S(Y)$, to generalize well and thus avoid overfitting, and to be meaningful for knowledge discovery. That is, formally, the quality of a probabilistic rule depends on two factors: 1) \emph{approximation accuracy}, i.e., how accurately the associated $P_S(Y)$ of a rule approximates $P(Y|X=x)$ when the rule covers $x$; and 2) \emph{coverage}, i.e., how many data points the rule covers. These two factors typically compete in practice and hamper us from simply ranking all probabilistic rules and defining an objectively optimal rule. Instead, the task of learning high-quality rules is all about finding the ``best" trade-off between approximation accuracy and coverage, which is achieved by learning a set of rules. 
+
+\subsection{Truly Unordered Rule Sets as Probabilistic Models} \label{subsec:probRuleSet}
+% We now formulate rule sets as probabilistic models: we show how given a rule set  $\ruleset$ and a dataset $(x^n, y^n)$, we can calculate the probabilities of class labels $y^n$ given features $x^n$, denoted $P(y^n|x^n)$. 
+
+While a rule set is simply a set of rules, the challenge lies in how to define rule sets as probabilistic models while keeping the rules truly unordered. That is, how do we define $P(Y|X=x)$ given a rule set $\ruleset$ together with associated parameters. 
+
+That is, how do we define $P(Y|X=x)$ given a rule set $\ruleset$, i.e., a model, and its parameters? We first explain how to do this for a single instance of the training data, using a simplified setting where at most two rules cover the instance. We then discuss---potentially unseen---test instances and extend to more than two rules covering an instance. Finally, we define a rule set as a probabilistic model.
+
+
+\medskip \noindent
+\textbf{Class probabilities for a single training instance.} 
+Given a rule set $\ruleset$ with $K$ individual rules, denoted $\{S_i\}_{i \in [K]}$, any instance $(x,y)$ falls into one of four cases: 1) exactly one rule covers $x$; 2) at least two rules cover $x$ and no rule's cover is the subset of another rule's cover (\emph{multiple non-nested}); 3) at least two rules cover $x$ and one rule's cover is the subset of another rule's cover (\emph{multiple nested}); and 4) no rule in $M$ covers $x$.
+
+To simplify the notation, we here consider at most two rules covering an instance---we later describe how we can trivially extend to more than two rules.
+
+\smallskip \noindent
+\emph{Covered by one rule.} 
+% When exactly one rule $S_i$ covers $x$, we use the multinomial model associated with $S_i$, denoted as $P_{S_i, \theta_{S_i}}$, to model the probability of a class label $y$. Here the multinomial parameter $\theta_{S_i}$ is estimated based on the subset of $(x^n, y^n)$ covered by $S_i$, denoted as $(x^{|S_i|}, y^{|S_i|})$, using the maximum likelihood (ML) estimator. Formally the ML estimator is $\theta^*_{S_i} = (h_1/|S_i|, \ldots, h_K/|S_i|)$ \cite{casella2021statistical}, where $|S_i|$ denotes the coverage (i.e., the number of covered data points) of $S_i$, and each $h_k \in (h_1, \ldots, h_K)$ is the number of $y \in y^n$ such that $y$ is equal to the class label $k$, i.e., formally $h_k$ is the cardinality of $\{y \in y^n| y = k\}$. In other words, we use the cover of a rule $S_i$ to approximate $P(Y|X=x)$ by $P_{S_i, \theta^*_{S_i}}$. 
+When exactly one rule $S \in \ruleset$ covers $x$, we use $P_S(Y)$ to ``approximate" the conditional probability $P(Y|X=x)$. To estimate $P_S(Y)$ from data, we adopt the maximum likelihood (ML) estimator $\hat{P}_S(Y)$, i.e.,
+%denoted $\hat{P}_S(Y)$ and defined as
+\begin{equation}
+\hat{P}_S(Y = j) = \frac{|\{(x,y): x \in S, y = j\}|}{|S|}, \forall j \in \mathscr{Y}. 
+\end{equation}
+% Note that even if $S_i$ overlaps with, for instance, a rule $S_j$ (or possibly more rules), we use \emph{all} data points covered by $S_i$ to estimate the multinomial parameter of rule $S_i$---including those data points also covered by $S_j$. That is, we do \emph{not} (implicitly) use the multinomial model associated with $S_i \setminus S_j$, but the multinomial model associated with the full $S_i$. By doing so, we guarantee that it is only the explicit rules in the rule set that model the data, rather than implicitly \emph{derived rules} such as $S_i \setminus S_j$.
+Note that we do not exclude instances in $S$ that are also covered by other rules (i.e., in overlaps) for estimating $P_S(Y)$. Hence, the probability estimation for each rule is independent of other rules; as a result, each rule is \emph{self-standing}, which forms the foundation of a truly unordered rule set. 
+
+\smallskip \noindent
+\emph{Covered by two non-nested rules.}
+Next, we consider the case when $x$ is covered by 
+%multiple rules. Without loss of generality, we demonstrate our approach with two overlapping rules, i.e., $x$ is covered by both 
+$S_i$ and $S_j$, and neither $S_i \subseteq S_j$ nor $S_j \subseteq S_i$, i.e., the rules are non-nested.  
+%In this case, instead of using the multinomial model associated with the intersection of $S_i$ and $S_j$ to model $(x,y)$, which would essentially create an implicit new rule, we use the multinomial model associated with the \emph{union} of $S_i$ and $S_j$. 
+
+% We have $x \in S_i \land x \in S_j$ and create a corresponding multinomial model $P_{S_i \land S_j, \theta_{S_i \land S_j}}$. Then we estimate the multinomial parameter $\theta_{S_i \land S_j} (Y)$ by the maximum likelihood estimator using \emph{all data points within $S_i \cup S_j$}, denoted $\theta_{S_i \land S_j}^*$. Note that $\theta_{S_i \land S_j}^*$ is estimated from data points covered by $S_i \cup S_j$ rather than $S_i \cap S_j$.
+
+When an instance is covered by two non-nested, partially overlapping rules, we interpret this as probabilistic \emph{uncertainty}: we cannot tell whether the instance belongs to one rule or the other, and therefore approximate its conditional probability by the \emph{union} of the two rules. That is, in this case we approximate $P(Y|X=x)$ by $P(Y|X \in S_i \cup S_j)$, and we estimate this with its ML estimator $\hat{P}(Y|X \in S_i \cup S_j)$, using all instances in $S_i \cup S_j$. 
+
+This approach is particularly useful when the estimator of $P(Y|X \in S_i \cap S_j)$, i.e., conditioned on the event $\{X \in S_i \cap S_j\}$, is indistinguishable from $\hat{P}(Y|X \in S_i)$ and $\hat{P}(Y|X \in S_j)$. Intuitively, this can be caused by two reasons: 1) $S_i \cap S_j$ consists of very few instances, so the variance of the estimator for $P(Y|X \in S_i \cap S_j)$ is large; 2) $P(Y|X \in S_i \cap S_j)$ is just very similar to $P(Y|X \in S_i)$ and $P(Y|X \in S_i)$, which makes it undesirable to create a separate rule for $S_i \cap S_j$. Our model selection approach, explained in Section~\ref{sec:model_selection}, will ensure that a rule set with non-nested rules has high goodness-of-fit only if this `uncertainty' is indeed the case. 
+
+% The rationale for this is that we interpret overlap between rules as \emph{uncertainty}: it is unclear whether $x$ `belongs' to $S_i$ or $S_j$. That is, rather than implicitly creating a new \emph{derived rule} by merging $S_i$ and $S_j$, which would be equivalent to $S_i \land S_j$, we interpret this situation as both rules covering $x$, i.e., $x \in S_i$ \textbf{or} $x \in S_j$. With this interpretation, data points in $S_i \cap S_j$ are separately modelled only if we have an explicit rule in the rule set that covers $S_i \cap S_j$.
+
+% Formally, our interpretation corresponds to the situation where the multinomial distribution $\scriptstyle P_{S_i \land S_j, \htheta_{S_i \land S_j}} (Y)$ is not distinguishable from $\scriptstyle P_{S_i, \theta^*_{S_i}} (Y)$ and $\scriptstyle P_{S_j, \theta^*_{S_j}} (Y)$, where $\scriptstyle \htheta_{S_i \land S_j}$, different from $\scriptstyle \theta_{S_i \land S_j}^*$, is estimated from all data points in $S_i \cap S_j$. Intuitively, this can be caused by two reasons: 1) very few data points exist in $S_i \cap S_j$, making the uncertainty of the associated multinomial distribution $\scriptstyle P_{S_i \land S_j, \htheta_{S_i \land S_j}}(Y)$ very large; 2) $\scriptstyle P_{S_i \land S_j, \htheta_{S_i \land S_j}}(Y)$ is very similar to $\scriptstyle P_{S_i, \theta^*_{S_i}}(Y)$ and $\scriptstyle P_{S_j, \theta^*_{S_j}}(Y)$. Under these circumstances, we adopt the  ``safe'' way of interpreting the situation, i.e., we treat $x$ as belonging to $S_i$ \textbf{or} $S_j$, and to model the data $(x,y)$ by the union $S_i \cup S_j$. In this case we say that \emph{$x$ is modeled by the disjunction of rules $S_i$ and $S_j$} and approximate $P(Y=y|X=x)$ by $\scriptstyle P_{S_i \land S_j, \htheta_{S_i \land S_j}} (y)$.
+
+%Although using the intersection of rules is apparently a bad idea, as the number of implicit rules would grow exponentially and cause overfit, one may wonder, what is the rationale of using the union of rules? 
+
+\smallskip \noindent
+\emph{Covered by two nested rules.}
+When $x$ is covered by both $S_i$ and $S_j$, and $S_i$ is a subset of $S_j$, i.e., $x \in S_i \subseteq S_j$, the rules are nested\footnote{Note that ``nestedness'' is based on the rules' covers rather than on their conditions. For instance, if $S_i$ is $X_1 <= 1$ and $S_j$ is $X_2 <= 1$, $S_i$ and $S_j$ could still be nested.}.
+In this case, we approximate $P(Y|X=x)$ by $P(Y | X \in S_i)$ and interpret $S_i$ as an \emph{exception} of $S_j$. 
+Having such nested rules to model such exceptions is intuitively desirable, as it allows to have general rules covering large parts of the data while being able to model smaller, deviating parts. %Formally, when $S_i \subseteq S_j$ and $P(Y | X \in S_j)$ is significantly different from $P(Y|X \in S_i)$, but is similar to $P(Y | X \in S_j \setminus S_i)$. Then, whether to eliminate the nested overlap by replacing the rule $S_j$ with (possible multiple) rules which (together) cover $S_j \setminus S_i$ becomes a trade off between model complexity and accuracy. Further, from the perspective of statistical hypothesis testing, it is possible that $\hat{P}(Y | X \in S_j)$ and $\hat{P}(Y | X \in S_i)$ are significantly different while $\hat{P}(Y | X \in S_j)$ and $\hat{P}(Y | X \in S_j \setminus S_i)$ are not\footnote{As a illustrative example, assume that the true conditional distribution $P(Y|X=x)$ is the same for all $x \in S_j \setminus S_i$ and follows a Bernoulli distribution, $Y|X=x \sim Bernoulli(0.5)$; also assume that for all $x \in S_i$, $Y|X=x \sim Bernoulli(0.2)$. Thus, $Y|X$ for all $x \in S_j = (S_j \setminus S_i) \cup S_i$ would be a mixture of the previous two Bernoulli distributions. If $S_j \setminus S_i$ contains $1\,000$ data points, and $S_i$ contains $100$ data points, it can be shown by a simulation study that the conditoinal probability distribution  $P(Y | X \in S_i)$ is significantly different from $P(Y | X \in S_j)$, with p-value $= 7.5 \times 10^{-5} \pm 0.001$ (z-test for proportions, averaged on $1 \, 000$ iterations), but $P(Y | x \in S_j \setminus S_i$ is \emph{not} significantly different than $P(Y | X \in S_j)$, with p-value $= 0.304 \pm 0.29$.}.
+%Note that this kind of nested overlap is conceptually possible when we consider the model class of all possible rule sets, and hence the corresponding probabilistic definition is theoretically necessary. Whether rule sets with nested overlaps are always inferior to those without nested overlaps is another problem. 
+In order to preserve the self-standing property of individual rules, for $x \in S_j \setminus S_i$ we still use $P(Y|X \in S_j)$ rather than $P(Y | X \in S_j \setminus S_i)$. Although this might seem counter-intuitive at first glance, using $P(Y | X \in S_j \setminus S_i)$ would implicitly impose an order between $S_j$ and $S_i$, or---equivalently---implicitly change $S_j$ to another rule that only covers instances in $S_j \land \neg S_i$. 
+% Intuitively, nested rules can occur when $S_i$ covers much fewer data points than $S_j$. This is also theoretically and practically possible from the perspective of statistical hypothesis testing\footnote{As a illustrative example, assume that the true conditional distribution $P(Y|X=x)$ is the same for all $x \in S_j \setminus S_i$ and follows a Bernoulli distribution, $Y|X=x \sim Bernoulli(0.5)$; also assume that for all $x \in S_i$, $Y|X=x \sim Bernoulli(0.2)$. Thus, $Y|X$ for all $x \in S_j$ would be a mixture of the previous two Bernoulli distributions. If $S_j \setminus S_i$ contains $1\,000$ data points, and $S_i$ contains $100$ data points, it can be shown by a simulation study that the probability distribution for $Y$ when $x \in S_i$ is significantly different from when $x \in S_j$, with p-value $= 7.5 \times 10^{-5} \pm 0.001$ (z-test for proportions, averaged on $1 \, 000$ iterations), but the probability distribution for $Y$ when $x \in S_j \setminus S_i$ is \emph{not} significantly different than when $x \in S_j$, with p-value $= 0.304 \pm 0.29$}.
+ 
+\smallskip \noindent
+\emph{Not covered by any rule.}
+When no rule in $M$ covers $x$, we say that $x$ belongs to the so-called ``else rule'' that is part of every rule set and equivalent to $x \notin \bigcup_{i} S_i$. Thus, we approximate $P(Y|X=x)$ by $P(Y | X \notin \bigcup_{i} S_i)$. We denote the else rule by $S_0$ and write $S_0 \in \ruleset$ for the else rule in $\ruleset$. Observe that the else rule is the only rule in every rule set that depends on the other rules and is therefore not self-standing; however, it will also have no overlap with other rules by definition.
+%---this is unavoidable if one aims to achieve high accuracy, as the alternative would be to approximate $P(Y|X=x)$ using the entire dataset. 
+
+\medskip \noindent
+\textbf{Predicting for a new instance.} \label{subsubsec:new_data}
+When an unseen instance $x'$ comes in, we predict $P(Y|X=x')$ depending on which of the aforementioned four cases it satisfies. An important question is whether we always need access to the training data, i.e., whether the probability estimates we obtain from the training data points are sufficient for predicting $P(Y|X=x')$.
+% First, if $x'$ is covered by a single rule (or the else rule), we can simply predict $P(Y|X=x')$ by the corresponding probability estimates. Further, if $x'$ is covered by $S_i \subseteq S_j$, then $P(Y|X=x')$ can be predicted by $\hat{P}(Y | X\in S_i)$. 
+Specifically, if $x'$ is covered by non-nested $S_i$ and $S_j$, $P(Y|X=x')$ is predicted as $\hat{P}(Y|X \in S_i \cup S_j)$. However, if there are no training data points covered both by $S_i$ and $S_j$, then we would not obtain $\hat{P}(Y|X \in S_i \cup S_j)$ in the training phase. Nevertheless, in this case we have  $|S_i \cup S_j| = |S_i| + |S_j|$, and hence
+\begin{equation}
+    \hat{P}(Y|X \in S_i \cup S_j) = \frac{|S_i| \hat{P}(Y|X\in S_i) + |S_j| \hat{P}(Y|X\in S_j)}{|S_i| + |S_j|}.
+\end{equation}
+
+Thus, if $x'$ is covered by one rule, two nested rules, or no rule in $M$, the corresponding probability estimates are already obtained during training. Thus, we conclude that access to the training data is not necessary for prediction.
+
+\medskip \noindent
+\textbf{Extension to overlaps of multiple rules.}
+Whenever an instance $x$ is covered by multiple rules, denoted $J = \{S_i, S_j, S_k, ...\}$, three cases may happen. The first case is all rules in $J$ are nested. Without loss of generality, assume that $S_i \subseteq S_j \subseteq S_k \subseteq ...$; then, following the rationale for case of two nested rules, $P(Y|X=x)$ should be approximated by $P_{S_i}(Y)$. 
+%Next, for all instances in $S_j\setminus S_i$, they must all be in $S_k$ (and all other rules fully covering $S_k$), and hence they also satisfy the case of being covered by multiple nested rules. Following this line, we can recursively simplify the case of multiple nested rules into two nested rules. 
+Therefore, when $x$ is covered by multiple nested rules, only the ``smallest" rule matters and we can act as if $x$ is only covered by that single rule. 
+
+The second case is that all rules in $J$ are non-nested with each other. Following the solution for modeling two non-nested rules, we use $P(Y|X \in \bigcup_{S\in J} S)$. 
+
+The third case is a mix of the previous two cases, i.e., rules in $J$ are partially nested. In this case, we iteratively go over all $S \in J$: if there exists an $S' \in J$ satisfying $S' \subseteq S$ we remove $S$ from $J$, and continue iterating until no nested overlap in $J$ remains. If one single rule is left, we act as if $x$ is covered by that single rule; otherwise, we follow the paradigm of modeling the non-nested overlaps with the rules left in $J$.
+
+%\todo[for=Lincen]{
+% Hmm.. if we continue iterating until no nested overlap remains, then this means that the two-rule nested overlap case discussed before can never occur when there are initially more than two rules covering an instance? Then the extension is not completely trivial, as in, it changes what actually happens compares to two overlapping rules?
+%(Not sure whether it is clear now. See above.)}
+
+\medskip \noindent
+\textbf{Probabilistic rule sets.}
+We can now build upon the previous to define rule sets as probabilistic models. 
+% Formally, a probabilistic model is a family of probability distributions, with parameters to be estimated from the data, which becomes a fixed probability distribution with parameters fixed. 
+Formally, the probabilistic model corresponding to a rule set $\ruleset$ is a family of probability distributions, denoted $P_{\ruleset, \theta}(Y|X)$ and parametrized by $\theta$. Specifically, $\theta$ is a parameter vector representing all necessary probabilities of $Y$ conditioned on events $\{X \in G\}$, where $G$ is either a single rule or the union of multiple rules. $\theta$ is estimated from data by estimating each $P(Y|X \in G)$ by its maximum likelihood estimator. The resulting estimated vector is denoted as $\htheta$ and contains $\hat{P}(Y|X \in G)$ for all ${G \in \mathscr{G}}$, where $\mathscr{G}$ consists of all individual rules and the unions of overlapping rules in $M$. 
+
+Finally, we assume the dataset $D = (x^n, y^n)$ to be i.i.d. Specifically, let us define $(x,y) \vdash G$ for the following two cases: 1) when $G$ is a single rule (including the else rule), then $(x, y) \vdash G \iff x \in G$; and 2) when $G$ is a union of multiple rules, e.g., $G = \bigcup S_i$,  then $(x, y) \vdash G \iff x \in \bigcap S_i$. We then have
+\begin{equation}
+    P_{\ruleset, \theta}(y^n|x^n) = \prod_{G \in \mathscr{G}} \prod_{(x,y) \vdash G} P(Y = y | X \in G).
+\end{equation}
+% First, if a single rule (possibly the else-rule) covers $x'$, then this rule must have an associated multinomial model with estimated parameters and we use this multinomial distribution as $P(Y|X=x')$ and predict the most probable class label.
+
+% Second, if $x'$ is covered by multiple rules, two possible cases exist: 1) if the disjunction of rules that covers $x'$ has an associated multinomial model with estimated parameters, we can use this multinomial distribution as $P(Y|X=x')$; 2) if the disjunction of rules that covers $x'$ has no associated multinomial distribution and parameter estimate, i.e., no training data point is covered by the overlap of these rules, a new multinomial model needs to be associated with this case and the parameter needs to be estimated from the training data. In practice, access to the training data is not necessary if the multinomial parameter and the number of covered data points are recorded for each rule: suppose $x'$ is covered by $S_i$ and $S_j$, then 1) if $S_i \subseteq S_j$ (or the reverse) then $\theta_{S_i \land S_j}$ must have already been estimated as all training data points in $S_i$ are also in $S_i \land S_j$; and 2) if $S_i$ does not fully cover $S_j$ (or the reverse) then the multinomial parameter for the case $x' \in S_i \land S_j$ can be calculated as the weighted sum $n_i \theta^*_i + n_j \theta^*_j$, where $n_i, n_j$ are the number of data points covered by $S_i, S_j$, respectively. 
+
+%we use the maximum likelihood estimator $\theta_{S_{x'}}$ to calculate $P(y'|x')$ and predict the classification label of $x'$. Thus, with no separate conflicts resolving schemes, we guarantee that as long as the rule set has high predictive power, the approximation accuracy of each rule (or each union of rules for overlaps) is also high. Note that as union of rules will only exist when the associated probability distribution is not distinguishable from the probability distributions associated with all involved rules, high accuracy union of rules also indicates high accuracy of all involved rules. Hence, high quality rule set is guaranteed to have rules that are all high-quality. 
+
+
+
+
+
+
+
+
+

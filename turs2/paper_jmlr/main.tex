@@ -1,8 +1,31 @@
 \documentclass[twoside,11pt]{article}
 
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{xcolor}
+
+\renewcommand{\algorithmiccomment}[1]{\textcolor{blue}{\textit{\# #1}}} % Set comment text to blue and italic
+\renewcommand{\algorithmicrequire}{\textbf{INPUT:}}
+\renewcommand{\algorithmicensure}{\textbf{OUTPUT:}}
+
+
+
+
 \usepackage{blindtext}
+%\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+%\SetKwInput{KwInput}{Input}                % Set the Input
+%\SetKwInput{KwOutput}{Output}   
 \usepackage{todonotes}
 \usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{mathrsfs}
+
+           % set the Output
+\newcommand{\htheta}{\hat{\theta}}
+\newcommand{\ruleset}{M}
+\newcommand{\assign}{\leftarrow}
+
+\renewcommand\vec{\boldsymbol}
 
 % Any additional packages needed should be included after jmlr2e.
 % Note that jmlr2e.sty includes epsfig, amssymb, natbib and graphicx,
@@ -44,15 +67,15 @@
 
 \title{Truly Unordered Decision Rules for Interpretable Machine Learning}
 
-\author{\name Author One \email one@stat.washington.edu \\
-       \addr Department of Statistics\\
-       University of Washington\\
-       Seattle, WA 98195-4322, USA
+\author{\name Lincen Yang \email l.yang@liacs.leidenuniv.nl \\
+       \addr LIACS, 
+       Leiden University\\
+       Leiden, The Netherlands
        \AND
-       \name Author Two \email two@cs.berkeley.edu \\
-       \addr Division of Computer Science\\
-       University of California\\
-       Berkeley, CA 94720-1776, USA}
+       \name Matthijs van Leeuwen \email m.van.leeuwen@liacs.leidenuniv.nl \\
+       \addr LIACS, 
+       Leiden University\\
+       Leiden, The Netherlands}
 
 \editor{My editor}
 
@@ -66,9 +89,15 @@
   keyword one, keyword two, keyword three
 \end{keywords}
 
-\section{Introduction}
+\input{intro.tex}
 
-Here is a citation \cite{chow:68}.
+\input{related.tex}
+
+\input{rulesetmodel.tex}
+
+\input{model_selection.tex}
+
+\input{algorithm}
 
 \input{experiment}
 % Acknowledgements and Disclosure of Funding should go at the end, before appendices and references

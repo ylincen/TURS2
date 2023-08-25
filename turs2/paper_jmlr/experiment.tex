@@ -18,7 +18,7 @@ Specifically, we use CN2 from Orange3 toolbox, IDS from a third-party implementa
 \caption{For each algorithm, we calculate for every individual dataset the difference between its ROC-AUC score and the best ROC-AUC scores. The differences to the best ROC-AUC scores for each algorithm is illustrated by a box-plot.} \label{fig:diff_to_best_auc}
 \end{figure}
 
-\subsection{Classification performance}
+\subsection{Classification performance} \label{subsec:classifier_perf}
 To investigate the classification performance for TURS, we report  in Table~\ref{table:roc_auc} the ROC-AUC scores on the test sets, averaged over five-fold cross-validations. For multi-class classification, we report the ``macro" one-versus-rest AUC scores, as ``macro" AUC treats all class labels equally and hence can characterize how well the classifiers predict for the minority classes. 
 
 Note that BRS~\citep{wang2017bayesian} can only be applied to binary datasets. Further, we fail to obtain the results of DRS on three datasets because the implementation of DRS does not support the large number of columns (it simply gives an error). We also fail to obtain the results of IDS on several datasets as they exceed the predetermined time limit: 10 hours for one single fold of one dataset. 
@@ -34,6 +34,7 @@ Third, among all rule sets methods (CN2, DRS, IDS, TURS), TURS show substantiall
 \includegraphics[width=0.75\textwidth]{boxplot_random_pick}	
 \caption{ROC-AUC minus ROC-AUC with ``random picking", for TURS and CN2. } \label{fig:diff_rp}
 \end{figure}
+
 \subsection{Prediction with `random picking' for overlaps}
 Recall that we estimate the class probabilities for overlaps by considering the ``union" of the cover of all involved rules. Thus, the next question we study empirically is whether our formalization of rule sets as probabilistic models can indeed lead to overlaps only formed by rules with similar probabilistic estimations. 
 
@@ -66,14 +67,18 @@ Formally, given a ruleset with $K$ rules: $M = \{S_1, ..., S_K\}$, denote the pr
 \end{equation}
 in which $\bar{\mathbf{p}_i}$ and $\bar{\mathbf{q}_i}$ denote the mean of elements of the estimated class probability vectors. Note that each individual rule is treated separately in calculating the $g$-score above, and hence the overlaps do not play a role here. 
 
-We calculate this score for all algorithms and all datasets, averaged over five-fold cross-validations, and demonstrate the results in Figure~\ref{fig:train_test_diff}. As a result, we observe that TURS (the bold purple curve) mostly lies at the lowest level, and is much more stable than all competitor algorithms. We also report the exact numbers for the score calculated by Equation~\ref{eq:train_test_diff} in Table~\ref{table:train_test_diff}.
+We calculate this score for all algorithms and all datasets, averaged over five-fold cross-validations, and demonstrate the results in Figure~\ref{fig:train_test_diff}. As a result, we observe that TURS (the bold purple curve) mostly lies at the lowest level, and is much more stable than all competitor algorithms. 
 
-Thus, we conclude that data-driven rules induced by TURS serve better as explanations for the predictions of the tree- and rule-based models, in terms of the quality of its probability estimates. 
+The only exception is IDS (blue line in the upper figure): while the rules' probability estimates of IDS generalize better than that of TURS in some datasets, this indicates IDS has serious ``under-fitting" if we take into consideration IDS's suboptimal predictive performance as discussed in Section~\ref{subsec:classifier_perf}. That is, IDS produces rules with too large coverage, and hence is not specific and refined enough for classification, although rules with large coverage have probability estimates that generalize well. 
 
-\input{table_traintestdiff}
+%We also report the exact numbers for the score calculated by Equation~\ref{eq:train_test_diff} in Table~\ref{table:train_test_diff}.
+
+Thus, in conclusion, rules induced by TURS serve better as explanations for the predictions of the tree- and rule-based models, in terms of the quality of its probability estimates. 
+
+%\input{table_traintestdiff}
 
 \input{table_model_complexity2}
-\begin{figure}[ht]\centering
+\begin{figure}[ht]
 	\includegraphics[width=\textwidth]{heatmap_model_complexity}
 	\caption{Heatmap for model complexity (higher is better): for each dataset, we divide the best (minimum) total number of literals by the total number of literals of each algorithm. We exclude the results from the models with much worse ROC-AUC scores (denoted as grey).}	 
 	\label{fig:heatmap_modelcomplexity}
@@ -82,23 +87,39 @@ Thus, we conclude that data-driven rules induced by TURS serve better as explana
 \subsection{Model complexities}
 The next question we study empirically is, does TURS produce more complex rule sets because it only allows overlaps formed by rules with similar probabilistic output? 
 
-\smallskip \noindent 
-\textbf{Total number of literals.} We first calculate the number of total literals for each model, by summing up the lengths of rules in a rule set, rule list, or decision tree (by treating each tree path as rule). The total number of literals in a model represents the complexity if a domain expert would like to comprehend the model as a whole. 
+We first calculate the number of total literals for each model, by summing up the lengths of rules in a rule set, rule list, or decision tree (by treating each tree path as rule). 
+%The total number of literals in a model represents the complexity if a domain expert would like to comprehend the model as a whole. 
+We report this measure in Table~\ref{table:num_literal}. As simpler models with very much worse predictive performance is not so interesting, hence if a model's ROC-AUC score is more than $(-0.1)$ smaller than that of TURS, we exclude it from the following comparisons (denoted by \emph{smaller} font sizes in Table~\ref{table:num_literal}). 
 
-We hence report this measure in Table~\ref{table:num_literal}. As simpler models with very much worse predictive performance is not so interesting, if a model's ROC-AUC score is more than $(-0.1)$ smaller than that of TURS, we exclude it from the following comparisons (denoted by \emph{smaller} font sizes in Table~\ref{table:num_literal}). 
-
-We observe that TURS produces the simplest model for 14 out 31 datasets (excluding results from models with incomparable ROC-AUC scores), which we denote in bold in the table. 
+We observe that TURS produces the simplest model for 13 out 31 datasets (excluding results from models with incomparable ROC-AUC scores), which we denote in bold in the table. 
 
 Further, to illustrate the differences between the number of literals across all algorithms, we calculate a comparative score as follow: for each individual dataset, we divide the minimum total number of literals by the total number of literals of each algorithm, which we plot as a heat map in Figure~\ref{fig:heatmap_modelcomplexity}. From the heat map, CLASSY and TURS are obviously better than others in general; however, CLASSY induces ordered decision lists from data, with a much more complex internal logic than the unordered rule sets induced by TURS. 
 
-\textbf{Rule lengths.} For rule-based models with a large number of total literals, it is impractical for domain experts or analysts to comprehend the whole model by reading through all rules. In such cases, they may be more interesting to look at explanations for single predictions; thus, shorter rules are preferred. 
-\todo[inline]{What is the message for rule lengths? Maybe do not report this?}
+%\textbf{Rule lengths.} For rule-based models with a large number of total literals, it is impractical for domain experts or analysts to comprehend the whole model by reading through all rules. In such cases, they may be more interesting to look at explanations for single predictions; thus, shorter rules are preferred. 
+%\todo[inline]{What is the message for rule lengths? Maybe do not report this?}
 
-\subsection{Ablation study: local compression gain}
-
+\subsection{Ablation study: local constraint}
+..
 \subsection{Ablation study: diverse coverage beam search}
-
+..
 \subsection{Runtime analysis}
+\begin{figure}[ht] \label{fig:runtime}
+	\includegraphics[width=\textwidth]{runtime}
+	\caption{Runtime comparison among rule set methods.}	 
+	\label{fig:heatmap_modelcomplexity}
+\end{figure}
+Last, we report the runtime of TURS, together with all rule set competitor methods only, as decision trees/lists methods from mature software (Weka and Python Scikit-Learn) are highly optimized in speed and are known to be very fast. 
+
+We illustrate the runtime (in seconds), averaged over the five-fold cross-validations, in Figure~\ref{fig:runtime} (note that the y-axis is in scaled by $log_{10}$). In general, the runtime of TURS are competitive among all rule set methods, with only CN2 showing clear superiority. CN2 seems faster in general and scales better to larger datasets, which can be caused both by a more efficient implementation (from the mature software ``Orange3"), and by its algorithmic properties (a greedy and separate-and-conquer approach). 
+
+%In addition, for 22 out of 31 datasets, the runtime of TURS (in purple) are less than 100 seconds. On the other hand, TURS needs more than $10,000$ seconds on 6 of them (backdoor, magic, avila, drybeans, pendigits, waveform). 
+
+
+
+
+
+
+
 
 %\subsection{Overlaps' insignificance}
 %\begin{figure}
