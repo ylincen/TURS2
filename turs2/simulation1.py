@@ -76,6 +76,8 @@ exp_res_alliter = []
 nrow = 10000
 ncol = 100
 for iter in range(100):
+    print("iter", iter)
+
     for validity_check_option in ["no_check", "either"]:
         X_train, y_train = generate_data(nrow, ncol, seed=iter * 2)
         X_test, y_test = generate_data(nrow, ncol, seed=iter * 2 + 1)
