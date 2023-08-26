@@ -99,13 +99,16 @@ Further, to illustrate the differences between the number of literals across all
 %\todo[inline]{What is the message for rule lengths? Maybe do not report this?}
 
 \subsection{Ablation study: local constraint}
-We consider a simple simulation study to illustrate the necessity of the local constraint, where our feature variables are denoted as $X = (X_1, ..., X_{100})$. Assume all variables in $X$ are binary, and we sample $X_1 \sim Ber(0.2)$, $X_i \sim Ber(0.5) (i = 2, ..., 100)$, in which $Ber(.)$ denotes the Bernoulli distribution. Further, we consider binary target variable $Y$ and sample $Y|X_1 = 1 \sim Ber(0.7)$ and $Y|X_1 = 0 \sim Ber(0.95)$. That is, $X_1 = 1$ (or $X_1 = 0$) is the only ``rule" in this simulated dataset. 
+We consider a simple simulation study to illustrate the necessity of the local constraint, where our feature variables are denoted as $X = (X_1, ..., X_{10})$. Assume all variables in $X$ are binary, and we sample $X_1 \sim Ber(0.2)$, $X_i \sim Ber(0.5) (i = 2, ..., 10)$, in which $Ber(.)$ denotes the Bernoulli distribution. Further, we consider binary target variable $Y$ and sample $Y|X_1 = 1 \sim Ber(0.7)$ and $Y|X_1 = 0 \sim Ber(0.95)$. That is, $X_1 = 1$ (or $X_1 = 0$) is the only ``rule" in this simulated dataset. 
 
-We simulate the dataset with the sample size $10,000$ for $100$ times, and run TURS with and without the local constraints.  
+We simulate the dataset with the sample size $1,000$ for $20$ times, and run TURS with and without the local constraints. As shown in Table~\ref{table:ablation_simu}, without the local constraint, we will achieve worse (bigger) MDL-based score. 
+
+\begin{table}[ht]\centering\begin{tabular}{lllll}  \hlinelocal constraint & \# rules & rule length & ROC AUC & MDL-based score \\   \hlineNo & 3.75($\pm$1.71) & 3.462($\pm$1.31) & 0.69($\pm$0.05) & 434.329($\pm$27.64) \\   Yes & 1($\pm$0) & 1($\pm$0) & 0.727($\pm$0.03) & 411.943($\pm$25.35) \\    \hline\end{tabular}
+\caption{Results of ablation study on whether to use the local constraint. We report the mean ($\pm$ standard deviation) over $20$ repetitions } \label{table:ablation_simu}\end{table}
 
 \subsection{Ablation study: diverse coverage beam search}
 ..
-\subsection{Runtime analysis}
+\subsection{Runtime}
 \begin{figure}[ht] \label{fig:runtime}
 	\includegraphics[width=\textwidth]{runtime}
 	\caption{Runtime comparison among rule set methods.}	 
