@@ -3,22 +3,24 @@
 
 Exploiting the formulation of rule sets as probabilistic models, we define the task of learning a rule set as a probabilistic model selection problem. Specifically, we use the minimum description length (MDL) principle for model selection. 
 
+The MDL principle is one of the best off-the-shelf model selection methods and has been widely used in machine learning and data mining \citep{grunwald2019minimum, galbrun2022minimum}. Although rooted in information theory, it has been recently shown that MDL-based model selection can be regarded as an extension of Bayesian model selection \citep{grunwald2019minimum}. 
+
+The principle of the MDL-based model selection is to pick the model, such that the code length (in bits) needed to encode the data given the model, together with the model itself, is minimized. We begin with discussing the Normalized Maximum Likelihood (NML) distributions for calculating the bits for encoding the data given the model, followed by the calculation of code length for encoding the model itself. 
+
 \subsection{Normalized Maximum Likelihood Distributions for Rule Sets}
 %\subsection{NML Distributions for Rule Sets}
 %\label{subsec:nml_for_rule_sets}
 
-The MDL principle is one of the best off-the-shelf model selection methods and has been widely used in machine learning and data mining \citep{grunwald2019minimum, galbrun2022minimum}. 
 %With its roots in information theory, the MDL principle aims at selecting the model that best compresses the data. Recent theoretic developments show that MDL-based model selection can be regarded as an extension of Bayesian model selection \citep{grunwald2019minimum}. 
-Although rooted in information theory, it has been recently shown that MDL-based model selection can be regarded as an extension of Bayesian model selection \citep{grunwald2019minimum}. 
+As the Kraft inequality gaps the code length and probability, the core idea of the (modern) MDL principle it to assign a single probability distribution to the data given a rule set $\ruleset$ \citep{grunwald2019minimum}, the so-called \emph{universal distribution} denoted by $P_{\ruleset}(Y^n|X^n=x^n)$. Informally, $P_{\ruleset}(Y^n|X^n=x^n)$ should be a representative of the rule set model---as a family of probability distributions---$\{P_{\ruleset, \theta}(y^n | x^n)\}_\theta$.
+The theoretically optimal ``representative" is defined to be the one that has minimax regret, i.e., 
 
-The core idea of MDL-based model selection is to assign a single probability distribution to the data given a rule set $\ruleset$, the so-called \emph{universal distribution} denoted by $P_{\ruleset}(Y^n|X^n=x^n)$. Informally, $P_{\ruleset}(Y^n|X^n=x^n)$ should be a representative of the rule set model---as a family of probability distributions---$\{P_{\ruleset, \theta}(y^n | x^n)\}_\theta$. The theoretically optimal ``representative" is defined to be the one that has minimax regret, i.e., 
-\small{
 \begin{equation}
 \label{eq:define_regret}
 	  \arg \min_{P_{\ruleset}} \max_{z^n \in \mathscr{Y}^n} -\log_2 P_{\ruleset} (Y^n = z^n|X^n = x^n) - \left(-\log_2 P_{\htheta(x^n, z^n)} (Y^n = z^n|X^n = x^n)\right).
 \end{equation}
-}
 We write the parameter estimator as $\htheta(x^n, z^n)$ to emphasize that it depends on the values of the target variables $Y^n$. The unique solution to $P_{\ruleset}$ of Equation~\ref{eq:define_regret} is the so-called normalized maximum likelihood (NML) distribution:
+
 \begin{equation}
     P^{NML}_{\ruleset}(Y^n=y^n|X^n=x^n) = \frac{P_{\ruleset, \htheta(x^n, y^n)}(Y^n=y^n|X^n=x^n)}{\sum_{z^n \in \mathscr{Y}^n} P_{\ruleset, \htheta(x^n, z^n)}(Y^n = z^n|X^n=x^n)}.
 \end{equation}
@@ -34,11 +36,11 @@ For an individual rule $S \in \ruleset$, we write all instances covered by $S$ a
 \begin{equation}
     P^{NML}_S(Y^S = y^{S}|X^S = x^S) = \frac{\hat{P}_S(Y^S = y^S|X^S = x^S)}{\sum_{z^S \in \mathscr{Y}^S} \hat{P}_S(Y^S = z^S|X^S = x^S)}.
 \end{equation}
-Note that $\hat{P}_{S}$ depends on the values of $z^S$. As $\hat{P}_S(Y)$ is a categorical distribution, the normalizing term can be written as $\mathcal{R}(|S|, |\mathscr{Y}|)$, a function of $|S|$---the rule's coverage---and $|\mathscr{Y}|$---the number of unique values that $Y$ can take~\citep{mononen:08:sub-lin-stoch-comp}:
+Note that $\hat{P}_{S}$ depends on the values of $z^S$. As $\hat{P}_S(Y)$ is a categorical distribution, the normalizing term can be written as $\mathcal{R}(|S|, |\mathscr{Y}|)$, a function of $|S|$---the rule's coverage---and $|\mathscr{Y}|$---the number of unique values that $Y$ can take:
 \begin{equation}
     \mathcal{R}(|S|, |\mathscr{Y}|) = \sum_{z^S \in \mathscr{Y}^S} \hat{P}_S(Y^S = z^S|X^S = x^S),
 \end{equation}
-which can be efficiently calculated in sub-linear time~\citep{mononen:08:sub-lin-stoch-comp}.
+and it can be efficiently calculated in sub-linear time~\citep{mononen:08:sub-lin-stoch-comp}.
 
 \smallskip
 \noindent \textbf{The approximate NML distribution.}
@@ -46,10 +48,8 @@ We propose to approximate the normalizing term of $P^{NML}_{\ruleset}$ as the pr
 \begin{equation}
     P^{apprNML}_{\ruleset}(Y^n =y^n | X^n=x^n) = \frac{P_{\ruleset, \htheta(x^n, y^n)}(Y^n=y^n|X^n=x^n)}{\prod_{S \in \ruleset} \mathcal{R}(|S|, |\mathscr{Y}|)}.
 \end{equation}
-Note that the sum over all $S \in \ruleset$ \emph{does} include the ``else rule" $S_0$. Finally, we can formally define the optimal rule set $\ruleset^*$ as
-\begin{equation}
-    \ruleset^* = \arg \max_{\ruleset} P^{apprNML}_{\ruleset}(Y^n =y^n | X^n=x^n).
-\end{equation}
+Note that the sum over all $S \in \ruleset$ \emph{does} include the ``else rule" $S_0$. 
+
 The rationale of using the approximate-NML distribution is as follows. First, it is equal to the NML distribution for a rule set without any overlap, as follows.
 \begin{proposition}
 Given a rule set $\ruleset$ in which for any $S_i, S_j \in \ruleset$, $S_i \cap S_j = \emptyset$, then $P^{NML}_{\ruleset}(Y^n=y^n|X^n=x^n) = P^{apprNML}_{\ruleset}(Y^n=y^n|X^n=x^n)$.
@@ -57,34 +57,37 @@ Given a rule set $\ruleset$ in which for any $S_i, S_j \in \ruleset$, $S_i \cap 
 
 \noindent Second, when overlaps exist in $\ruleset$, approximate-NML puts a small extra penalty on overlaps, which is desirable to trade-off overlap with goodness-of-fit: when we sum over all instances in each rule $S \in \ruleset$, the instances in overlaps are ``repeatedly counted". Third, approximate-NML behaves like the Bayesian information criterion (BIC) asymptotically, which follows from the next proposition.
 \begin{proposition}
-Assume $\ruleset$ contains $K$ rules in total, including the else rule, and we have $n$ instances. Under the mild assumption that $|S|$ grows linearly as the sample size $n$, we have \\
+Assume $\ruleset$ contains $K$ rules in total, including the else rule, and we have $n$ instances. Under the mild assumption that $|S|$ grows linearly as the sample size $n$, then \\
 $\log \left(\prod_{S \in \ruleset} \mathcal{R}(|S|, |\mathscr{Y}|)\right) = \frac{K(|\mathscr{Y}| - 1)}{2} \log n + \mathcal{O}(1)$, where $\mathcal{O}(1)$ is bounded by a constant w.r.t.\ to $n$.
 \end{proposition}
-We defer the proofs of the two propositions to the Supplementary Material. 
+We defer the proofs of the two propositions to the Appendix. 
 % \begin{equation}
 %       \sum_{y^n} P_{\theta^*(y^n|x^n)}(y^n|x^n) ={\sum_{G \in {2 ^ \ruleset}}} {\sum_{y^{|G|}}} P_{\theta_G} (y^{|G|}|x^{|G|})
 % \end{equation}
 
-% \subsection{Code Length of Model and Final Optimization Score}
-% To obtain the final MDL based score, we now describe how to calculate the code length of model $L(\ruleset) = -\log P(\ruleset) $.
+ \subsection{Code length of model and final optimization score}
+ To obtain the final MDL based score, we now describe how to calculate the code length of model $L(\ruleset) = -\log P(\ruleset) $.
 
-% To encode the rule set, we encode each rule one at a time. Then, for each rule, we need to sequentially encode all of its conditions. Assume the features are $d$-dimensional, we firstly need to encode which dimension a rule condition, e.g., $X_j \in R_j$ is on, which costs $\log d$ bits. Next, we need to encode $R_j$ explicitly, which we discuss respectively for quantitative and categorical variables.
+ To encode the rule set, we encode each rule one at a time. Then, for each rule, we need to sequentially encode all of its conditions. Assume the features are $d$-dimensional, we firstly need to encode which dimension a rule condition, e.g., $X_j \in R_j$ is on, which costs $\log d$ bits. Next, we need to encode $R_j$ explicitly, which we discuss respectively for quantitative and categorical variables.
 
-% If $X_j$ is categorical and has $c_j$ unique values, $R_j$ is a set containing a subset of all unique values. To encode $R_j$, we need to firstly encode the number of unique values of $X_j$ contains, denoted as $c_j'$, which costs $\log c_j$ bits; secondly, we need to encode what the $c_j'$ unique values are, which costs $\log {c_j \choose c_j'}$ bits. Thus, if we denote the bits needed in total to encode $X_j \in R_j$ as $l(X_j \in R_j)$, $l(X_j \in R_j) = \log d + \log c_j + \log {c_j \choose c_j'}$. 
+ If $X_j$ is categorical and has $c_j$ unique values, $R_j$ is a set containing a subset of all unique values. To encode $R_j$, we need to firstly encode the number of unique values of $X_j$ contains, denoted as $c_j'$, which costs $\log c_j$ bits; secondly, we need to encode what the $c_j'$ unique values are, which costs $\log {c_j \choose c_j'}$ bits. Thus, if we denote the bits needed in total to encode $X_j \in R_j$ as $l(X_j \in R_j)$, $l(X_j \in R_j) = \log d + \log c_j + \log {c_j \choose c_j'}$. 
 
-% Then, if $X_j$ is quantitative, we firstly need to choose the candidate cut points for $X_j$. Common choices include equal binning cut and quantile cut into $m$ bins, where $m$ is a user-specified parameter. In practice, $m$ can be chose based on the computational budget and the granularity that is useful for the task at hand. To encode $X_j \in R_j$, we need to encode one or two cut points, respectively for the form $X_j \leq c$ (or `$>$') and $c_1 < X_j \leq c_2$. The cost of bits to encode an individual cut point $c$ is $\log {m-1 \choose c}$, and to encode `$\leq$' or `$>$' costs 1 bit. Thus, to encode $X_j \leq c$ costs $l(X_j \leq c) = \log d + \log {l-1 \choose c} + 1$ bits and the same for $X_j > c$, and to encode $c_1 < X_j \leq c_2$ costs $l(c_1< X_j \leq c_2) = 2(\log d + \log {l-1 \choose c} + 1)$ bits. 
+ Then, if $X_j$ is quantitative, we firstly need to choose the candidate cut points for $X_j$. Common choices include equal binning cut and quantile cut into $m$ bins, where $m$ is a user-specified parameter. In practice, $m$ can be chose based on the computational budget and the granularity that is useful for the task at hand. To encode $X_j \in R_j$, we need to encode one or two cut points, respectively for the form $X_j \leq c$ (or `$>$') and $c_1 < X_j \leq c_2$. The cost of bits to encode an individual cut point $c$ is $\log {m-1 \choose c}$, and to encode `$\leq$' or `$>$' costs 1 bit. Thus, to encode $X_j \leq c$ costs $l(X_j \leq c) = \log d + \log {l-1 \choose c} + 1$ bits and the same for $X_j > c$, and to encode $c_1 < X_j \leq c_2$ costs $l(c_1< X_j \leq c_2) = 2(\log d + \log {l-1 \choose c} + 1)$ bits. 
 
-% In summary, the code length needed to encode $\ruleset$ is 
-% \begin{equation}
-% 	L(\ruleset) = \sum_{S \in \ruleset} L(S) = \sum_{S \in \ruleset} \sum_{k=1}^{len(S)} l(C_k) \, ,
-% \end{equation}
-% where $len(S)$ is the number of conditions in rule S, and $l(C_k)$ is the number of bits needed to encode the condition. Thus, the final MDL model selection score, denoted as $MDL(y^n, \ruleset|x^n)$, is the sum of the minus-log-NML distribution and the code length of the model, i.e., 
+ In summary, the code length needed to encode $\ruleset$ is 
+ \begin{equation}
+ 	L(\ruleset) = \sum_{S \in \ruleset} L(S) = \sum_{S \in \ruleset} \sum_{k=1}^{len(S)} l(C_k) \, ,
+ \end{equation}
+ where $len(S)$ is the number of conditions in rule S, and $l(C_k)$ is the number of bits needed to encode the condition. 
+ 
+Finally, we can formally define the optimal rule set $\ruleset^*$ as
+\begin{equation}
+    \ruleset^* = \arg \min_{\ruleset} -\log_2 P^{apprNML}_{\ruleset}(Y^n =y^n | X^n=x^n) + L(M).
+\end{equation}
+ 
+% Thus, the final MDL model selection score, denoted as $\mathcal{F}(y^n, \ruleset|x^n)$, is the sum of the minus-log-NML distribution and the code length of the model, i.e., 
 % \begin{equation} \label{eq:MDL_score}
-% 	MDL(y^n, \ruleset|x^n) = -\log P^{NML}_{\ruleset}(y^n|x^n) + L(\ruleset) \,.
+% 	\mathcal{F}(y^n, \ruleset|x^n) = -\log_2 P^{NML}_{\ruleset}(y^n|x^n) + L(\ruleset) \,.
 % \end{equation}
 
-% \textbf{OUTLINE FOR UNIFORM PRIOR}
-% \begin{itemize}
-%     \item The receiver actually has X already, so not considering this cause a lot of redundancy, but considering this cause problem for optimization (look ahead?). 
-%     \item Practically only works for small number of candidate cuts on each dimension. 
-% \end{itemize}
+
