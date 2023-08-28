@@ -41,6 +41,9 @@ datasets_with_header_row = ["avila", "anuran", "diabetes"]
 datasets_with_header_row = datasets_with_header_row + ["Vehicle", "DryBeans"]
 datasets_without_header_row = datasets_without_header_row + ["glass", "pendigits", "HeartCleveland"]
 
+
+not_use_excl_ = True
+
 if len(sys.argv) == 3:
     data_name=sys.argv[1]
     fold_given=int(sys.argv[2])
@@ -87,7 +90,8 @@ for fold in range(5):
         beamsearch_stopping_when_best_normalized_gain_decrease=False,
         validity_check="either", rerun_on_invalid=False, rerun_positive_control=False
     )
-    data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config)
+    data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config,
+                         not_use_excl_=not_use_excl_)
 
     data_encoding = NMLencoding(data_info)
     model_encoding = ModelEncodingDependingOnData(data_info)

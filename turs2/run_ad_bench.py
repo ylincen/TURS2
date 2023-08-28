@@ -35,23 +35,8 @@ np.seterr(all='raise')
 exp_res_alldata = []
 date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+not_use_excl_ = True
 if len(sys.argv) == 1:
-    # data_names = os.listdir("../ADbench_datasets_Classical")
-    # data_names_selected = []
-    # for data_name in data_names:
-    #     d = np.load("../ADbench_datasets_Classical/" + data_name)
-    #     X = d["X"]
-    #     y = d["y"]
-    #     num_class = len(np.unique(y))
-    #     # print(num_class)
-    #     y_prob = calc_probs(y, num_class)
-    #     if min(y_prob) > 0.05:
-    #         continue
-    #     elif len(y) > 1e5:
-    #         continue
-    #     else:
-    #         data_names_selected.append(data_name)
-    # data_name = data_names_selected[0]
     data_name = "42_WBC.npz"
 else:
     data_name = sys.argv[1]
@@ -82,7 +67,8 @@ for fold, (train_index, test_index) in enumerate(skf.split(X, y)):
         beamsearch_stopping_when_best_normalized_gain_decrease=False,
         validity_check="either", rerun_on_invalid=False, rerun_positive_control=False
     )
-    data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config)
+    data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config,
+                         not_use_excl_=not_use_excl_)
 
     data_encoding = NMLencoding(data_info)
     model_encoding = ModelEncodingDependingOnData(data_info)
