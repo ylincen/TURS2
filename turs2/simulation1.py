@@ -64,18 +64,20 @@ def run_turs(X_train, y_train, X_test, y_test, validity_check_option):
     data_encoding = NMLencoding(data_info)
     model_encoding = ModelEncodingDependingOnData(data_info)
     ruleset = Ruleset(data_info=data_info, data_encoding=data_encoding, model_encoding=model_encoding)
-    ruleset.fit(max_iter=1000, printing=False)
+    total_cl_list = ruleset.fit(max_iter=1000, printing=False)
     end_time = time.time()
 
     exp_res = calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, "simulation", 0, start_time, end_time)
     exp_res["total_cl"] = ruleset.total_cl
     exp_res["validity_check_option"] = validity_check_option
+    exp_res["total_cl_list"] = total_cl_list
+    exp_res["rule_coverage"] = [r.coverage_excl for r in ruleset.rules]
     return exp_res
 
 exp_res_alliter = []
-nrow = 1000
-ncol = 10
-for iter in range(20):
+nrow = 5000
+ncol = 50
+for iter in range(100):
     print("iter", iter)
 
     for validity_check_option in ["no_check", "either"]:
