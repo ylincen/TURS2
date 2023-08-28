@@ -167,10 +167,10 @@ class Rule:
 
         excl_cov_percent = grow_info["coverage_excl"] / self.coverage_excl
         incl_cov_percent = grow_info["coverage_incl"] / self.coverage
-        # if _validity["res_excl"] and grow_info["normalized_gain_excl"] > self.excl_gain_per_excl_coverage:
+
         if _validity["res_excl"]:
             grow_info_beam_excl.update(grow_info, grow_info["normalized_gain_excl"], excl_cov_percent)
-        # if _validity["res_incl"] and grow_info["normalized_gain_incl"] > self.incl_gain_per_excl_coverage:
+
         if _validity["res_incl"]:
             grow_info_beam.update(grow_info, grow_info["normalized_gain_incl"], incl_cov_percent)
 
@@ -180,6 +180,10 @@ class Rule:
             candidate_cuts_icol = self.get_candidate_cuts_icol_given_rule(candidate_cuts, icol)
             for i, cut in enumerate(candidate_cuts_icol):
                 _validity = validity_check(rule=self, icol=icol, cut=cut)
+
+                if self.data_info.not_use_excl_:
+                    _validity["res_excl"] = False
+
                 if _validity["res_excl"] == False and _validity["res_incl"] == False:
                     continue
 

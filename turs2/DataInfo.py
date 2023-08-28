@@ -15,7 +15,7 @@ import os
 
 
 class DataInfo:
-    def __init__(self, X, y, beam_width=None, alg_config=None, log_object=None):
+    def __init__(self, X, y, beam_width=None, alg_config=None, not_use_excl_=False):
         if alg_config is None:
             assert beam_width is not None
             self.alg_config = AlgConfig(
@@ -31,6 +31,8 @@ class DataInfo:
             )
         else:
             self.alg_config = alg_config
+
+        self.not_use_excl_ = not_use_excl_
 
         if type(X) != np.ndarray:
             self.features = X.to_numpy()
