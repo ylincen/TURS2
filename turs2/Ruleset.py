@@ -128,6 +128,7 @@ class Ruleset:
         return np.sum(all_mg_neglolglike)
 
     def fit(self, max_iter=1000, printing=True):
+        total_cl = [self.total_cl]
         if self.data_info.log_learning_process:
             log_folder_name = self.data_info.log_folder_name
 
@@ -143,6 +144,7 @@ class Ruleset:
 
             if add_to_ruleset:
                 self.add_rule(rule_to_add)
+                total_cl.append(self.total_cl)
                 if self.data_info.log_learning_process:
                     log_info_ruleset += "Add rule: " + print_(rule_to_add) + "\n\n"
                     log_info_ruleset += "with grow process: "
@@ -160,7 +162,7 @@ class Ruleset:
             else:
                 with open(log_folder_name + "/ruleset.txt", "w") as flog_ruleset:
                     flog_ruleset.write(log_info_ruleset)
-
+        return total_cl
     # def find_next_rule(self, rule_given=None, constraints=None):
     #     if rule_given is None:
     #         rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
