@@ -82,11 +82,20 @@
 \maketitle
 
 \begin{abstract}%   <- trailing '%' for backward compatibility of .sty file
-\blindtext
+Rule set learning has long been studied and has recently been frequently revisited due to the need for interpretable models. However, existing methods have several shortcomings. First, existing methods impose orders among rules, either explicitly or implicitly, which makes the model less comprehensible by domain experts. Further, due to the difficulty of handling probabilistic conflicts caused by overlaps (instances covered by multiple rules), existing methods often do not consider \emph{probabilistic} rules, although probabilistic outputs of rules carry the uncertainty of predictions and hence are more informative in describing subgroups in datasets. Besides, the divide-and-conquer strategy and learning from pre-mined rules are the two most widely used approaches, which can only be used for binary classification or for multi-class classification via the ``one-versus-rest" approach, while directly learning decision rules for multi-class target is understudied. 
+
+We propose TURS, for Truly Unordered Rule Sets, to address these shortcomings. We first formalize the problem of learning truly unordered rule sets. To resolve conflicts caused by overlapping rules, we propose a novel approach that exploits the probabilistic properties of our rule sets, with the intuition by only allowing rules to overlap if they have similar probabilistic output. We next develop a heuristic algorithm that learns rule sets by carefully and extensively extending the common used heuristics. We benchmark against a wide range of rule-based methods and demonstrate that TURS learns rule sets that have both better interpretability and better predictive performance. 
+%Finally, we also illustrate that rule sets induced by TURS are empirically truly unordered. 
+
+
+%An important innovation is that we use an auxiliary beam with a surrogate score to take the global potential of the rule set into account when learning a local rule.
+
+
+
 \end{abstract}
 
 \begin{keywords}
-  keyword one, keyword two, keyword three
+  Decision rule, interpretable machine learning, unordered rule set
 \end{keywords}
 
 \input{intro.tex}
@@ -101,11 +110,12 @@
 
 \input{experiment}
 % Acknowledgements and Disclosure of Funding should go at the end, before appendices and references
+\section{Conclusion}
+We studied the problem of learning unordered probabilistic rule sets without implicit orders, with the intuitive idea by only allowing rules to overlap only if they have similar probabilistic outputs. We further formalized rule sets as probabilistic models in a principled way, in which the core trick is to estimate the class probabilities for instances covered by multiple rules by ``taking the union" of all these rules. Next, we adopted a model selection approach by designing an MDL-based model selection criterion, together with a carefully designed heuristic algorithm, which have been shown to induce rules with competitive performance with respect to prediction, model complexity, (probabilistic) generalization to unseen instances, and uniquely, being truly unordered. 
 
-\acks{All acknowledgements go at the end of the paper before appendices and references.
-Moreover, you are required to declare funding (financial activities supporting the
-submitted work) and competing interests (related financial activities outside the submitted work).
-More information about this disclosure can be found on the JMLR website.}
+For future work, we will study the practical use of our method with a case study in the health care domain. This involves a user study to investigate whether, and in what degree, the domain experts find the truly unordered property of rule sets obtained by our method helps them comprehend the rules better in practice, in comparison to rule lists/sets with explicit or implicit orders.
+
+\acks{This work is part of the research program ‘Human-Guided Data Science by Interactive Model Selection’ with project number 612.001.804, which is (partly) financed by the Dutch Research Council (NWO).}
 
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.

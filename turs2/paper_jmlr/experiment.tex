@@ -1,15 +1,13 @@
 \input{data_info_table.tex} 
-\section{Experiments}
+\section{Experiments} \label{sec:exp}
 \subsection{Setup}
 \textbf{Datasets.} We conduct an extensive experiments with 31 datasets, summarized in Table~\ref{table:data_info}. Our multi-class datasets are from the UCI repository, while the binary-class datasets are from both the UCI repository and the ADBench Github repository \citep{han2022adbench}. The latter is a benchmark toolbox for anomaly detection (including imbalanced classification), hence we include it to have both balanced and imbalanced binary datasets.
 
 \noindent
 \textbf{Competitors.} We compare against a wide ranges of methods: 1) unordered CN2, the one-versus-rest rule sets method without implicit order among rules; 2) DRS, a representative multi-class rule set method which aims for minimizing the size of overlaps; 3) IDS, the multi-class rule set method optimizing a linear combination of scores, which characterize the quality of rules in seven perspectives, 4) RIPPER, the widely used one-versus-rest method with orders among class labels, 5) CLASSY, the probabilistic rule list methods using MDL-based model selection; 6) CART, the well-known decision tree method, with post-pruning by a validation dataset separated from the training set; 7) C4.5 decision tree, with post-pruning by the MDL principle; 8) BRS, the bayesian rule sets method (only for binary dataset). 
 
-Specifically, we use CN2 from Orange3 toolbox, IDS from a third-party implementation with proved scalability \citep{filip2019pyids}, RIPPER and C4.5 from Weka and its R wrapper, CART from Python's Scikit-Learn package, DRS, BRS, CLASSY from the original authors. Competitors algorithms' configurations are set to be the same as the default as in the paper and/or in original authors' implementations. We make the code public for reproducibility, including the code for competitor algorithms\footnote{\url{...}}.
+\noindent{\textbf{Algorithm configurations.}} For TURS, we set the beam width as 10, and the number of candidate cut points for numeric features as 20. For competitor algorithms, we use CN2 from Orange3 toolbox, IDS from a third-party implementation with proved scalability \citep{filip2019pyids}, RIPPER and C4.5 from Weka and its R wrapper, CART from Python's Scikit-Learn package, DRS, BRS, CLASSY from the original authors. Competitors algorithms' configurations are set to be the same as the default as in the paper and/or in original authors' implementations. We make the code public for reproducibility, including the code for competitor algorithms\footnote{\url{...}}.
 
-
-\noindent{\textbf{Algorithm configurations.}} We set the beam width as 10, and the number of candidate cut points for numeric features as 20. \todo[inline]{More discussions here later.}
 
 \input{table_roc_auc}
 
@@ -32,15 +30,16 @@ Third, among all rule sets methods (CN2, DRS, IDS, TURS), TURS show substantiall
 \input{table_rp_roc_auc}
 \begin{figure}[ht] \centering
 \includegraphics[width=0.75\textwidth]{boxplot_random_pick}	
-\caption{ROC-AUC minus ROC-AUC with ``random picking", for TURS and CN2. } \label{fig:diff_rp}
+\caption{Box-plots for ROC-AUC minus ROC-AUC with ``random picking", for TURS and CN2, averaged over the five-fold stratified cross-validations. } \label{fig:diff_rp}
 \end{figure}
 
 \subsection{Prediction with `random picking' for overlaps}
+\todo[inline]{Remake the table! It seems that I did rounding before the printing..}
 Recall that we estimate the class probabilities for overlaps by considering the ``union" of the cover of all involved rules. Thus, the next question we study empirically is whether our formalization of rule sets as probabilistic models can indeed lead to overlaps only formed by rules with similar probabilistic estimations. 
 
 Therefore, we compare the (probabilistic) predictions of our TURS models against the probabilistic predictions by what we call ``random picking" for overlaps: when an unseen instance is covered by multiple rules, we randomly pick one individual rule, and use its estimated class probabilities (estimated from training set) as the probabilistic prediction for this instance. 
 
-Intuitively, if the overlaps are formed only by rules with similar probabilistic output, we expect the probabilistic prediction performance by TURS and by TURS with random-picking (TURS-RP) to be very close. We first report the ROC-AUC of TURS and TURS-RP in Table~\ref{table:roc_auc_rp}, together with the percentage of instances covered by more than one rules (\%~overlaps), which we also benchmark against CN2. We observe that the ROC-AUC for TURS and TURS-RP is almost the same, while the ROC-AUC for CN2 and CN2 with random picking (CN2-RP) can differ substantially in general, as also summarized in Figure~\ref{fig:diff_rp}.
+Intuitively, if the overlaps are formed only by rules with similar probabilistic output, we expect the probabilistic prediction performance by TURS and by TURS with random-picking (TURS-RP) to be very close. We first report the ROC-AUC of TURS and TURS-RP in Table~\ref{table:roc_auc_rp}, together with the percentage of instances covered by more than one rules (\%~overlaps), which we also benchmark against CN2 (IDS and DRS are excluded due to their sub-optimal performance in general). We observe that the ROC-AUC for TURS and TURS-RP is almost the same, while the ROC-AUC for CN2 and CN2 with random picking (CN2-RP) can differ substantially in general, as also summarized in Figure~\ref{fig:diff_rp}.
 \begin{figure}[ht] \centering 
 	\includegraphics[width=\textwidth]{logloss_randompicking}
 	\caption{Log-loss of TURS, with and without the ``random picking", averaged over the stratified five-fold cross-validations. } \label{fig:logloss_rp}
@@ -103,11 +102,21 @@ We consider a simple simulation study to illustrate the necessity of the local c
 
 We simulate the dataset with the sample size $1,000$ for $20$ times, and run TURS with and without the local constraints. As shown in Table~\ref{table:ablation_simu}, without the local constraint, we will achieve worse (bigger) MDL-based score. 
 
+Notably, when not using the local constraint, the number of rules  and the rule lengths are both not consistent with the ``true" model, showing that irrelevant variables are picked when growing the rules. Hence, we conclude that in practice the local constraint is crucial in prevent overfitting. 
+
 \begin{table}[ht]\centering\begin{tabular}{lllll}  \hlinelocal constraint & \# rules & rule length & ROC AUC & MDL-based score \\   \hlineNo & 3.75($\pm$1.71) & 3.462($\pm$1.31) & 0.69($\pm$0.05) & 434.329($\pm$27.64) \\   Yes & 1($\pm$0) & 1($\pm$0) & 0.727($\pm$0.03) & 411.943($\pm$25.35) \\    \hline\end{tabular}
 \caption{Results of ablation study on whether to use the local constraint. We report the mean ($\pm$ standard deviation) over $20$ repetitions } \label{table:ablation_simu}\end{table}
 
 \subsection{Ablation study: diverse coverage beam search}
-..
+\begin{figure}[ht] \label{fig:diverse_coverage}
+	\includegraphics[width=\textwidth]{ablation_diverse_coverage}
+	\caption{Ablation study: the ROC AUC on the test set, averaged over the five-fold stratified cross-validation.}
+	\label{fig:heatmap_modelcomplexity}
+\end{figure}
+We study the effect of using the beam search with the ``diverse coverage", by replacing it with the ``normal" beam search. Suppose the beam width is $W$, we simply pick the best $W$ rule growth candidates \emph{without categorizing rule growth candidates by their coverage}. That is, we ``turn off" the diverse coverage constraints both for the updating the beam and the auxiliary beam. 
+
+As shown in Figure~\ref{fig:diverse_coverage}, when using the diverse coverage heuristic, the ROC-AUC on the test sets (points and curve in orange) becomes better on 25 out of 31 datasets, demonstrating the benefits for the predictive performance. 
+
 \subsection{Runtime}
 \begin{figure}[ht] \label{fig:runtime}
 	\includegraphics[width=\textwidth]{runtime}
