@@ -8,9 +8,6 @@
 \renewcommand{\algorithmicrequire}{\textbf{INPUT:}}
 \renewcommand{\algorithmicensure}{\textbf{OUTPUT:}}
 
-
-
-
 \usepackage{blindtext}
 %\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 %\SetKwInput{KwInput}{Input}                % Set the Input
@@ -19,6 +16,9 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{mathrsfs}
+
+\usepackage{thmtools,thm-restate}
+
 
            % set the Output
 \newcommand{\htheta}{\hat{\theta}}
@@ -56,16 +56,18 @@
 % Heading arguments are {volume}{year}{pages}{date submitted}{date published}{paper id}{author-full-names}
 
 \usepackage{lastpage}
-\jmlrheading{23}{2022}{1-\pageref{LastPage}}{1/21; Revised 5/22}{9/22}{21-0000}{Author One and Author Two}
+\jmlrheading{23}{2022}{1-\pageref{LastPage}}{1/21; Revised 5/22}{9/22}{21-0000}{Yang L. and van Leeuwen M.}
 
 % Short headings should be running head and authors last names
 
-\ShortHeadings{Truly Unordered Decision Rules}{One and Two}
+\ShortHeadings{Truly Unordered Decision Rules}{Yang L. and van Leeuwen M.}
 \firstpageno{1}
 
 \begin{document}
 
-\title{Truly Unordered Decision Rules for Interpretable Machine Learning}
+%\title{Truly Unordered Decision Rules for Interpretable Machine Learning with a Probabilistic Approach}
+%\title{Truly Unordered Decision Rules}
+\title{Probabilistic Decision Rules for Multi-class Classification with Truly Unordered Rules}
 
 \author{\name Lincen Yang \email l.yang@liacs.leidenuniv.nl \\
        \addr LIACS, 
@@ -120,9 +122,10 @@ For future work, we will study the practical use of our method with a case study
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
 
-%\newpage
+\newpage
 %
-%\appendix
+\appendix
+\input{appendix.tex}
 %\section{}
 %\label{app:theorem}
 %

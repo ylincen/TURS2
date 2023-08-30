@@ -3,7 +3,7 @@
 \noindent
 \emph{Rule lists.}
 %Rules in a rule list are connected by \textsc{if-then-else} statements. Existing methods include ordered-CN2~\citep{clark1989cn2}, CBA~\citep{liu1998CBA}, and PART~\citep{frank1998generating}, as well as the recently proposed CLASSY~\citep{proencca2020interpretable} and Bayesian rule list~\citep{yang2017scalable-bayesian-rule-list}. Rule lists are more difficult to interpret than rule sets because of their explicit orders. 
-Rules in a rule list are connected by \textsc{if-then-else} statements. Existing methods include CBA~\citep{liu1998CBA}, ordered CN2~\citep{clark1989cn2}, PART~\citep{frank1998generating}, and the recently proposed CLASSY~\citep{proencca2020interpretable} and Bayesian rule list~\citep{yang2017scalable-bayesian-rule-list}. We argue that rule lists are more difficult to interpret than rule sets because of their explicit orders. 
+Rules in a rule list are connected by \textsc{if-then-else} statements. Existing methods include CBA~\citep{liu1998CBA}, ordered CN2~\citep{clark1989cn2}, PART~\citep{frank1998generating}, and the more recently proposed CLASSY~\citep{proencca2020interpretable} and Bayesian rule list~\citep{yang2017scalable-bayesian-rule-list}. We argue that rule lists are more difficult to interpret than rule sets because of their explicit orders. 
 
 \smallskip \noindent
 \emph{One-versus-rest learning.}
@@ -11,7 +11,7 @@ This category focuses on only learning rules for a single class label, i.e., the
 
 The second approach does not impose an order among the classes; instead, it learns a set of rules for each class against all other classes. The most well-known are unordered-CN2 and FURIA~\citep{clark1991cn2Improve,huhn2009furia}. 
 %However, they do not learn truly unordered rule sets, as discussed in Section~\ref{sec:intro}. 
-FURIA avoids dealing with conflicts of overlaps by using all rules for predicting unseen instances; as a result, it cannot provide a single rule to explain its prediction. Unordered-CN2, on the other hand, handles overlaps by ``combining" all overlapping rules into a ``hypothetical" rule, which sums up all instances in all overlapping rules and hence ignoring probabilistic conflicts for constructing rules. In Section~\ref{sec:exp}, we show that our method learns smaller rule sets with better predictive performance than unordered-CN2.
+FURIA avoids dealing with conflicts of overlaps by essentially using all (fuzzy) rules for predicting unseen instances; i.e., the rules' outputs are weighted by the so-called ``certainty factor". As a result, it cannot provide a single rule to explain its prediction. Unordered-CN2, on the other hand, handles overlaps by ``combining" all overlapping rules into a ``hypothetical" rule, which sums up all instances in all overlapping rules and hence ignoring probabilistic conflicts for constructing rules. In Section~\ref{sec:exp}, we show that our method learns smaller rule sets with better predictive performance than unordered-CN2.
 
 \smallskip \noindent
 \emph{Multi-class rule sets.}
@@ -20,7 +20,7 @@ To the best of our knowledge, the only existing methods are IDS~\citep{lakkaraju
 %Two existing methods IDS~\citep{lakkaraju2016interpretable} and DRS~\citep{zhang2020diverseRuleSets} are neither probabilistic, nor truly unordered: to handle predictive conflicts of overlaps, IDS follows the rule with the highest F1-score, and DRS uses the most accurate rule. 
 %Decision tree methods like CART~\citep{breiman1984classification} might also fall in this category as well, but rules based on decision trees are forced to share many ``attributes", and hence become longer than necessary. 
 
-Last, different but related approaches include 1) decision tree based methods such as CART~\citep{breiman1984classification}, which produce rules that are forced to share many ``attributes" and hence are longer than necessary, as we will empirically demonstrate in Section~\ref{sec:exp}, and 2) a Bayesian rule mining~\citep{gay2012bayesian} method, which adopts naive bayes  with the mined rules for prediction, and hence does not produce a rule set model in the end. The `lazy learning' approach for rule-based models can also avoid the conflicts of overlaps~\citep{veloso2006lazy}, but no global rule set model describing the whole dataset is constructed in this case.
+Last, different but related approaches include the following. Firstly,  decision tree based methods such as CART~\citep{breiman1984classification}, which produce rules that are forced to share many ``attributes" and hence are longer than necessary, as we will empirically demonstrate in Section~\ref{sec:exp}. Secondly, the Bayesian rule mining~\citep{gay2012bayesian} method, which adopts naive bayes  with the mined rules for prediction, and hence does not produce a rule set model in the end. Third, the `lazy learning' approach for rule-based models can also avoid the conflicts of overlaps~\citep{veloso2006lazy}, but no global rule set model describing the whole dataset is constructed in this case.
 
 %\smallskip \noindent
 %\emph{Bayesian and MDL rule learning.} Last, we mention previous rule learning methods that also adopts a model selection approach with Bayesian or MDL criterion~\citep{wang2017bayesian, proencca2020interpretable, }.

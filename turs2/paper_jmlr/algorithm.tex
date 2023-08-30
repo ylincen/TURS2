@@ -1,11 +1,11 @@
-\section{Learning Truly Unordered Rules from Data}
+\section{Learning Truly Unordered Rules from Data} \label{sec:alg}
 Learning decision rules from data is an extremely difficult task; hence, rule learning algorithms have relied on heuristics that try to characterize the ``quality" of individual rules. While recently algorithms that can obtain provably optimal rule lists~\citep{angelino2017learning} and decision trees~\citep{hu2019optimal} are invented, their approach are not applicable to our task due to the following reasons. 
 
 First, our model class (search space) is different as we allow for overlaps among rules, which brings unique challenges even for heuristic algorithms. Second, our model output is probabilistic while the optimal trees/lists algorithms learn rule-based models with non-probabilistic (or just binary) output. Third, our model selection criterion, while requiring no (regularization) hyper-parameters, does not allow efficient search for the global optimum, as like most existing MDL-based approaches~\citep{galbrun2022minimum}. Hence, we also cannot easily apply the branch-and-bounds approaches in the optimal trees/lists algorithms. 
 
 We resort to heuristics as a result, and specifically, we iteratively add the next best rule to the rule set until the MDL-based score is optimized. 
 
-\subsection{Compression ``learning" rate}
+\subsection{Compression ``learning" rate} \label{subsec:learning_rate}
 When iteratively searching for the next ``best" rule, defining ``best'' is far from trivial: rule coverage and precision are contradicting factors and typical scores therefore combine those two factors in some---more or less---arbitrary way. 
 
 This issue is further aggravated by the iterative rule learning process, in which the intermediate rule set is evaluated as an \emph{incomplete rule set} in each step. Evaluating incomplete rule sets is a challenging task~\citep{furnkranz2005roc}, mainly because any good score needs to simultaneously consider two aspects: 1) how well do all the rules currently in the rule set describe the already covered instances; and 2) what is the ``potential" for the uncovered instances, in the sense that how well can those uncovered instances be described by rules that might be added later?

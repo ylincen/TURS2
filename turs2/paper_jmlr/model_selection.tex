@@ -51,39 +51,102 @@ We propose to approximate the normalizing term of $P^{NML}_{\ruleset}$ as the pr
 Note that the sum over all $S \in \ruleset$ \emph{does} include the ``else rule" $S_0$. 
 
 The rationale of using the approximate-NML distribution is as follows. First, it is equal to the NML distribution for a rule set without any overlap, as follows.
-\begin{proposition}
+
+%\begin{proposition}
+\begin{restatable}{proposition}{primelemma}
+
 Given a rule set $\ruleset$ in which for any $S_i, S_j \in \ruleset$, $S_i \cap S_j = \emptyset$, then $P^{NML}_{\ruleset}(Y^n=y^n|X^n=x^n) = P^{apprNML}_{\ruleset}(Y^n=y^n|X^n=x^n)$.
-\end{proposition}
+\end{restatable}
+%\end{proposition}
 
 \noindent Second, when overlaps exist in $\ruleset$, approximate-NML puts a small extra penalty on overlaps, which is desirable to trade-off overlap with goodness-of-fit: when we sum over all instances in each rule $S \in \ruleset$, the instances in overlaps are ``repeatedly counted". Third, approximate-NML behaves like the Bayesian information criterion (BIC) asymptotically, which follows from the next proposition.
-\begin{proposition}
+
+%\begin{proposition}
+\begin{restatable}{proposition}{secondlemma}
 Assume $\ruleset$ contains $K$ rules in total, including the else rule, and we have $n$ instances. Under the mild assumption that $|S|$ grows linearly as the sample size $n$, then \\
 $\log \left(\prod_{S \in \ruleset} \mathcal{R}(|S|, |\mathscr{Y}|)\right) = \frac{K(|\mathscr{Y}| - 1)}{2} \log n + \mathcal{O}(1)$, where $\mathcal{O}(1)$ is bounded by a constant w.r.t.\ to $n$.
-\end{proposition}
+\end{restatable}
+%\end{proposition}
 We defer the proofs of the two propositions to the Appendix. 
 % \begin{equation}
 %       \sum_{y^n} P_{\theta^*(y^n|x^n)}(y^n|x^n) ={\sum_{G \in {2 ^ \ruleset}}} {\sum_{y^{|G|}}} P_{\theta_G} (y^{|G|}|x^{|G|})
 % \end{equation}
 
  \subsection{Code length of model and final optimization score}
- To obtain the final MDL based score, we now describe how to calculate the code length of model $L(\ruleset) = -\log P(\ruleset) $.
+To obtain the final MDL based score, we now describe how to calculate the code length of model $L(\ruleset)$. The code length needed to encode the model depends on the encoding scheme we choose. Given the Kraft's inequality~\citep{grunwald2007minimum}, this can be practically treated as putting prior distributions on the model class. We describe the encoding scheme in a hierarchical manner due to the complexity of the model class. 
 
- To encode the rule set, we encode each rule one at a time. Then, for each rule, we need to sequentially encode all of its conditions. Assume the features are $d$-dimensional, we firstly need to encode which dimension a rule condition, e.g., $X_j \in R_j$ is on, which costs $\log d$ bits. Next, we need to encode $R_j$ explicitly, which we discuss respectively for quantitative and categorical variables.
+\noindent \textbf{Integer code for the number of rules.} 
+First, we encode the number of rules in the rule set, for which we use Rissanen's integer universal code~\citep{rissanen1983universal}. The code length needed for encoding an integer $K$ is equal to 
+$$L_{rissanen}(K) = c + \log_2(K) + \log_2(\log_2(K)) + \log_2(\log_2(\log_2(K))) + \ldots ;$$
+the summation continues until a certain precision is reached, and $c \approx 2.865$ is a constant. 
 
- If $X_j$ is categorical and has $c_j$ unique values, $R_j$ is a set containing a subset of all unique values. To encode $R_j$, we need to firstly encode the number of unique values of $X_j$ contains, denoted as $c_j'$, which costs $\log c_j$ bits; secondly, we need to encode what the $c_j'$ unique values are, which costs $\log {c_j \choose c_j'}$ bits. Thus, if we denote the bits needed in total to encode $X_j \in R_j$ as $l(X_j \in R_j)$, $l(X_j \in R_j) = \log d + \log c_j + \log {c_j \choose c_j'}$. 
-
- Then, if $X_j$ is quantitative, we firstly need to choose the candidate cut points for $X_j$. Common choices include equal binning cut and quantile cut into $m$ bins, where $m$ is a user-specified parameter. In practice, $m$ can be chose based on the computational budget and the granularity that is useful for the task at hand. To encode $X_j \in R_j$, we need to encode one or two cut points, respectively for the form $X_j \leq c$ (or `$>$') and $c_1 < X_j \leq c_2$. The cost of bits to encode an individual cut point $c$ is $\log {m-1 \choose c}$, and to encode `$\leq$' or `$>$' costs 1 bit. Thus, to encode $X_j \leq c$ costs $l(X_j \leq c) = \log d + \log {l-1 \choose c} + 1$ bits and the same for $X_j > c$, and to encode $c_1 < X_j \leq c_2$ costs $l(c_1< X_j \leq c_2) = 2(\log d + \log {l-1 \choose c} + 1)$ bits. 
-
- In summary, the code length needed to encode $\ruleset$ is 
- \begin{equation}
- 	L(\ruleset) = \sum_{S \in \ruleset} L(S) = \sum_{S \in \ruleset} \sum_{k=1}^{len(S)} l(C_k) \, ,
- \end{equation}
- where $len(S)$ is the number of conditions in rule S, and $l(C_k)$ is the number of bits needed to encode the condition. 
- 
-Finally, we can formally define the optimal rule set $\ruleset^*$ as
+\noindent \textbf{Encoding individual rules.} 
+Next, we encode the each individual rule separately. For a given rule with $k$ literals, we first encode the number of literals by a uniform code: as $k$'s range is bounded by the number of columns of the dataset, denoted by $K_{lit}$, 
 \begin{equation}
-    \ruleset^* = \arg \min_{\ruleset} -\log_2 P^{apprNML}_{\ruleset}(Y^n =y^n | X^n=x^n) + L(M).
+	L_{num\_lit} = \log_2 K_{lit}. 
 \end{equation}
+As each literal contains one single variable, we further to specify which are these $k$ variables among all $K_{lit}$ variables, again with a uniform code:
+\begin{equation}
+	L_{num\_vars} = \log_2 {K_{lit} \choose k}. 
+\end{equation}
+Further, we sequentially encode the interval (for numeric variable) or the categorical levels (for categorical variable) in order. We denote the code length needed for a single interval or categorical level subset as $L_{vals}$.  
+
+First, for numeric variables, the literal is in either of the two forms: 1) $X \geq (\text{or} <)$ $v$, and 2) $v_1  \leq X < v_2$. To encode the values $v$($v_1, v2$), we need to know in advance the search space of $v$($v_1, v2$), which are chosen as quantiles in our implementation. Thus, we also need to encode the which form the literal is, which cost $L_{num\_vals} = 1$ bit. 
+
+The number of candidate values (quantiles) for each numeric feature variable is a hyper-parameter, which we argue should be chosen based on the task at hand: it should be large enough from the perspective of predictive performance, while at the same time the prior knowledge on what is useful for interpreting the rules, as well as the computational budget, should also be taken into account in practice. 
+
+Assume the number of candidate split points for a given feature is $K_{val}$, before calculating the code length needed to encode the numerical split point, we need to count the ``valid" candidate cut points by excluding the split points that will result in a rule with coverage equal to 0. We denote the number of such ``valid" candidate cut points as $K'_{val}$, and further denote the code length needed as $L_{vals}$. Depending on whether the literal contains one or two splits, $L_{vals}$ is either
+\begin{equation} \label{eq:l_val_1}
+	L_{vals} = \log_2 {K'_{val}} + L_{num\_vals} + L_{operator}, \text{or}
+\end{equation}
+\begin{equation}
+	L_{vals} = \log_2 {K'_{val} \choose 2} + L_{num\_vals}, 
+\end{equation}
+since for the former case we also need to encode the operator in the literal, i.e., ``$\geq$" or ``$<$", which cost $L_{operator} = 1$ bit. 
+
+Note that the code length needed to encode a single rule depends on the order of encoding the literals, which is desirable because of our algorithmic approach, which will be described in Section~\ref{sec:alg}.
+
+Next, for categorical variables with $\mathcal{L}$ levels, encoding the a subset of $l$ levels requires $L_{vals} =\log_2 \mathcal{L} + \log_2 {\mathcal{L} \choose l}$ bits: the former term $\log_2 \mathcal{L}$ is needed for encoding the number $l$ itself. For simplicity, in our implementation we assume all categorical features are one-hot encoded, and hence $L_{vals} = 1$. 
+
+In conclusion, the number of bits needed for encoding an individual rule $S$, denoted as $L(S)$,
+\begin{equation}
+	L(S) = L_{num\_lit} + L_{num\_vars} + L_{vals}, 
+\end{equation}
+in which the uniform code is used at each layer. Note that $2^{-L(S)}$ can be interpreted as a prior probability mass for $S$ among all possible individual rules. 
+
+\noindent \textbf{Encoding the rule set. }
+Given a rule set $\ruleset$ with $K$ rules, the total bits needed to encode $\ruleset$ is 
+\begin{equation}
+	L(M) = L_{rissanen}(K) + \sum_{i = 1}^K L(S) - \log_2(K!), 
+\end{equation}
+in which the last term is to reduce the redundancy caused by the fact that the order of the rules in a rule set does not matter. That is, the prior probability of the set of rules $\{S_1, ..., S_K\}$, conditioned on the fixed $K$, can be defined as 
+\begin{equation}
+	P(\{S_1, ..., S_K\}) = \sum \prod_{i = 1}^K P(S_i) = (K!) \prod_{i = 1}^K P(S_i), 
+\end{equation}
+in which $P(S_i) = 2^{-L(S_i)}$ is the prior probability of each individual rule, and the sum goes over all permutations of $\{S_1, ..., S_K\}$. 
+
+
+% To encode the rule set, we need to encode the following: 1) the number of rules, and 2) the number literals for each rule, as well as the literals themselves. 
+% 
+% To encode the number of rules in our rule set, we use 
+ 
+ 
+% we encode each rule one at a time. Then, for each rule, we need to sequentially encode all of its conditions. Assume the features are $d$-dimensional, we firstly need to encode which dimension a rule condition, e.g., $X_j \in R_j$ is on, which costs $\log d$ bits. Next, we need to encode $R_j$ explicitly, which we discuss respectively for quantitative and categorical variables.
+%
+% If $X_j$ is categorical and has $c_j$ unique values, $R_j$ is a set containing a subset of all unique values. To encode $R_j$, we need to firstly encode the number of unique values of $X_j$ contains, denoted as $c_j'$, which costs $\log c_j$ bits; secondly, we need to encode what the $c_j'$ unique values are, which costs $\log {c_j \choose c_j'}$ bits. Thus, if we denote the bits needed in total to encode $X_j \in R_j$ as $l(X_j \in R_j)$, $l(X_j \in R_j) = \log d + \log c_j + \log {c_j \choose c_j'}$. 
+%
+% Then, if $X_j$ is quantitative, we firstly need to choose the candidate cut points for $X_j$. Common choices include equal binning cut and quantile cut into $m$ bins, where $m$ is a user-specified parameter. In practice, $m$ can be chose based on the computational budget and the granularity that is useful for the task at hand. To encode $X_j \in R_j$, we need to encode one or two cut points, respectively for the form $X_j \leq c$ (or `$>$') and $c_1 < X_j \leq c_2$. The cost of bits to encode an individual cut point $c$ is $\log {m-1 \choose c}$, and to encode `$\leq$' or `$>$' costs 1 bit. Thus, to encode $X_j \leq c$ costs $l(X_j \leq c) = \log d + \log {l-1 \choose c} + 1$ bits and the same for $X_j > c$, and to encode $c_1 < X_j \leq c_2$ costs $l(c_1< X_j \leq c_2) = 2(\log d + \log {l-1 \choose c} + 1)$ bits. 
+%
+% In summary, the code length needed to encode $\ruleset$ is 
+% \begin{equation}
+% 	L(\ruleset) = \sum_{S \in \ruleset} L(S) = \sum_{S \in \ruleset} \sum_{k=1}^{len(S)} l(C_k) \, ,
+% \end{equation}
+% where $len(S)$ is the number of conditions in rule S, and $l(C_k)$ is the number of bits needed to encode the condition. 
+% 
+%Finally, we can formally define the optimal rule set $\ruleset^*$ as
+%\begin{equation}
+%    \ruleset^* = \arg \min_{\ruleset} -\log_2 P^{apprNML}_{\ruleset}(Y^n =y^n | X^n=x^n) + L(M).
+%\end{equation}
  
 % Thus, the final MDL model selection score, denoted as $\mathcal{F}(y^n, \ruleset|x^n)$, is the sum of the minus-log-NML distribution and the code length of the model, i.e., 
 % \begin{equation} \label{eq:MDL_score}
