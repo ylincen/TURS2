@@ -72,7 +72,7 @@ We defer the proofs of the two propositions to the Appendix.
 %       \sum_{y^n} P_{\theta^*(y^n|x^n)}(y^n|x^n) ={\sum_{G \in {2 ^ \ruleset}}} {\sum_{y^{|G|}}} P_{\theta_G} (y^{|G|}|x^{|G|})
 % \end{equation}
 
- \subsection{Code length of model and final optimization score}
+ \subsection{Code length of model and final optimization score} \label{subsec:code_model}
 To obtain the final MDL based score, we now describe how to calculate the code length of model $L(\ruleset)$. The code length needed to encode the model depends on the encoding scheme we choose. Given the Kraft's inequality~\citep{grunwald2007minimum}, this can be practically treated as putting prior distributions on the model class. We describe the encoding scheme in a hierarchical manner due to the complexity of the model class. 
 
 \noindent \textbf{Integer code for the number of rules.} 

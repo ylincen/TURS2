@@ -1,5 +1,13 @@
 \input{data_info_table.tex} 
 \section{Experiments} \label{sec:exp}
+We benchmark our algorithm TURS on real-world datasets to empirically study the following research questions: 
+\begin{enumerate}
+     \vspace{-0.2cm}\item Can TURS achieve competitive classification performance with our carefully designed heuristics?
+     \vspace{-0.2cm}\item Can TURS learn rules that can be empirically treated as \emph{truly unordered}? 
+     \vspace{-0.2cm}\item Can TURS learn rules with class probability estimates that generalizes well to unseen (test) instances? That is, are the class probability estimates from the rules induced by TURS trustworthy for domain experts?
+     \vspace{-0.2cm}\item What is the model complexity of the rule set model induced by TURS, given that interpretability is the core advantage of rule-based models?
+\end{enumerate}
+
 \subsection{Setup}
 \textbf{Datasets.} We conduct an extensive experiments with 31 datasets, summarized in Table~\ref{table:data_info}. Our multi-class datasets are from the UCI repository, while the binary-class datasets are from both the UCI repository and the ADBench Github repository \citep{han2022adbench}. The latter is a benchmark toolbox for anomaly detection (including imbalanced classification), hence we include it to have both balanced and imbalanced binary datasets.
 
@@ -98,8 +106,17 @@ Further, to illustrate the differences between the number of literals across all
 
 \subsection{Ablation study: local constraint}
 \begin{table}[ht]
-\small\centering\begin{tabular}{llllll}  \hlineConstraint & \# rules & rule length & ROC-AUC & MDL score & train/test prob. diff. \\   \hlineNo & 12.48($\pm$1.56) & 5.597($\pm$0.42) & 0.722($\pm$0.02) & 2191.189($\pm$65.91) & 0.049($\pm$0.01) \\   Yes & 1($\pm$0) & 1($\pm$0) & 0.724($\pm$0.01) & 2050.087($\pm$68.88) & 0.007($\pm$0) \\    \hline\end{tabular}
-\caption{Results of ablation study on whether to use the local constraint. We report the mean ($\pm$ standard deviation) over $100$ repetitions. } \label{table:ablation_simu}\end{table}
+\small
+\centering
+\begin{tabular}{llllll}
+  \hline
+Constraint & \# rules & rule length & ROC-AUC & MDL score & train/test prob. diff. \\ 
+  \hline
+No & 12.48($\pm$1.56) & 5.597($\pm$0.42) & 0.722($\pm$0.02) & 2191.189($\pm$65.91) & 0.049($\pm$0.01) \\ 
+  Yes & 1($\pm$0) & 1($\pm$0) & 0.724($\pm$0.01) & 2050.087($\pm$68.88) & 0.007($\pm$0) \\ 
+   \hline\end{tabular}
+\caption{Results of ablation study on whether to use the local constraint. We report the mean ($\pm$ standard deviation) over $100$ repetitions. } \label{table:ablation_simu}
+\end{table}
 \begin{figure}[ht]
 	\includegraphics[width=\textwidth]{ablation_local_constraint}
 	\caption{The process of rules being added to the rule set, with and without the local constraint heuristics, using the first  dataset among the 100 simulated datasets. Each point represent the status when after a single rule is added, with x-axis representing the coverage of the (potentially incomplete) rule set after adding this rule, and y-axis representing the MDL-based score. } \label{fig:ablation_simulation}
