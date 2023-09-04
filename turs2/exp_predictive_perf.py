@@ -175,7 +175,6 @@ def calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold
                "logloss_train": logloss_train, "logloss_test": logloss_test,
                "runtime": end_time - start_time,
                "overlap_perc": overlap_percentage, "random_picking_roc_auc": random_picking_roc_auc,
-               "random_picking_pr_auc":random_picking_pr_auc,
                "random_picking_logloss":random_picking_logloss}
     return exp_res
 

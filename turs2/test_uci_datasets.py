@@ -36,7 +36,7 @@ np.seterr(all='raise')
 # data_given = "tic-tac-toe"
 # data_given = "contracept"
 # data_given = "diabetes"
-data_given = "anuran"
+data_given = "iris"
 
 datasets_without_header_row = ["chess", "iris", "waveform", "backnote", "contracept", "ionosphere",
                                "magic", "car", "tic-tac-toe", "wine"]
@@ -109,12 +109,9 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
             num_candidate_cuts=20, max_num_rules=500, max_grow_iter=500, num_class_as_given=None,
             beam_width=10,
             log_learning_process=False,
-            dataset_name=None, X_test=None, y_test=None,
-            rf_assist=False, rf_oob_decision_function=None,
+            dataset_name=None,
             feature_names=["X" + str(i) for i in range(X.shape[1])],
-            beamsearch_positive_gain_only=False, beamsearch_normalized_gain_must_increase_comparing_rulebase=False,
-            beamsearch_stopping_when_best_normalized_gain_decrease=False,
-            validity_check="either", rerun_on_invalid=False, rerun_positive_control=False
+            validity_check="either"
         )
         data_info = DataInfo(X=X_train, y=y_train, beam_width=1, alg_config=alg_config)
 
@@ -190,11 +187,7 @@ for data_name in datasets_without_header_row + datasets_with_header_row:
                    "runtime": end_time - start_time}
         exp_res_alldata.append(exp_res)
     exp_res_df = pd.DataFrame(exp_res_alldata)
-    if data_given is None:
-        res_file_name = "./" + date_and_time + "_uci_datasets_res.csv"
-    else:
-        res_file_name = "./" + date_and_time + "_" + data_given + "_uci_datasets_res.csv"
-    # exp_res_df.to_csv(res_file_name, index=False)
+
 
 print("ROC AUC mean: ", np.mean(exp_res_df["roc_auc_test"]))
 print(exp_res)
