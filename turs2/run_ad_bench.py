@@ -1,11 +1,15 @@
 import sys
+import os
 
-# for mac local
-sys.path.extend(['/Users/yanglincen/projects/TURS'])
-sys.path.extend(['/Users/yanglincen/projects/TURS/turs2'])
-# for DSlab server:
-sys.path.extend(['/home/yangl3/projects/turs'])
-sys.path.extend(['/home/yangl3/projects/turs/turs2'])
+current_dir = os.getcwd()
+sys.path.extend([current_dir + "/turs2/"])
+
+# # for mac local
+# sys.path.extend(['/Users/yanglincen/projects/TURS'])
+# sys.path.extend(['/Users/yanglincen/projects/TURS/turs2'])
+# # for DSlab server:
+# sys.path.extend(['/home/yangl3/projects/turs'])
+# sys.path.extend(['/home/yangl3/projects/turs/turs2'])
 
 import numpy as np
 import pandas as pd
@@ -35,7 +39,6 @@ np.seterr(all='raise')
 exp_res_alldata = []
 date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-not_use_excl_ = True
 if len(sys.argv) == 1:
     data_name = "14_glass.npz"
 else:
@@ -64,8 +67,7 @@ for fold, (train_index, test_index) in enumerate(skf.split(X, y)):
         feature_names=["X" + str(i) for i in range(X.shape[1])],
         validity_check="either"
     )
-    data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config,
-                         not_use_excl_=not_use_excl_)
+    data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config)
 
     data_encoding = NMLencoding(data_info)
     model_encoding = ModelEncodingDependingOnData(data_info)
