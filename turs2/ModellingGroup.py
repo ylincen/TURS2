@@ -3,6 +3,11 @@ from turs2.utils_calculating_cl import *
 
 
 class ModellingGroup:
+    """
+    A ModellingGroup object is a group of rules that are used for modelling, which we specifically use
+    for handling the "overlap" among rules. When two rules overlap, we use the "union" to model the "intersection",
+    which is the key for only allowing rules with similar probabilistic outputs to overlap.
+    """
     def __init__(self, data_info, bool_cover, bool_use_for_model, rules_involved, prob_model, prob_cover):
         self.data_info = data_info
         self.bool_cover = bool_cover  # intersection of rules
@@ -16,7 +21,7 @@ class ModellingGroup:
         self.prob_cover = prob_cover
         self.negloglike = -self.cover_count * np.sum(prob_cover[prob_model != 0] * np.log2(prob_model[prob_model != 0]))
 
-    def evaluate_rule_approximate(self, indices):
+    def evaluate_rule_with_no_updating(self, indices):
         """
         Approximately evaluate the neg_log_likelihood when growing the rule.
         indices: the indices after the growth if we were to grow this rule
@@ -34,12 +39,6 @@ class ModellingGroup:
         else:
             new_prob_cover = calc_probs(self.data_info.target[new_bool_cover], self.data_info.num_class)
 
-            # The probability of the intersection part is approximately evaluated as the weighted average
-            # weighted_p = (
-            #         (
-            #                 self.use_for_model_count * self.prob_model + rule_prob_incl * len(indices)
-            #         ) / (len(indices) + self.use_for_model_count)
-            # )
             weighted_p = calc_probs(self.data_info.target[np.bitwise_or(rule_cover, self.bool_model)], self.data_info.num_class)
             negloglike_rule_and_mg = (
                     -new_cover_count *

@@ -23,8 +23,8 @@ class NMLencoding(DataEncoding):
         self.allrules_regret = 0
 
     def update_ruleset_and_get_cl_data_ruleset_after_adding_rule(self, ruleset, rule):
-        ruleset.update_else_rule(rule)
-        ruleset.elserule_total_cl = self.get_cl_data_elserule(ruleset)
+        ruleset.update_else_rule(rule)  # update Ruleset object's attributes w.r.t the information of the else-rule
+        ruleset.elserule_total_cl = self.get_cl_data_elserule(ruleset)  # else-rule's cl_data: negloglike + regret
 
         allrules_negloglike_except_elserule = ruleset.get_negloglike_all_modelling_groups(rule)
         allrules_regret = np.sum([regret(r.coverage, ruleset.data_info.num_class) for r in ruleset.rules])
@@ -38,13 +38,17 @@ class NMLencoding(DataEncoding):
 
     def get_cl_data_elserule(self, ruleset):
         p = self.calc_probs(self.data_info.target[ruleset.uncovered_indices])
+
+        # Because of this below line of code, this function needs to be called after updating the ruleset's attributes
         coverage = len(ruleset.uncovered_indices)
+
         negloglike_rule = -coverage * np.sum(np.log2(p[p != 0]) * p[p != 0])
         reg = regret(coverage, self.data_info.num_class)
         return negloglike_rule + reg
 
     def get_cl_data_excl(self, ruleset, rule, bool):
         """
+        Calculating cl_data if we add the rule to the ruleset;
         ruleset: Ruleset object
         rule: a Rule object, so we are calculating the cl_data with ruleset + rule
         bool: a boolean array indicating which indices of the rule's cover is used (use for rule growth)
@@ -76,7 +80,7 @@ class NMLencoding(DataEncoding):
                                    dtype=float)  # "both" in the name is to emphasize that this is the overlap of both the rule and a modelling_group
         for i, modeling_group in enumerate(modelling_groups):
             # Note: both_negloglike[i] represents negloglike(modelling_group \setdiff rule) + negloglike(modelling_Group \and rule) # noqa
-            both_negloglike[i] = modeling_group.evaluate_rule_approximate(indices=rule.indices[incl_bi_array])
+            both_negloglike[i] = modeling_group.evaluate_rule_with_no_updating(indices=rule.indices[incl_bi_array])
 
         # the non-overlapping part for the rule
         non_overlapping_negloglike = -excl_coverage * np.sum(p_excl[p_incl != 0] * np.log2(p_incl[p_incl != 0]))
@@ -108,16 +112,5 @@ class PrequentialEncoding(DataEncoding):
         else_cl_data = calc_prequential(self.data_info.target[else_bool], self.num_class)
 
         return rule_cl_data + else_cl_data + ruleset.allrules_cl_data
-
-    def get_cl_data_incl(self, ruleset, rule, bool):
-        newrule_bool = np.zeros(ruleset.data_info.nrow, dtype=bool)
-        newrule_bool[rule.indices[bool]] = True
-
-        for mg in ruleset.modelling_groups:
-            intersection_bool = np.bitwise_and(newrule_bool, mg.cover_bool)
-            intersection_count = np.count_nonzero(intersection_bool)
-            if intersection_count == 0:
-                cl_data_both = mg.cl_data
-                # NOT FINISHED
 
 
