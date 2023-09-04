@@ -1,11 +1,8 @@
 import sys
+import os
 
-# for mac local
-sys.path.extend(['/Users/yanglincen/projects/TURS'])
-sys.path.extend(['/Users/yanglincen/projects/TURS/turs2'])
-# for DSlab server:
-sys.path.extend(['/home/yangl3/projects/turs'])
-sys.path.extend(['/home/yangl3/projects/turs/turs2'])
+current_dir = os.getcwd()
+sys.path.extend([current_dir + "/turs2/"])
 
 import numpy as np
 import pandas as pd
