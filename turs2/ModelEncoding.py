@@ -38,9 +38,6 @@ class ModelEncodingDependingOnData:
         l_two_cut[two_candi_selector] = np.log2(candidate_cuts_length[two_candi_selector]) + \
                                         np.log2(candidate_cuts_length[two_candi_selector] - 1) - np.log2(2) \
                                         + 1  # the last 1 bit is for encoding one/two cuts
-        # l_two_cut[two_candi_selector] = np.log2(candidate_cuts_length[two_candi_selector]) + \
-        #                                 np.log2(candidate_cuts_length[two_candi_selector] - 1) + 1 + 2
-                                        # the 1 bit is for encoding one/two cuts, and 2 bits for left/right for each cut
         l_cut = np.array([l_one_cut, l_two_cut])
 
         l_number_of_rules = [universal_code_integers(i) for i in range(self.max_num_rules)]
@@ -61,7 +58,7 @@ class ModelEncodingDependingOnData:
 
         return l_num_variables + l_which_variables + l_cuts
 
-    # TODO: below: cl model depending on data; above: vanilla definition of rule_cl_model
+    # Below: cl model depending on data; above: vanilla definition of rule_cl_model
     def rule_cl_model_dep(self, condition_matrix, col_orders):
         condition_count = (~np.isnan(condition_matrix[0])).astype(int) + (~np.isnan(condition_matrix[1])).astype(int)
 
@@ -100,15 +97,12 @@ class ModelEncodingDependingOnData:
         return l_num_variables + l_which_variables + l_cuts
 
     def cl_model_after_growing_rule_on_icol(self, rule, ruleset, icol, cut_option):
-        # TODO: I think this block is not used anymore, but let's see what happens when tests on more datasets
         # TODO: i.e., "if rule is None" will never be true;
         if rule is None:  # calculate the cl_model when no new rule is added to ruleset
             l_num_rules = universal_code_integers(len(ruleset.rules))
 
-            # TODO: don't forget here
+            # DON'T FORGET HERE: the redundancy of rule orders
             cl_redundancy_rule_orders = math.lgamma(len(ruleset.rules) + 1) / np.log(2)
-            # cl_redundancy_rule_orders = 0
-
             return l_num_rules + ruleset.allrules_cl_model - cl_redundancy_rule_orders
 
         condition_count = np.array(rule.condition_count)
@@ -119,13 +113,13 @@ class ModelEncodingDependingOnData:
         if icol is not None and cut_option is not None:
             if np.isnan(rule.condition_matrix[cut_option, icol]):
                 condition_count[icol] += 1
-                condition_matrix[0, icol] = np.inf  # TODO: Note that this is just a place holder, to make this position not equal to np.nan; Need to make this more readable later.
+                # Note that this is just a place holder, to make this position not equal to np.nan; Need to make this more readable later.
+                condition_matrix[0, icol] = np.inf
 
             if icol not in icols_in_order:
                 icols_in_order = icols_in_order + [icol]
 
-        # TODO: note that here is a choice based on the assumption that we can use $X$ to encode the model;
-        # cl_model_rule_after_growing = self.rule_cl_model(condition_count)
+        # note that here is a choice based on the assumption that we can use $X$ to encode the model;
         cl_model_rule_after_growing = self.rule_cl_model_dep(condition_matrix, icols_in_order)
 
         if icol is None and cut_option is None:
