@@ -1,6 +1,11 @@
 import numpy as np
 
-class GrowInfoBeam():
+class GrowInfoBeam:
+    """
+    This class is used to store the information of a grow step in the beam search.
+    It stores the information of the grow step, the gain of the grow step, and the coverage of the grow step.
+    Specifically, we check exclude the growth result if some other growth result with the same "cover" is already in the beam.
+    """
     def __init__(self, width):
         self.infos = []
         self.gains = []
@@ -41,6 +46,10 @@ class GrowInfoBeam():
                     self.coverage_list.append(info_coverage)
 
 class DiverseCovBeam:
+    """
+    This class is used to store the information of a grow step in the beam search, with the coverage percentage as the key.
+    We use it to control the diveresity of the coverage of the growth results in the beam.
+    """
     def __init__(self, width):
         self.coverage_percentage = np.linspace(0, 1, width + 1)[1:]
         self.infos = {}
