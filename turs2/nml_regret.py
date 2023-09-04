@@ -53,11 +53,6 @@ def regretPrecal(M: cython.long, K: cython.long) -> cython.double:
         sum = binaryRegretPrecal(M)
         old_sum = 1.0
         if K > 2:
-            # for(int j = 3; j <= K; j++){
-            #     double new_sum = sum + (M * old_sum) / ((double)j - 2.0);
-            #     old_sum = sum;
-            #     sum = new_sum;
-            # }
             for j in range(3, K + 1):
                 new_sum = sum + (M * old_sum) / (j - 2.0)
                 old_sum = sum
