@@ -159,18 +159,9 @@ def calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold
         calculate_roc_auc_and_logloss(ruleset=ruleset, y_test=y_test, y_train=y_train,
                                       y_pred_prob=res, y_pred_prob_train=res_train)
 
-    pr_auc_test, pr_auc_train, Brier_test, Brier_train = \
-        calculate_brier_and_prauc(ruleset=ruleset, y_test=y_test, y_train=y_train,
-                                  y_pred_prob_train=res_train, y_pred_prob=res)
-
     avg_rule_length = calculate_rule_lengths(ruleset)
 
     train_test_prob_diff = calculate_train_test_prob_diff(ruleset, X_test, y_test)
-
-    rules_p_value_permutations, rules_p_value_chi2 = significance_rules(ruleset, X_test, y_test, 500)
-    insig_res_overlaps = insignificance_overlap_all(ruleset, X_test, y_test, 500)
-
-    avg_num_literals_for_each_datapoint = explainability_analysis(ruleset, X_test)  # excluding else_rule
 
     overlap_percentage = calculate_overlap_percentage(ruleset, X_test)
 
@@ -181,16 +172,10 @@ def calculate_exp_res(ruleset, X_test, y_test, X_train, y_train, data_name, fold
                "data_name": data_name, "fold_index": fold, "nrow": X_train.shape[0], "ncol": X_train.shape[1],
                "num_rules": len(ruleset.rules), "avg_rule_length": avg_rule_length,
                "train_test_prob_diff": train_test_prob_diff,
-               "pr_auc_train": pr_auc_train, "pr_auc_test": pr_auc_test,
-               "Brier_train": Brier_train, "Brier_test": Brier_test,
                "logloss_train": logloss_train, "logloss_test": logloss_test,
                "runtime": end_time - start_time,
-               "rules_p_value_permutations_significance_perc": np.mean(np.array(rules_p_value_permutations) < 0.05),
-               "rules_p_value_permutations": rules_p_value_permutations,
-               "overlap_significances_perc": 1 - insig_res_overlaps["insignificance_percentage"],
-               "avg_num_literals_for_each_datapoint": avg_num_literals_for_each_datapoint,
                "overlap_perc": overlap_percentage, "random_picking_roc_auc": random_picking_roc_auc,
-               "random_picking_pr_auc":random_picking_pr_auc, "random_picking_brier_score": random_picking_brier_score,
+               "random_picking_pr_auc":random_picking_pr_auc,
                "random_picking_logloss":random_picking_logloss}
     return exp_res
 
@@ -227,12 +212,9 @@ def run_(data_name, fold_given=None):
             num_candidate_cuts=20, max_num_rules=500, max_grow_iter=500, num_class_as_given=None,
             beam_width=10,
             log_learning_process=False,
-            dataset_name=None, X_test=None, y_test=None,
-            rf_assist=False, rf_oob_decision_function=None,
+            dataset_name=None,
             feature_names=["X" + str(i) for i in range(X.shape[1])],
-            beamsearch_positive_gain_only=False, beamsearch_normalized_gain_must_increase_comparing_rulebase=False,
-            beamsearch_stopping_when_best_normalized_gain_decrease=False,
-            validity_check="either", rerun_on_invalid=False, rerun_positive_control=False
+            validity_check="either"
         )
         data_info = DataInfo(X=X_train, y=y_train, beam_width=None, alg_config=alg_config)
 
