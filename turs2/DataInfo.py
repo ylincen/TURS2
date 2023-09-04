@@ -18,11 +18,12 @@ class DataInfo:
     def __init__(self, X, y, beam_width=None, alg_config=None, not_use_excl_=False):
         if alg_config is None:
             assert beam_width is not None
+            # X_test, y_test can be useful for logging/debugging; be careful about not using it for training.
             self.alg_config = AlgConfig(
                 num_candidate_cuts=100, max_num_rules=500, max_grow_iter=200, num_class_as_given=None,
                 beam_width=beam_width,
                 log_learning_process=False,
-                dataset_name=None, X_test=None, y_test=None,  # X_test, y_test only for logging
+                dataset_name=None, X_test=None, y_test=None,
                 rf_assist=False, rf_oob_decision_function=None,
                 feature_names=["X" + str(i) for i in range(X.shape[1])],
                 beamsearch_positive_gain_only=False, beamsearch_normalized_gain_must_increase_comparing_rulebase=False,
@@ -44,7 +45,7 @@ class DataInfo:
         else:
             self.target = y
 
-        self.max_grow_iter = self.alg_config.max_grow_iter  # TODO: the name max_rule_length is misleading
+        self.max_grow_iter = self.alg_config.max_grow_iter
         self.nrow, self.ncol = X.shape[0], X.shape[1]
 
         self.cached_number_of_rules_for_cl_model = self.alg_config.max_grow_iter  # for cl_model
@@ -55,8 +56,8 @@ class DataInfo:
             self.num_class = self.alg_config.num_class_as_given
 
         self.num_candidate_cuts = self.alg_config.num_candidate_cuts
+
         # get_candidate_cuts (for NUMERIC only, CATEGORICAL features need to be one-hot-encoded)
-        # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
         self.candidate_cuts = self.candidate_cuts_quantile_mid_points(self.num_candidate_cuts)
 
         self.feature_names = self.alg_config.feature_names
@@ -108,82 +109,6 @@ class DataInfo:
                     with open(log_folder_name + "/datainfo.txt", "w") as flog:
                         flog.write(log_datainfo)
                     self.log_folder_name = log_folder_name
-
-    # def __init__(self, X, y, num_candidate_cuts, max_rule_length, feature_names, beam_width, dataset_name=None,
-    #              X_test=None, y_test=None, rf_oob_decision_=None, log_learning_process=True, num_class_given=None):
-    #
-    #     """
-    #     Meta-data for an input data
-    #     data: pandas data frame
-    #     features: feature matrix in numpy nd array
-    #     target: target variable in numpy 1d array
-    #     """
-    #     self.X_test, self.y_test = X_test, y_test
-    #     self.rf_oob_decision_ = rf_oob_decision_   # used for random-forest-assisted rule learning
-    #
-    #     if type(X) != np.ndarray:
-    #         self.features = X.to_numpy()
-    #     else:
-    #         self.features = X
-    #
-    #     if type(y) != np.ndarray:
-    #         self.target = y.to_numpy().flatten()
-    #     else:
-    #         self.target = y
-    #
-    #     self.max_rule_length = max_rule_length
-    #     self.nrow, self.ncol = X.shape[0], X.shape[1]
-    #     self.cached_number_of_rules_for_cl_model = 100  # for cl_model
-    #
-    #     # get num_class, ncol, nrow,
-    #     self.num_class = len(np.unique(self.target))
-    #     if num_class_given is not None:
-    #         self.num_class = num_class_given
-    #
-    #     self.num_candidate_cuts = num_candidate_cuts
-    #     # get_candidate_cuts (for NUMERIC only; CATEGORICAL dims will do rule.get_categorical_values)
-    #     # self.candidate_cuts = self.get_candidate_cuts_CLASSY(num_candidate_cuts)
-    #     # self.candidate_cuts = self.get_candidate_cuts(num_candidate_cuts)
-    #     # self.candidate_cuts = self.get_candidate_cuts_indep_data(num_candidate_cuts)
-    #     # self.candidate_cuts = self.get_candidate_cuts_quantile(num_candidate_cuts)
-    #     self.candidate_cuts = self.candidate_cuts_quantile_mid_points(num_candidate_cuts)
-    #
-    #     self.feature_names = feature_names
-    #     self.beam_width = beam_width
-    #
-    #     self.dataset_name = dataset_name
-    #
-    #     self.default_p = calc_probs(self.target, self.num_class)
-    #
-    #     self.log_learning_process = log_learning_process
-    #     if log_learning_process:
-    #         log_folder_name = "log_results"
-    #         if dataset_name is not None:
-    #             log_folder_name = log_folder_name + "_" + dataset_name
-    #         date_and_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    #         log_folder_name = log_folder_name + "_" + date_and_time
-    #         try:
-    #             os.makedirs(log_folder_name)
-    #             print("Directory", log_folder_name, "Created.")
-    #         except FileExistsError:
-    #             print("Directory", log_folder_name, "already exists.")
-    #
-    #         log_datainfo = "Parameters for this class: num_candidate_cuts, max_rule_length, feature_names, beam_width"
-    #         log_datainfo += "\n " + str([num_candidate_cuts, max_rule_length, feature_names, beam_width])
-    #
-    #         log_datainfo += "\n candidate cuts for each dimension: \n"
-    #         for j, v in self.candidate_cuts.items():
-    #             log_datainfo += str(self.candidate_cuts[j]) + "\n"
-    #
-    #         system_name = platform.system()
-    #         if system_name == "Windows":
-    #             with open(log_folder_name + "\\datainfo.txt", "w") as flog:
-    #                 flog.write(log_datainfo)
-    #             self.log_folder_name = log_folder_name
-    #         else:
-    #             with open(log_folder_name + "/datainfo.txt", "w") as flog:
-    #                 flog.write(log_datainfo)
-    #             self.log_folder_name = log_folder_name
 
     def get_candidate_cuts_CLASSY(self, num_candidate_cuts):
         candidate_cuts = {}
