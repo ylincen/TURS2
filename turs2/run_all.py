@@ -348,7 +348,8 @@ def main():
     parser.add_argument("--max_rules", type=int, default=500)
     parser.add_argument("--max_grow_iter", type=int, default=500)
     parser.add_argument("--validity_check", default="either")
-    parser.add_argument("--not_use_excl", action="store_true")
+    parser.add_argument("--use_aux_beam", action="store_true",
+                        help="Enable auxiliary beam (excl beam); off by default")
 
     # ablations
     parser.add_argument("--score", choices=["normalized", "absolute"], default="normalized")
@@ -358,11 +359,12 @@ def main():
                         help="Base output directory for results")
 
     args = parser.parse_args()
+    not_use_excl = not args.use_aux_beam
     BASE_RESULTS_DIR = args.out_dir
     os.makedirs(BASE_RESULTS_DIR, exist_ok=True)
 
     # output folder
-    setting_tag = f"score-{args.score}_patience-{not args.no_patience}_local-{args.validity_check}_aux-{not args.not_use_excl}"
+    setting_tag = f"score-{args.score}_patience-{not args.no_patience}_local-{args.validity_check}_aux-{args.use_aux_beam}"
     out_root = os.path.join(BASE_RESULTS_DIR, setting_tag)
     os.makedirs(out_root, exist_ok=True)
 
@@ -380,7 +382,7 @@ def main():
             max_rules=args.max_rules,
             max_grow_iter=args.max_grow_iter,
             validity_check=args.validity_check,
-            not_use_excl=args.not_use_excl,
+            not_use_excl=not_use_excl,
             score_type=args.score,
             use_patience=(not args.no_patience),
             max_runtime_first_fold=MAX_RUNTIME_FIRST_FOLD,
@@ -415,7 +417,7 @@ def main():
                 max_rules=args.max_rules,
                 max_grow_iter=args.max_grow_iter,
                 validity_check=args.validity_check,
-                not_use_excl=args.not_use_excl,
+                not_use_excl=not_use_excl,
                 score_type=args.score,
                 use_patience=(not args.no_patience),
                 max_runtime_first_fold=MAX_RUNTIME_FIRST_FOLD,
