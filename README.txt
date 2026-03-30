@@ -16,6 +16,12 @@ Install with conda (recommended, needed for numba):
   conda install -c conda-forge numba
   pip install -r requirements.txt
 
+Optional: compile nml_regret.py with Cython for a speed-up (~2-5x on regret
+computation). Requires cython and a C compiler:
+  pip install cython
+  cd turs2
+  cythonize -i nml_regret.py
+
 
 DATASETS
 --------

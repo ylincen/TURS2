@@ -2,9 +2,16 @@
 
 # This script is used to calculate the regret for multinomial model and histogram model
 # All code below are re-written based on the RCpp code from the 'SCCI' R package
+#
+# This file runs as plain Python out of the box.  When Cython is installed you
+# can optionally compile it for a speed-up (see README for instructions).
 
 from numpy import log, log2, sqrt, ceil
-import cython
+try:
+    import cython
+except ImportError:
+    import types as _types
+    cython = _types.SimpleNamespace(long=int, double=float)
 
 def regret(M: cython.long, K: cython.long) -> cython.double:
     if K > 100:

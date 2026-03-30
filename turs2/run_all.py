@@ -130,15 +130,12 @@ def run_one_dataset(
     score_type: str = "normalized",  # {"normalized","absolute"}
     use_patience: bool = True,
     max_runtime_first_fold: Optional[float] = None,
-    export_class_labels_only: bool = False,
-    export_feature_together_with_class_labels: bool=True
-):  
+):
     kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     folds = list(kf.split(X=X, y=y))
-    
+
     exp_res_all_folds = []
     overlap_res_allfolds = []
-    
 
     for fold_idx in range(n_splits):
         if fold_arg is not None and fold_idx != fold_arg:
@@ -147,44 +144,6 @@ def run_one_dataset(
         train_idx, test_idx = folds[fold_idx]
         X_train, y_train = X[train_idx], y[train_idx]
         X_test, y_test = X[test_idx], y[test_idx]
-
-        if export_class_labels_only:
-            if export_feature_together_with_class_labels:
-                split_dir = os.path.join(out_dir, "splits_with_features", dataset_name)
-                os.makedirs(split_dir, exist_ok=True)
-
-                # I keep idx + y so others can reconstruct splits reliably.
-                # If you truly want *only* y, just drop the "idx" column.
-                train_df = pd.DataFrame(X_train, columns=[f"X{i}" for i in range(X.shape[1])])
-                train_df["idx"] = train_idx
-                train_df["y"] = y_train
-
-                test_df = pd.DataFrame(X_test, columns=[f"X{i}" for i in range(X.shape[1])])
-                test_df["idx"] = test_idx
-                test_df["y"] = y_test
-
-                train_path = os.path.join(split_dir, f"fold{fold_idx}_train_labels_and_features.csv")
-                test_path = os.path.join(split_dir, f"fold{fold_idx}_test_labels_and_features.csv")
-
-                train_df.to_csv(train_path, index=False)
-                test_df.to_csv(test_path, index=False)
-            else:
-                split_dir = os.path.join(out_dir, "splits", dataset_name)
-                os.makedirs(split_dir, exist_ok=True)
-
-                # I keep idx + y so others can reconstruct splits reliably.
-                # If you truly want *only* y, just drop the "idx" column.
-                train_df = pd.DataFrame({"idx": train_idx, "y": y_train})
-                test_df = pd.DataFrame({"idx": test_idx, "y": y_test})
-
-                train_path = os.path.join(split_dir, f"fold{fold_idx}_train_labels.csv")
-                test_path = os.path.join(split_dir, f"fold{fold_idx}_test_labels.csv")
-
-                train_df.to_csv(train_path, index=False)
-                test_df.to_csv(test_path, index=False)
-
-            # skip all the heavy stuff (DataInfo, Ruleset, fit, metrics, ...)
-            continue
 
         alg_config = types.SimpleNamespace()
         alg_config.num_candidate_cuts = num_candidate_cuts
@@ -311,8 +270,7 @@ def run_one_dataset(
 
     os.makedirs(out_dir, exist_ok=True)
 
-    # If we only exported labels, there are no experiment results to save.
-    if export_class_labels_only or not exp_res_all_folds:
+    if not exp_res_all_folds:
         return pd.DataFrame(), out_dir
 
     # 1) exp_res for this dataset (all folds in one file)
@@ -354,7 +312,6 @@ def main():
     # ablations
     parser.add_argument("--score", choices=["normalized", "absolute"], default="normalized")
     parser.add_argument("--no-patience", action="store_true")
-    parser.add_argument("--export_class_labels_only", action="store_true")
     parser.add_argument("--out_dir", default="RUN_ALL_BW10_OldModelEncoding_Ablation_NormalizedGain",
                         help="Base output directory for results")
 
@@ -386,7 +343,6 @@ def main():
             score_type=args.score,
             use_patience=(not args.no_patience),
             max_runtime_first_fold=MAX_RUNTIME_FIRST_FOLD,
-            export_class_labels_only=args.export_class_labels_only,
         )
         all_dfs.append(df)
 
@@ -421,7 +377,6 @@ def main():
                 score_type=args.score,
                 use_patience=(not args.no_patience),
                 max_runtime_first_fold=MAX_RUNTIME_FIRST_FOLD,
-                export_class_labels_only=args.export_class_labels_only,
             )
             all_dfs.append(df)
 

@@ -1,7 +1,7 @@
 # This script collect functions for the experiment section of the paper
 
 import numpy as np
-from utils_predict import *
+from turs2.utils_predict import *
 
 from scipy.stats import chi2
 

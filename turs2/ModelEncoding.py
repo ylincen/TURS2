@@ -1,7 +1,7 @@
 import math
 
 import numpy as np
-from utils_modelencoding import *
+from turs2.utils_modelencoding import *
 
 
 class ModelEncodingDependingOnData:

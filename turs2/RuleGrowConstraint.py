@@ -1,8 +1,6 @@
 # This script collects functions for constraining the rule grow process, incluidng
 #   validity check (incl/excl), coverage reduction check, ...
-import sys
-
-from utils_calculating_cl import *
+from turs2.utils_calculating_cl import *
 
 
 def validity_check(rule, icol, cut):
@@ -18,7 +16,7 @@ def validity_check(rule, icol, cut):
         res_excl = check_split_validity_excl(rule, icol, cut)
         res_incl = check_split_validity(rule, icol, cut)
     else:
-        sys.exit("Error: the if-else statement should not end up here")
+        raise ValueError(f"Unknown validity_check value: {rule.data_info.alg_config.validity_check}")
     return {"res_excl": res_excl, "res_incl": res_incl}
 
 def check_split_validity(rule, icol, cut):

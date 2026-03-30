@@ -33,9 +33,10 @@ results/
 .DS_Store
 .vscode/
 
-# Compiled C extensions
-*.c.bak
+# Compiled C extensions (generated; compile nml_regret.py with Cython for speed)
+nml_regret.c
 nml_regret.cpython-*.so
+*.c.bak
 
 # Slurm
 *.out
