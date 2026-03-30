@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+pyvenv.cfg
+lib/
+lib64/
+include/
+bin/
+Scripts/
+
+# Data & results (large, generated)
+*.npz
+*.csv
+*.pkl
+*.pickle
+old_experiment_results/
+results/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+.vscode/
+
+# Compiled C extensions
+*.c.bak
+nml_regret.cpython-*.so
+
+# Slurm
+*.out
+slurm_out/
