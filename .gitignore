@@ -41,3 +41,8 @@ nml_regret.cpython-*.so
 # Slurm
 *.out
 slurm_out/
+
+# Folders
+no_use_scripts_*/
+paper_jmlr/
+
