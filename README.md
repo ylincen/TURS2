@@ -58,7 +58,7 @@ turs2/
   DataEncoding.py          ← NML data encoding
   ModelEncoding.py         ← MDL model encoding
   nml_regret.py            ← NML regret (Cython-compilable pure Python)
-  exp_predictive_perf.py   ← evaluation: ROC-AUC, Brier, overlap analysis
+  exp_predictive_perf.py   ← evaluation: ROC-AUC, overlap analysis
   exp_utils.py             ← cover matrix, random-picking, overlap metrics
 datasets/                  ← UCI CSV files (not included, see Section 5)
 tests/
@@ -195,10 +195,6 @@ The table below maps each CSV column to the corresponding paper result.
 | Column | Description |
 |---|---|
 | `roc_auc_test` | ROC-AUC on test fold. For multi-class, macro one-vs-rest. Average over folds → **Table 3**. |
-| `pr_auc_test` | PR-AUC on test fold. |
-| `Brier_test` | Brier score on test fold. |
-| `logloss_test` | Log-loss on test fold. |
-| `accuracy_test` | Accuracy on test fold. |
 
 #### Model complexity (Tables 4–6)
 
@@ -230,9 +226,6 @@ The table below maps each CSV column to the corresponding paper result.
 | `overlap_prob_diffs_mean` | Mean absolute difference between class probabilities of co-covering rules, averaged over all unique overlap groups (training data). |
 | `overlap_prob_diffs_max` | Max absolute difference between class probabilities of co-covering rules (training data). **Lower = higher overlap consistency.** |
 | `random_picking_roc_auc` | ROC-AUC when predicting by randomly selecting one of the applicable covering rules (averaged over 10 seeds). Close to `roc_auc_test` → high overlap consistency. |
-| `random_picking_pr_auc` | PR-AUC under random rule picking. |
-| `random_picking_brier_score` | Brier score under random rule picking. |
-| `random_picking_logloss` | Log-loss under random rule picking. |
 
 The `<dataset>_overlap.csv` file (written for the default setting only) stores
 per-instance individual rule probability vectors for all test instances, enabling
