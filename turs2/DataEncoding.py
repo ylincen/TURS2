@@ -1,7 +1,6 @@
 import numpy as np
 from functools import partial
 
-import nml_regret
 from turs2.nml_regret import *
 from turs2.utils_calculating_cl import *
 from turs2.ModellingGroup import *
@@ -95,29 +94,5 @@ class NMLencoding(DataEncoding):
                   (non_overlapping_negloglike + rule_regret)
 
         return cl_data
-
-
-class PrequentialEncoding(DataEncoding):
-    def get_cl_data_excl(self, ruleset, rule, bool):
-        rule_cl_data = calc_prequential(rule.target_excl_overlap[bool], self.num_class)
-
-        else_bool = np.zeros(self.data_info.nrow, dtype=bool)
-        else_bool[ruleset.uncovered_indices] = True
-        else_bool[rule.indices_excl_overlap[bool]] = False
-
-        else_cl_data = calc_prequential(self.data_info.target[else_bool], self.num_class)
-
-        return rule_cl_data + else_cl_data + ruleset.allrules_cl_data
-
-    def get_cl_data_incl(self, ruleset, rule, bool):
-        newrule_bool = np.zeros(ruleset.data_info.nrow, dtype=bool)
-        newrule_bool[rule.indices[bool]] = True
-
-        for mg in ruleset.modelling_groups:
-            intersection_bool = np.bitwise_and(newrule_bool, mg.cover_bool)
-            intersection_count = np.count_nonzero(intersection_bool)
-            if intersection_count == 0:
-                cl_data_both = mg.cl_data
-                # NOT FINISHED
 
 

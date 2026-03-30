@@ -1,19 +1,7 @@
-import sys
-
 import numpy as np
-
-# sys.path.extend(['~/projects/TURS'])
-sys.path.extend(['/Users/yanglincen/projects/TURS'])
-
 import os
-import copy
-import time
-
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, OneHotEncoder
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import roc_auc_score, precision_recall_curve, f1_score, auc
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import StratifiedKFold
 from turs2.Ruleset import *
 from turs2.DataEncoding import *
 

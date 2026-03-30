@@ -32,48 +32,6 @@ def make_rule_from_grow_info(grow_info):
                 icols_in_order=new_icols_in_order)
     return rule
 
-# def extract_rules_from_beams(beams):
-#     # beams: a list of beam
-#     rules = []
-#     coverage_list = []
-#     for beam in beams:
-#         for info in beam.infos:
-#             if info["coverage_incl"] in coverage_list:
-#                 index_equal = coverage_list.index(info["coverage_incl"])
-#                 if np.all(rules[index_equal].indices == info["_rule"].indices[info["incl_bi_array"]]):
-#                     continue
-
-#             r = make_rule_from_grow_info(grow_info=info)
-#             rules.append(r)
-#             coverage_list.append(r.coverage)
-#     return rules
-
-# def extract_rules_from_beams(beams):
-#     rules = []
-#     seen = set()  # keys of covered-instance masks
-
-#     for beam in beams:
-#         for info in getattr(beam, "infos", {}).values():
-#             if info is None:
-#                 continue
-
-#             # Key BEFORE constructing the rule (or after, either works)
-#             idxs = info["_rule"].indices[info["incl_bi_array"]]
-#             # Option A: by indices tuple
-#             key = ("incl", tuple(map(int, idxs)))
-#             if key in seen:
-#                 continue
-
-#             r = make_rule_from_grow_info(info)
-
-#             # Option B (even safer): by boolean mask bytes
-#             # key = ("incl", r.bool_array.tobytes())
-
-#             rules.append(r)
-#             seen.add(key)
-
-#     return rules
-
 def extract_rules_from_beams(beams):
     rules = []
     seen = set()  # dedupe on covered rows
@@ -290,55 +248,6 @@ class Ruleset:
                 continue
             final_info_excl.append(group[np.argmax([info["normalized_gain_excl"] for info in group])])
         return final_info_incl, final_info_excl
-    # def combine_beams(self, incl_beam_list, excl_beam_list):
-    #     use_patience = getattr(self.data_info.alg_config, "use_patience", True)
-
-    #     # collect infos
-    #     infos_incl = [info for b in incl_beam_list for info in b.infos.values() if info is not None]
-    #     infos_excl = [info for b in excl_beam_list for info in b.infos.values() if info is not None]
-
-    #     # choose top-k either by grouping (patience) or global
-    #     def select_infos(infos, is_incl=True):
-    #         if not infos:
-    #             return []
-    #         if use_patience:
-    #             # group by coverage, pick best per group (diversification)
-    #             covs = [info["coverage_incl" if is_incl else "coverage_excl"] for info in infos]
-    #             order = np.argsort(covs)
-    #             sorted_infos = [infos[i] for i in order]
-    #             groups = np.array_split(sorted_infos, self.data_info.beam_width)
-    #             selected = []
-    #             for g in groups:
-    #                 if len(g) == 0: 
-    #                     continue
-    #                 if is_incl:
-    #                     best = max(g, key=lambda info: self._incl_info_score(info))
-    #                 else:
-    #                     best = max(g, key=lambda info: self._excl_info_score(info))
-    #                 selected.append(best)
-    #             return selected
-    #         else:
-    #             # purely top-k by score
-    #             if is_incl:
-    #                 scored = sorted(infos, key=lambda info: self._incl_info_score(info), reverse=True)
-    #             else:
-    #                 scored = sorted(infos, key=lambda info: self._excl_info_score(info), reverse=True)
-    #             return scored[: self.data_info.beam_width]
-
-    #     final_info_incl = select_infos(infos_incl, is_incl=True)
-    #     final_info_excl = select_infos(infos_excl, is_incl=False)
-
-    #     # pack into GrowInfoBeam with correct scores
-    #     final_incl_beam = GrowInfoBeam(width=self.data_info.beam_width)
-    #     for info in final_info_incl:
-    #         final_incl_beam.update(info, self._incl_info_score(info))
-
-    #     final_excl_beam = GrowInfoBeam(width=self.data_info.beam_width)
-    #     for info in final_info_excl:
-    #         final_excl_beam.update(info, self._excl_info_score(info))
-
-    #     return final_incl_beam, final_excl_beam
-
 
 
     def search_next_rule(self, k_consecutively, rule_given=None, constraints=None):
@@ -371,9 +280,6 @@ class Ruleset:
                 final_incl_beam.update(info, info["normalized_gain_incl"])
             for info in final_info_excl:
                 final_excl_beam.update(info, info["normalized_gain_excl"])
-            # final_incl_beam, final_excl_beam = self.combine_beams(incl_beam_list, excl_beam_list)
-
-
             if len(final_incl_beam.gains) == 0 and len(final_excl_beam.gains) == 0:
                 break
 
@@ -395,8 +301,6 @@ class Ruleset:
                 rules_candidates.extend(rules_for_next_iter)
 
         which_best_ = np.argmax([self._rule_final_score(r) for r in rules_candidates])
-        # which_best_ = np.argmax([r.incl_gain_per_excl_coverage for r in rules_candidates])
-        # print("number of iterations: ", i)
 
         return rules_candidates[which_best_]
 
@@ -457,8 +361,7 @@ class Ruleset:
 
             for rule in previous_excl_beam.rules:
                 excl_grow_res = rule.grow_rulelist()
-                current_excl_beam.update(excl_grow_res,
-                                         excl_grow_res.excl_normalized_gain)  # TODO: whether to constrain all excl_grow_res have positive normalized gain?
+                current_excl_beam.update(excl_grow_res, excl_grow_res.excl_normalized_gain)
                 if excl_grow_res.excl_normalized_gain > rule_to_add.excl_normalized_gain:
                     rule_to_add = excl_grow_res
 

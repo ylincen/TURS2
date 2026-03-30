@@ -1,15 +1,55 @@
-Algorithm & Experiment code for the paper:
-Yang, L & van Leeuwen, M Truly Unordered Probabilistic Rule Sets for Multi-class Classification. In: Proceedings of the European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases (ECMLPKDD 2022), Springer, 2022.
+TURS: Truly Unordered Probabilistic Rule Sets for Multi-class Classification
+=============================================================================
 
-All packages required are in requirement.txt. I use Python 3.8.10 for developing all TURS code. 
+Code for the paper:
+  Yang, L. & van Leeuwen, M. "Truly Unordered Probabilistic Rule Sets for
+  Multi-class Classification." ECMLPKDD 2022. Springer.
 
-To get the AUC of TURS (for Experiment 1), and Rule lengths and Number of Rules (for Experiment 3), 
-run 'python3 run_turs_given_data.py DATA_NAME FOLD_NUMBER' in the command line. 
-E.g., 'python3 run_turs_given_data.py iris 1' runs the dataset iris for the 1st fold of the 10-fold cross-validation. 
-The results will be stored in the folder './res/'; SO CREATE A FOLDER called "./res/" locally in case you want to run the experiments.
 
-To get the AUC of TURS WITHOUT using the surrogate score (for Experiment 2), 
-change the 'use_surrogate_score=True' in findsubgroup_parrelle.py to 'use_surrogate_score=False'. 
-There are two places that need to be changed for this in this script, on Line 26 and Line 64 respectively.  
+REQUIREMENTS
+------------
+Python 3.9+ with the packages listed in requirements.txt.
 
-Feel free to contact me for any questions or issues via l.yang at liacs dot leidenuniv dot nl; 
+Install with conda (recommended, needed for numba):
+  conda create -n turs python=3.9
+  conda activate turs
+  conda install -c conda-forge numba
+  pip install -r requirements.txt
+
+
+DATASETS
+--------
+UCI datasets (CSV format, one per file) should be placed in:
+  ./datasets/
+
+ADBench datasets (NPZ format) should be placed in:
+  ../ADbench_datasets_Classical/    (or pass --adbench_dir to override)
+
+
+RUNNING EXPERIMENTS
+-------------------
+The main entry point is turs2/run_all.py.
+
+Run a single dataset (UCI):
+  python turs2/run_all.py --suite uci --dataset iris --splits 5 --seed 2
+
+Run a single dataset (ADBench):
+  python turs2/run_all.py --suite adbench --dataset 26_optdigits.npz --splits 5 --seed 2
+
+Run all datasets in parallel (edit EXPERIMENTS in run_all.sh first):
+  bash turs2/run_all.sh
+
+Key options:
+  --out_dir DIR        Output directory for results (default: ./results)
+  --score {normalized,absolute}  Scoring mode for beam search (default: normalized)
+  --use_aux_beam       Enable the auxiliary (excl) beam (off by default)
+  --validity_check {either,none}  Validity check mode (default: either)
+  --beam_width N       Beam width (default: 10)
+  --splits N           Number of CV folds (default: 5)
+  --seed N             Random seed (default: 2)
+
+
+CONTACT
+-------
+For questions or issues, please open a GitHub issue or contact:
+  l.yang at liacs dot leidenuniv dot nl

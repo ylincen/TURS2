@@ -1,9 +1,9 @@
 from numba import njit
 import numpy as np
 import scipy.special
-from constant import *
+from turs2.constant import *
 import random
-from nml_regret import *
+from turs2.nml_regret import *
 
 
 @njit

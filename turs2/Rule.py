@@ -1,6 +1,4 @@
 import math
-import platform
-import sys
 import numpy as np
 from functools import partial
 
@@ -66,70 +64,6 @@ class Rule:
                 self.incl_gain_per_excl_coverage, self.excl_gain_per_excl_coverage = np.nan, np.nan
             else:
                 self.incl_gain_per_excl_coverage, self.excl_gain_per_excl_coverage = incl_mdl_gain / self.coverage_excl, excl_mdl_gain / self.coverage_excl
-
-    def new_rule_after_deleting_condition(self, icols, new_ruleset):
-        """
-        new_ruleset: the ruleset after deleting this rule, for calculating the cl_data aftering adding the new_rule back
-        icols: variables (icols) to delete in self
-        """
-        condition_matrix = np.array(self.condition_matrix)
-        condition_count = np.array(self.condition_count)
-        for icol in icols:
-            if self.condition_count[icol] == 0:
-                # print( "The " + str(icol) + "th feature is not in this rule!"  )
-                continue
-            else:
-                condition_matrix[:, icol] = np.nan
-                condition_count[icol] = 0
-
-        # initilize the new rule
-        new_rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=new_ruleset.uncovered_indices,
-                        data_info=self.data_info, rule_base=None,
-                        condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                        ruleset=new_ruleset, excl_mdl_gain=-np.inf, incl_mdl_gain=-np.inf,
-                        icols_in_order=[ic for ic in self.icols_in_order if ic not in icols])
-
-        # grow the rule by following the condition_matrix
-        for icol in new_rule.icols_in_order:
-            left_cut, right_cut = condition_matrix[0, icol], condition_matrix[1, icol]
-
-            if not np.isnan(left_cut):
-                local_features = self.data_info.features[new_rule.indices, :]
-                local_features_excl = self.data_info.features[new_rule.indices_excl_overlap, :]
-                incl_bi_array = local_features[:, icol] < left_cut
-                excl_bi_array = local_features_excl[:, icol] < left_cut
-
-                grow_info = store_grow_info(excl_bi_array=excl_bi_array, incl_bi_array=incl_bi_array, icol=icol,
-                                            cut=left_cut, cut_option=LEFT_CUT,
-                                            incl_mdl_gain=np.nan, excl_mdl_gain=np.nan,
-                                            coverage_excl=np.count_nonzero(excl_bi_array), coverage_incl=np.count_nonzero(incl_bi_array))
-                new_rule = new_rule.make_rule_from_grow_info(grow_info=grow_info)
-
-            if not np.isnan(right_cut):
-                local_features = self.data_info.features[new_rule.indices, :]
-                local_features_excl = self.data_info.features[new_rule.indices_excl_overlap, :]
-
-                incl_bi_array = local_features[:, icol] >= right_cut
-                excl_bi_array = local_features_excl[:, icol] >= right_cut
-
-                grow_info = store_grow_info(excl_bi_array=excl_bi_array, incl_bi_array=incl_bi_array, icol=icol,
-                                            cut=right_cut, cut_option=RIGHT_CUT,
-                                            incl_mdl_gain=np.nan, excl_mdl_gain=np.nan,
-                                            coverage_excl=np.count_nonzero(excl_bi_array),
-                                            coverage_incl=np.count_nonzero(incl_bi_array))
-                new_rule = new_rule.make_rule_from_grow_info(grow_info=grow_info)
-
-            new_rule_cl_data_excl = \
-                new_rule.ruleset.data_encoding.get_cl_data_excl(ruleset=new_ruleset, rule=new_rule,
-                                                                bool=np.ones(new_rule.coverage_excl, dtype=bool))
-            new_rule_cl_data_incl = \
-                new_rule.ruleset.data_encoding.get_cl_data_incl(ruleset=new_ruleset, rule=new_rule,
-                                                                excl_bi_array=np.ones(new_rule.coverage_excl, dtype=bool),
-                                                                incl_bi_array=np.ones(new_rule.coverage, dtype=bool))
-            sys.exit("Error: below seems wrong! Don't know how to fix this though..")
-            new_rule.incl_mdl_gain = new_rule_cl_data_incl / new_rule.coverage_excl
-            new_rule.excl_mdl_gain = new_rule_cl_data_excl / new_rule.coverage_excl
-        return new_rule
 
     def _calc_probs(self, target):
         return calc_probs(target, num_class=self.data_info.num_class, smoothed=False)
@@ -273,24 +207,6 @@ class Rule:
         incl_grow_res_beam = [self.make_rule_from_grow_info(incl_grow_info) for incl_grow_info in
                               best_incl_grow_beam.infos]
         return incl_grow_res_beam
-
-    def make_rule_from_grow_info(self, grow_info):
-        sys.exit("disable this function")
-        indices = self.indices[grow_info["incl_bi_array"]]
-        indices_excl_overlap = self.indices_excl_overlap[grow_info["excl_bi_array"]]
-
-        condition_matrix = np.array(self.condition_matrix)
-        condition_matrix[grow_info["cut_option"], grow_info["icol"]] = grow_info["cut"]
-        if grow_info["icol"] in self.icols_in_order:
-            new_icols_in_order = self.icols_in_order
-        else:
-            new_icols_in_order = self.icols_in_order + [grow_info["icol"]]
-        rule = Rule(indices=indices, indices_excl_overlap=indices_excl_overlap, data_info=self.data_info,
-                    rule_base=self, condition_matrix=condition_matrix, ruleset=self.ruleset,
-                    excl_mdl_gain=grow_info["excl_mdl_gain"],
-                    incl_mdl_gain=grow_info["incl_mdl_gain"],
-                    icols_in_order=new_icols_in_order)
-        return rule
 
     def calculate_mdl_gain(self, bi_array, excl_bi_array, icol, cut_option):
         data_encoding, model_encoding = self.ruleset.data_encoding, self.ruleset.model_encoding

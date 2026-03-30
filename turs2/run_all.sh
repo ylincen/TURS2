@@ -39,23 +39,8 @@ ADBENCH_DATASETS=(
 
 # Experiments: "name|args..."
 # (name is only for logging, args are passed to run_all.py)
-# EXPERIMENTS=(
-#   "baseline|--score normalized --not_use_excl"
-#   "ablation_aux|--score normalized"
-#   "ablation_no_local|--score normalized --not_use_excl --validity_check none"
-#   "ablation_no_patience|--score normalized --not_use_excl --no-patience"
-# )
-
-# EXPERIMENTS=(
-#   "baseline|--score normalized --not_use_excl"
-# )
-
-# EXPERIMENTS=(
-#   "export_class_label|--score normalized --not_use_excl --export_class_label"
-# )
-
 EXPERIMENTS=(
-  "ablation_score|--score absolute --not_use_excl"
+  "baseline|--score normalized"
 )
 
 # --------- JOB CONTROL ---------
