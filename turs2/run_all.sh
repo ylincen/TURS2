@@ -31,10 +31,10 @@ UCI_DATASETS=(
 # ADBench datasets (filenames, as in your original Python)
 ADBENCH_DIR="${ADBENCH_DIR:-../ADbench_datasets_Classical}"
 ADBENCH_DATASETS=(
-  26_optdigits.npz 34_smtp.npz 28_pendigits.npz 43_WDBC.npz
-  36_speech.npz 31_satimage-2.npz 3_backdoor.npz
-  38_thyroid.npz 41_Waveform.npz 23_mammography.npz
-  40_vowels.npz 25_musk.npz 1_ALOI.npz 14_glass.npz
+  optdigits.npz smtp.npz pendigits.npz WDBC.npz
+  satimage-2.npz backdoor.npz
+  thyroid.npz Waveform.npz mammography.npz
+  vowels.npz musk.npz ALOI.npz glass.npz
 )
 
 # Experiments: "name|args..."

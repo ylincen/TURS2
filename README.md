@@ -277,7 +277,7 @@ Brier score in [0, 1], and NML regret sanity.
 
 ---
 
-## 9. Citation
+<!-- ## 9. Citation
 
 ```bibtex
 @article{yang2024turs,
@@ -287,7 +287,7 @@ Brier score in [0, 1], and NML regret sanity.
   year    = {2024},
   note    = {Under review}
 }
-```
+``` -->
 
 ---
 
