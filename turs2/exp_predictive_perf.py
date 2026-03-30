@@ -49,12 +49,14 @@ def read_data(data_name, datasets_without_header_row, datasets_with_header_row, 
 def preprocess_data(d, colnames=None, threshold_categorical=20):
     # threshold_categorical=20 is what we used in the JMLR paper
     le = LabelEncoder()
-    d.iloc[:, -1] = le.fit_transform(d.iloc[:, -1])
+    d = d.copy()
+    last_col = d.columns[-1]
+    d[last_col] = le.fit_transform(d.iloc[:, -1]).astype(int)
 
     if colnames is not None:
         new_colnames = []
 
-    le_feature = OneHotEncoder(sparse=False, dtype=int, drop="if_binary")
+    le_feature = OneHotEncoder(sparse_output=False, dtype=int, drop="if_binary")
 
     for icol in range(d.shape[1] - 1):
         if d.iloc[:, icol].dtype == "float":

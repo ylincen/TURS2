@@ -58,8 +58,8 @@ class Rule:
         self.cl_model = self.ruleset.model_encoding.rule_cl_model_dep(self.condition_matrix, col_orders=icols_in_order)
 
         if self.rule_base is None:
-            self.incl_mdl_gain, self.excl_mdl_gain = -np.Inf, -np.Inf
-            self.incl_gain_per_excl_coverage, self.excl_gain_per_excl_coverage = -np.Inf, -np.Inf
+            self.incl_mdl_gain, self.excl_mdl_gain = -np.inf, -np.inf
+            self.incl_gain_per_excl_coverage, self.excl_gain_per_excl_coverage = -np.inf, -np.inf
         else:
             self.incl_mdl_gain, self.excl_mdl_gain = incl_mdl_gain, excl_mdl_gain
             if self.coverage_excl == 0:
@@ -86,7 +86,7 @@ class Rule:
         new_rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=new_ruleset.uncovered_indices,
                         data_info=self.data_info, rule_base=None,
                         condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                        ruleset=new_ruleset, excl_mdl_gain=-np.Inf, incl_mdl_gain=-np.Inf,
+                        ruleset=new_ruleset, excl_mdl_gain=-np.inf, incl_mdl_gain=-np.inf,
                         icols_in_order=[ic for ic in self.icols_in_order if ic not in icols])
 
         # grow the rule by following the condition_matrix

@@ -11,8 +11,8 @@ def get_rule_cover(rule, X_test):
     which_vars = np.where(condition_count > 0)[0]
 
     upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-    upper_bound[np.isnan(upper_bound)] = np.Inf
-    lower_bound[np.isnan(lower_bound)] = -np.Inf
+    upper_bound[np.isnan(upper_bound)] = np.inf
+    lower_bound[np.isnan(lower_bound)] = -np.inf
 
     rule_cover = np.ones(len(X_test), dtype=bool)
     for v in which_vars:
@@ -44,8 +44,8 @@ def get_rule_local_prediction_for_unseen_data_this_rule_only(rule, X_test, y_tes
     # which_vars = np.where(condition_count > 0)[0]
     #
     # upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-    # upper_bound[np.isnan(upper_bound)] = np.Inf
-    # lower_bound[np.isnan(lower_bound)] = -np.Inf
+    # upper_bound[np.isnan(upper_bound)] = np.inf
+    # lower_bound[np.isnan(lower_bound)] = -np.inf
     #
     # rule_cover = np.ones(len(X_test), dtype=bool)
     # for v in which_vars:
@@ -78,8 +78,8 @@ def get_rule_local_prediction_for_unseen_data(ruleset, X_test, y_test):
         # which_vars = np.where(condition_count > 0)[0]
         #
         # upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-        # upper_bound[np.isnan(upper_bound)] = np.Inf
-        # lower_bound[np.isnan(lower_bound)] = -np.Inf
+        # upper_bound[np.isnan(upper_bound)] = np.inf
+        # lower_bound[np.isnan(lower_bound)] = -np.inf
         #
         # rule_cover = np.ones(len(X_test), dtype=bool)
         # for v in which_vars:
@@ -131,8 +131,8 @@ def predict_ruleset(ruleset, X_test, y_test):
         which_vars = np.where(condition_count > 0)[0]
 
         upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-        upper_bound[np.isnan(upper_bound)] = np.Inf
-        lower_bound[np.isnan(lower_bound)] = -np.Inf
+        upper_bound[np.isnan(upper_bound)] = np.inf
+        lower_bound[np.isnan(lower_bound)] = -np.inf
 
         for v in which_vars:
             r_bool_array = r_bool_array & (X_test[:, v] < upper_bound[v]) & (X_test[:, v] >= lower_bound[v])
@@ -196,8 +196,8 @@ def predict_ruleset_wrong(ruleset, X_test, y_test):
             which_vars = np.where(condition_count > 0)[0]
 
             upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-            upper_bound[np.isnan(upper_bound)] = np.Inf
-            lower_bound[np.isnan(lower_bound)] = -np.Inf
+            upper_bound[np.isnan(upper_bound)] = np.inf
+            lower_bound[np.isnan(lower_bound)] = -np.inf
 
             for v in which_vars:
                 mg_cover = mg_cover & (X_test[:, v] < upper_bound[v]) & (X_test[:, v] >= lower_bound[v])
@@ -246,8 +246,8 @@ def predict_rulelist(ruleset, X_test, y_test):
         which_vars = np.where(condition_count > 0)[0]
 
         upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-        upper_bound[np.isnan(upper_bound)] = np.Inf
-        lower_bound[np.isnan(lower_bound)] = -np.Inf
+        upper_bound[np.isnan(upper_bound)] = np.inf
+        lower_bound[np.isnan(lower_bound)] = -np.inf
 
         for v in which_vars:
             rule_cover = rule_cover & (X_test[:, v] < upper_bound[v]) & (X_test[:, v] >= lower_bound[v])

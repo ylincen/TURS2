@@ -20,8 +20,8 @@ def cover_matrix_fun(ruleset, X):
         # which_vars = np.where(condition_count > 0)[0]
         #
         # upper_bound, lower_bound = condition_matrix[0], condition_matrix[1]
-        # upper_bound[np.isnan(upper_bound)] = np.Inf
-        # lower_bound[np.isnan(lower_bound)] = -np.Inf
+        # upper_bound[np.isnan(upper_bound)] = np.inf
+        # lower_bound[np.isnan(lower_bound)] = -np.inf
         #
         # for v in which_vars:
         #     r_bool_array = r_bool_array & (X[:, v] < upper_bound[v]) & (X[:, v] >= lower_bound[v])

@@ -346,14 +346,14 @@ class Ruleset:
             rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
                         data_info=self.data_info, rule_base=None,
                         condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                        ruleset=self, excl_mdl_gain=-np.Inf, incl_mdl_gain=-np.Inf, icols_in_order=[])
+                        ruleset=self, excl_mdl_gain=-np.inf, incl_mdl_gain=-np.inf, icols_in_order=[])
         else:
             rule = rule_given
 
         rules_for_next_iter = [rule]
         rules_candidates = [rule]
 
-        previous_best_gain, previous_best_excl_gain = -np.Inf, -np.Inf
+        previous_best_gain, previous_best_excl_gain = -np.inf, -np.inf
         counter_worse_best_gain = 0
         for i in range(self.data_info.max_grow_iter):
             excl_beam_list, incl_beam_list = [], []
@@ -445,7 +445,7 @@ class Ruleset:
         rule = Rule(indices=np.arange(self.data_info.nrow), indices_excl_overlap=self.uncovered_indices,
                     data_info=self.data_info, rule_base=None,
                     condition_matrix=np.repeat(np.nan, self.data_info.ncol * 2).reshape(2, self.data_info.ncol),
-                    ruleset=self, excl_normalized_gain=-np.Inf, incl_normalized_gain=-np.Inf)
+                    ruleset=self, excl_normalized_gain=-np.inf, incl_normalized_gain=-np.inf)
         excl_beam_list = [Beam(width=self.data_info.beam_width, rule_length=0)]
         excl_beam_list[0].update(rule=rule, gain=rule.excl_normalized_gain)
         previous_excl_beam = excl_beam_list[0]
